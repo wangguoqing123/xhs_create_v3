@@ -13,6 +13,7 @@ export function SearchHero() {
 
   const handleSearch = () => {
     if (query.trim()) {
+      // 直接跳转到搜索页面，不在首页调用API
       router.push(`/search?q=${encodeURIComponent(query)}`)
     }
   }

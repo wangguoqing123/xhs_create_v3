@@ -12,6 +12,32 @@ body {
   }
 }
 
+/* 防止滚动条消失导致页面抖动 */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* 为支持scrollbar-gutter的浏览器提供更好的体验 */
+@supports (scrollbar-gutter: stable) {
+  html {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+/* 针对不支持scrollbar-gutter的浏览器的备用方案 */
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
+/* 防止Radix UI组件导致的页面抖动 - 直接禁用margin/padding变化 */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
