@@ -1,6 +1,8 @@
 import { SearchHero } from "@/components/search-hero"
 import { FeatureModules } from "@/components/feature-modules"
 import { Header } from "@/components/header"
+import { SupabaseStatus } from "@/components/supabase-status"
+import { ProfileStatus } from "@/components/profile-status"
 
 export default function HomePage() {
   return (
@@ -12,6 +14,14 @@ export default function HomePage() {
 
       {/* Feature Modules */}
       <FeatureModules />
+
+      {/* Development Status Cards */}
+      <section className="py-16 px-6">
+        <div className="container mx-auto flex justify-center gap-8 flex-wrap">
+          <SupabaseStatus />
+          <ProfileStatus />
+        </div>
+      </section>
 
       {/* Background Effects */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
