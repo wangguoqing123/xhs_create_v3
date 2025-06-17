@@ -70,13 +70,49 @@ export interface XiaohongshuNote {
   note_xsec_token: string // 安全访问token
 }
 
-// Coze API请求参数类型
+// 小红书笔记详情数据类型
+export interface XiaohongshuNoteDetail {
+  auther_avatar: string // 作者头像URL
+  auther_home_page_url: string // 作者主页URL
+  auther_nick_name: string // 作者昵称
+  auther_user_id: string // 作者用户ID
+  collected: boolean // 是否已收藏
+  collected_count: string // 收藏数量
+  comment_count: string // 评论数量
+  note_card_type: 'normal' | 'video' // 笔记卡片类型
+  note_create_time: string // 笔记创建时间
+  note_desc: string // 笔记描述内容
+  note_display_title: string // 笔记显示标题
+  note_duration: string | null // 视频时长(视频笔记)
+  note_id: string // 笔记唯一ID
+  note_image_list: string[] // 笔记图片列表
+  note_last_update_time: string // 笔记最后更新时间
+  note_liked: boolean // 是否已点赞
+  note_liked_count: string // 点赞数量
+  note_model_type: 'note' // 笔记模型类型
+  note_tags: string[] // 笔记标签列表
+  note_url: string // 笔记详情页URL
+  share_count: string // 分享数量
+  video_a1_url: string | null // 视频A1格式URL
+  video_h264_url: string | null // 视频H264格式URL
+  video_h265_url: string | null // 视频H265格式URL
+  video_h266_url: string | null // 视频H266格式URL
+  video_id: string | null // 视频ID
+}
+
+// Coze API搜索请求参数类型
 export interface CozeSearchParams {
   cookieStr: string // 小红书cookie字符串
   keywords: string // 搜索关键词
   noteType: 0 | 1 | 2 // 笔记类型：0=全部，1=视频，2=图文
   sort: 0 | 1 | 2 // 排序方式：0=综合，1=最新，2=最热
   totalNumber: number // 获取数量
+}
+
+// Coze API笔记详情请求参数类型
+export interface CozeNoteDetailParams {
+  cookieStr: string // 小红书cookie字符串
+  noteUrl: string // 笔记URL
 }
 
 // Coze API响应类型
@@ -89,10 +125,19 @@ export interface CozeApiResponse {
   token: number // token消耗
 }
 
-// 解析后的数据类型
+// 解析后的搜索数据类型
 export interface CozeDataResponse {
   code: number // 内部状态码
   data: XiaohongshuNote[] // 小红书笔记列表
+  msg: string // 内部消息
+}
+
+// 解析后的笔记详情数据类型
+export interface CozeNoteDetailResponse {
+  code: number // 内部状态码
+  data: {
+    note: XiaohongshuNoteDetail // 小红书笔记详情
+  }
   msg: string // 内部消息
 }
 
@@ -116,4 +161,31 @@ export interface Note {
   publishTime: string
   // 新增字段，用于存储原始数据
   originalData?: XiaohongshuNote
+}
+
+// 笔记详情类型
+export interface NoteDetail {
+  id: string // 笔记ID
+  title: string // 笔记标题
+  author: string // 作者昵称
+  authorAvatar: string // 作者头像
+  authorId: string // 作者ID
+  content: string // 笔记正文内容
+  tags: string[] // 标签列表
+  images: string[] // 图片列表
+  createTime: string // 创建时间
+  likeCount: number // 点赞数
+  collectCount: number // 收藏数
+  commentCount: number // 评论数
+  shareCount: number // 分享数
+  isLiked: boolean // 是否已点赞
+  isCollected: boolean // 是否已收藏
+  noteUrl: string // 笔记链接
+  // 视频相关字段
+  isVideo: boolean // 是否为视频笔记
+  videoDuration?: string // 视频时长
+  videoUrls?: {
+    h264?: string // H264格式视频URL
+    h265?: string // H265格式视频URL
+  }
 } 

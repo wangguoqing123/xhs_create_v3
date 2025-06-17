@@ -1,16 +1,23 @@
 import { 
   CozeSearchParams, 
+  CozeNoteDetailParams,
   CozeApiResponse, 
   CozeDataResponse, 
+  CozeNoteDetailResponse,
   XiaohongshuNote, 
+  XiaohongshuNoteDetail,
   Note, 
+  NoteDetail,
   SearchConfig 
 } from './types'
 
 // 环境变量配置
 const COZE_API_URL = 'https://api.coze.cn/v1/workflow/run'
 const COZE_API_TOKEN = process.env.COZE_API_TOKEN || ''
-const COZE_WORKFLOW_ID = process.env.COZE_WORKFLOW_ID || '7511639630044119067'
+// 搜索接口的工作流ID
+const COZE_SEARCH_WORKFLOW_ID = process.env.COZE_SEARCH_WORKFLOW_ID || '7511639630044119067'
+// 笔记详情接口的工作流ID
+const COZE_DETAIL_WORKFLOW_ID = process.env.COZE_DETAIL_WORKFLOW_ID || '7511959723135762472'
 
 /**
  * 调用Coze API获取小红书笔记数据
@@ -34,8 +41,8 @@ export async function searchXiaohongshuNotes(
       throw new Error('Coze API Token 未配置，请在项目根目录创建 .env.local 文件并设置 COZE_API_TOKEN')
     }
 
-    if (!COZE_WORKFLOW_ID) {
-      throw new Error('Coze Workflow ID 未配置，请在 .env.local 文件中设置 COZE_WORKFLOW_ID')
+    if (!COZE_SEARCH_WORKFLOW_ID) {
+      throw new Error('Coze搜索工作流ID 未配置，请在 .env.local 文件中设置 COZE_SEARCH_WORKFLOW_ID')
     }
 
     // 构建请求参数
@@ -47,9 +54,9 @@ export async function searchXiaohongshuNotes(
       totalNumber: config.totalNumber
     }
 
-    console.log('发送Coze API请求:', {
+    console.log('发送Coze搜索API请求:', {
       url: COZE_API_URL,
-      workflow_id: COZE_WORKFLOW_ID,
+      workflow_id: COZE_SEARCH_WORKFLOW_ID,
       hasToken: !!COZE_API_TOKEN,
       tokenLength: COZE_API_TOKEN.length,
       keywords
@@ -64,7 +71,7 @@ export async function searchXiaohongshuNotes(
       },
       body: JSON.stringify({
         parameters: requestParams,
-        workflow_id: COZE_WORKFLOW_ID
+        workflow_id: COZE_SEARCH_WORKFLOW_ID
       })
     })
 
@@ -77,7 +84,7 @@ export async function searchXiaohongshuNotes(
         if (errorData.message) {
           errorMessage += ` - ${errorData.message}`
         }
-        console.error('Coze API错误详情:', errorData)
+        console.error('Coze搜索API错误详情:', errorData)
       } catch (e) {
         console.error('无法解析错误响应:', e)
       }
@@ -95,7 +102,7 @@ export async function searchXiaohongshuNotes(
 
     // 检查API响应状态
     if (apiResponse.code !== 0) {
-      throw new Error(`API错误: ${apiResponse.msg}`)
+      throw new Error(`搜索API错误: ${apiResponse.msg}`)
     }
 
     // 解析data字段中的JSON字符串
@@ -103,7 +110,7 @@ export async function searchXiaohongshuNotes(
 
     // 检查内部数据状态
     if (dataResponse.code !== 0) {
-      throw new Error(`数据错误: ${dataResponse.msg}`)
+      throw new Error(`搜索数据错误: ${dataResponse.msg}`)
     }
 
     // 返回小红书笔记列表
@@ -112,6 +119,228 @@ export async function searchXiaohongshuNotes(
   } catch (error) {
     console.error('搜索小红书笔记失败:', error)
     throw new Error(error instanceof Error ? error.message : '未知错误')
+  }
+}
+
+/**
+ * 调用Coze API获取小红书笔记详情
+ * @param noteUrl 笔记URL
+ * @param cookieStr 用户cookie字符串
+ * @returns Promise<XiaohongshuNoteDetail> 小红书笔记详情
+ */
+export async function fetchXiaohongshuNoteDetail(
+  noteUrl: string,
+  cookieStr: string
+): Promise<XiaohongshuNoteDetail> {
+  try {
+    // 检查环境变量配置
+    if (!COZE_API_TOKEN) {
+      throw new Error('Coze API Token 未配置，请在项目根目录创建 .env.local 文件并设置 COZE_API_TOKEN')
+    }
+
+    if (!COZE_DETAIL_WORKFLOW_ID) {
+      throw new Error('Coze详情工作流ID 未配置，请在 .env.local 文件中设置 COZE_DETAIL_WORKFLOW_ID')
+    }
+
+    // 构建请求参数
+    const requestParams: CozeNoteDetailParams = {
+      cookieStr,
+      noteUrl
+    }
+
+    console.log('发送Coze详情API请求:', {
+      url: COZE_API_URL,
+      workflow_id: COZE_DETAIL_WORKFLOW_ID,
+      hasToken: !!COZE_API_TOKEN,
+      noteUrl
+    })
+
+    // 发送API请求
+    const response = await fetch(COZE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${COZE_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        parameters: requestParams,
+        workflow_id: COZE_DETAIL_WORKFLOW_ID
+      })
+    })
+
+    // 检查HTTP响应状态
+    if (!response.ok) {
+      let errorMessage = `HTTP错误: ${response.status} ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        if (errorData.message) {
+          errorMessage += ` - ${errorData.message}`
+        }
+        console.error('Coze详情API错误详情:', errorData)
+      } catch (e) {
+        console.error('无法解析错误响应:', e)
+      }
+      
+      if (response.status === 401) {
+        errorMessage = 'Coze API认证失败，请检查Token配置'
+      }
+      
+      throw new Error(errorMessage)
+    }
+
+    // 解析响应数据
+    const apiResponse: CozeApiResponse = await response.json()
+
+    // 检查API响应状态
+    if (apiResponse.code !== 0) {
+      throw new Error(`详情API错误: ${apiResponse.msg}`)
+    }
+
+    // 解析data字段中的JSON字符串
+    const dataResponse: CozeNoteDetailResponse = JSON.parse(apiResponse.data)
+
+    // 检查内部数据状态
+    if (dataResponse.code !== 0) {
+      throw new Error(`详情数据错误: ${dataResponse.msg}`)
+    }
+
+    // 返回小红书笔记详情
+    if (!dataResponse.data?.note) {
+      throw new Error('未获取到笔记详情数据')
+    }
+
+    return dataResponse.data.note
+
+  } catch (error) {
+    console.error('获取小红书笔记详情失败:', error)
+    throw new Error(error instanceof Error ? error.message : '获取笔记详情失败')
+  }
+}
+
+/**
+ * 将小红书笔记详情数据转换为统一格式
+ * @param xhsNoteDetail 小红书笔记详情
+ * @returns NoteDetail 统一格式的笔记详情
+ */
+export function convertXiaohongshuNoteDetailToNoteDetail(xhsNoteDetail: XiaohongshuNoteDetail): NoteDetail {
+  // 解析笔记描述，分离正文和标签
+  const { content, tags } = parseNoteDescription(xhsNoteDetail.note_desc, xhsNoteDetail.note_tags)
+  
+  // 解析数字字符串，去除逗号分隔符
+  const likeCount = parseInt(xhsNoteDetail.note_liked_count.replace(/,/g, '')) || 0
+  const collectCount = parseInt(xhsNoteDetail.collected_count.replace(/,/g, '')) || 0
+  const commentCount = parseInt(xhsNoteDetail.comment_count.replace(/,/g, '')) || 0
+  const shareCount = parseInt(xhsNoteDetail.share_count.replace(/,/g, '')) || 0
+
+  // 判断是否为视频笔记
+  const isVideo = xhsNoteDetail.note_card_type === 'video' && !!xhsNoteDetail.video_id
+
+  return {
+    id: xhsNoteDetail.note_id,
+    title: xhsNoteDetail.note_display_title,
+    author: xhsNoteDetail.auther_nick_name,
+    authorAvatar: xhsNoteDetail.auther_avatar,
+    authorId: xhsNoteDetail.auther_user_id,
+    content,
+    tags,
+    images: xhsNoteDetail.note_image_list || [],
+    createTime: formatNoteTime(xhsNoteDetail.note_create_time),
+    likeCount,
+    collectCount,
+    commentCount,
+    shareCount,
+    isLiked: xhsNoteDetail.note_liked,
+    isCollected: xhsNoteDetail.collected,
+    noteUrl: xhsNoteDetail.note_url,
+    isVideo,
+    videoDuration: xhsNoteDetail.note_duration || undefined,
+    videoUrls: isVideo ? {
+      h264: xhsNoteDetail.video_h264_url || undefined,
+      h265: xhsNoteDetail.video_h265_url || undefined
+    } : undefined
+  }
+}
+
+/**
+ * 解析笔记描述，分离正文内容和标签
+ * @param noteDesc 笔记描述原文
+ * @param noteTags 笔记标签数组
+ * @returns { content: string, tags: string[] } 分离后的正文和标签
+ */
+function parseNoteDescription(noteDesc: string, noteTags: string[]): { content: string, tags: string[] } {
+  // 移除描述中的话题标签（格式：#标签[话题]#）
+  let content = noteDesc.replace(/#[^#]*\[话题\]#/g, '').trim()
+  
+  // 移除单独的话题标签（格式：#标签#）
+  content = content.replace(/#[^#]*#/g, '').trim()
+  
+  // 清理多余的空行和空格
+  content = content.replace(/\n{3,}/g, '\n\n').trim()
+  
+  // 如果处理后内容为空，使用原始描述的前100个字符
+  if (!content) {
+    content = noteDesc.substring(0, 100)
+  }
+  
+  // 合并API返回的标签和从描述中提取的标签
+  const extractedTags = extractHashtags(noteDesc)
+  const allTags = [...new Set([...noteTags, ...extractedTags])]
+  
+  return {
+    content,
+    tags: allTags
+  }
+}
+
+/**
+ * 从文本中提取话题标签
+ * @param text 文本内容
+ * @returns string[] 提取的标签列表
+ */
+function extractHashtags(text: string): string[] {
+  const hashtags: string[] = []
+  
+  // 匹配#标签[话题]#格式
+  const topicMatches = text.match(/#([^#]*)\[话题\]#/g)
+  if (topicMatches) {
+    topicMatches.forEach(match => {
+      const tag = match.replace(/#([^#]*)\[话题\]#/, '$1').trim()
+      if (tag) {
+        hashtags.push(tag)
+      }
+    })
+  }
+  
+  // 匹配简单的#标签#格式
+  const simpleMatches = text.match(/#([^#\[\]]+)#/g)
+  if (simpleMatches) {
+    simpleMatches.forEach(match => {
+      const tag = match.replace(/#/g, '').trim()
+      if (tag && !hashtags.includes(tag)) {
+        hashtags.push(tag)
+      }
+    })
+  }
+  
+  return hashtags
+}
+
+/**
+ * 格式化笔记时间
+ * @param timeStr 时间字符串
+ * @returns string 格式化后的时间
+ */
+function formatNoteTime(timeStr: string): string {
+  try {
+    const date = new Date(timeStr)
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch (error) {
+    console.error('时间格式化失败:', error)
+    return timeStr
   }
 }
 
