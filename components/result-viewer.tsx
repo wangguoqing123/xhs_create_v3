@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Copy, CheckCircle, Download, FileText, Clock, AlertCircle, FileSpreadsheet } from "lucide-react"
+import { Copy, CheckCircle, XCircle, Clock, Download, FileText, AlertCircle, FileSpreadsheet } from "lucide-react"
+import { cn } from "@/lib/utils"
 import Image from "next/image"
 import * as XLSX from 'xlsx'
 
@@ -129,8 +130,8 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
         )
       case "completed":
         return (
-          <Badge className="mt-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-0 text-xs">
-            <CheckCircle className="h-3 w-3 mr-1" />
+          <Badge className="mt-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-0 text-xs pointer-events-none">
+            <CheckCircle className="h-3 w-3 mr-1 pointer-events-none" />
             已完成
           </Badge>
         )
@@ -156,7 +157,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
               </div>
               <div>
                 <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">
-                  生成稿 {index + 1}
+                  版本 {index + 1}
                 </CardTitle>
                 {getStatusBadge()}
               </div>
@@ -181,7 +182,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
             </div>
             <div>
               <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">
-                生成稿 {index + 1}
+                版本 {index + 1}
               </CardTitle>
               {getStatusBadge()}
             </div>
@@ -237,7 +238,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
           {/* 正文 */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">正文内容</h3>
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-3 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner max-h-64 overflow-y-auto">
+            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-3 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner min-h-64 max-h-[356px] overflow-y-auto">
               <div className="prose max-w-none">
                 <pre className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-xs">
                   {result.status === "generating" && result.content && result.content.length > 0 ? (

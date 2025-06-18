@@ -35,11 +35,10 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
 
   // 配置状态
   const [config, setConfig] = useState<BatchConfig>({
-    count: "3",
-    type: "auto",
-    theme: "",
-    persona: "default",
-    purpose: "default",
+    type: 'auto',
+    theme: '',
+    persona: 'default',
+    purpose: 'default'
   })
 
   // 处理批量生成
@@ -107,7 +106,7 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
                       <Badge variant="secondary" className="mx-1 text-sm px-2 py-0.5">
                         {selectedNotes.length}
                       </Badge>{" "}
-                      篇笔记，准备开始创作
+                      篇笔记，每篇将生成3个不同风格的版本
                     </>
                   ) : (
                     "请先选择要生成的笔记"
@@ -129,22 +128,6 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
         {/* Configuration Grid */}
         <div className="px-6 py-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 生成数量 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-900 dark:text-white">每篇笔记的生成数量</Label>
-              <Select value={config.count} onValueChange={(value) => setConfig({ ...config, count: value })}>
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 rounded-xl text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1篇内容</SelectItem>
-                  <SelectItem value="3">3篇内容</SelectItem>
-                  {/* <SelectItem value="5">5篇内容</SelectItem>
-                  <SelectItem value="10">10篇内容</SelectItem> */}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* 内容类型 */}
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-900 dark:text-white">内容类型</Label>
@@ -193,6 +176,9 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 空占位，保持布局 */}
+            <div></div>
           </div>
 
           {/* 特定主题 - 单独一行 */}

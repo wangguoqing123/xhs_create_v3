@@ -71,7 +71,7 @@ export function TaskList({ tasks, selectedTaskId, onTaskSelect }: TaskListProps)
                 <div className="flex items-center gap-1 ml-2">{getStatusIcon(task.status)}</div>
               </div>
               <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs pointer-events-none">
                   {getStatusText(task.status)}
                 </Badge>
                 <span className="text-xs text-gray-500">{task.results.length} 篇内容</span>

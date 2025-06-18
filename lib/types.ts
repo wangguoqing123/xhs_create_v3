@@ -318,7 +318,6 @@ export type GeneratedContentUpdate = Database['public']['Tables']['generated_con
 
 // 批量配置类型
 export interface BatchConfig {
-  count: string // 每篇笔记生成数量："1" | "3"
   type: string // 内容类型："auto" | "article" | "video"  
   theme: string // 特定主题
   persona: string // 人设定位："default" | "expert" | "friend" | "humor" | "professional"

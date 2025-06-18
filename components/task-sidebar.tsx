@@ -247,7 +247,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
                     {task.taskName || `任务 ${index + 1}`}
                   </h3>
                   <div className="flex items-center justify-between">
-                    <Badge className={cn("text-xs px-2 py-0.5 rounded-full border-0", getStatusColor(task.status))}>
+                    <Badge className={cn("text-xs px-2 py-0.5 rounded-full border-0 pointer-events-none", getStatusColor(task.status))}>
                       <div className="flex items-center gap-1">
                         {getStatusIcon(task.status)}
                         <span className="text-xs">{getStatusText(task.status)}</span>
@@ -335,7 +335,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1 mb-1">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">#{index + 1}</span>
-                        <Badge className={cn("text-xs px-2 py-0.5 rounded-full border-0", getStatusColor(task.status))}>
+                        <Badge className={cn("text-xs px-2 py-0.5 rounded-full border-0 pointer-events-none", getStatusColor(task.status))}>
                           <div className="flex items-center gap-1">
                             {getStatusIcon(task.status)}
                             <span className="text-xs">{getStatusText(task.status)}</span>

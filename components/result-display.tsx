@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Copy, CheckCircle } from "lucide-react"
 import Image from "next/image"
@@ -28,6 +27,7 @@ interface ResultDisplayProps {
 
 export function ResultDisplay({ task }: ResultDisplayProps) {
   const [copiedId, setCopiedId] = useState<string>("")
+  const [activeTab, setActiveTab] = useState<string>(task.results[0]?.id || "")
 
   const handleCopy = async (content: string, id: string) => {
     try {
@@ -38,6 +38,8 @@ export function ResultDisplay({ task }: ResultDisplayProps) {
       console.error("复制失败:", err)
     }
   }
+
+  const activeResult = task.results.find(result => result.id === activeTab) || task.results[0]
 
   return (
     <div className="h-full flex flex-col">
@@ -74,49 +76,59 @@ export function ResultDisplay({ task }: ResultDisplayProps) {
           <CardTitle className="text-base">生成结果</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 h-full">
-          <Tabs defaultValue={task.results[0]?.id} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
+          <div className="h-full flex flex-col">
+            {/* Tab导航 */}
+            <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4">
               {task.results.map((result, index) => (
-                <TabsTrigger key={result.id} value={result.id}>
-                  生成稿{index + 1}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <div className="flex-1 overflow-hidden">
-              {task.results.map((result) => (
-                <TabsContent key={result.id} value={result.id} className="h-full flex flex-col mt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">{result.title}</h4>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopy(result.content, result.id)}
-                      className="flex items-center gap-2"
-                    >
-                      {copiedId === result.id ? (
-                        <>
-                          <CheckCircle className="h-4 w-4" />
-                          已复制
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" />
-                          一键复制
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto">
-                    <div className="prose max-w-none bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{result.content}</p>
-                    </div>
-                  </div>
-                </TabsContent>
+                <button
+                  key={result.id}
+                  onClick={() => setActiveTab(result.id)}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === result.id
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  版本{index + 1}
+                </button>
               ))}
             </div>
-          </Tabs>
+
+            {/* 内容显示 */}
+            {activeResult && (
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium">{activeResult.title}</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopy(activeResult.content, activeResult.id)}
+                    className="flex items-center gap-2"
+                  >
+                    {copiedId === activeResult.id ? (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        已复制
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        一键复制
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  <div className="prose max-w-none bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                      {activeResult.content}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Database, BatchConfig } from '@/lib/types'
-import { generateRewriteContent, extractTitleFromContent } from '@/lib/ark-api'
+import { generateRewriteContent, parseThreeVersions } from '@/lib/ark-api'
 import { fetchXiaohongshuNoteDetail } from '@/lib/coze-api'
 
 // 创建 Supabase 客户端
@@ -15,13 +15,11 @@ const supabase = createClient<Database>(
  * @param taskNoteId 任务笔记ID
  * @param noteData 笔记数据 
  * @param config 批量配置
- * @param generateCount 生成数量
  */
 async function processNoteRewrite(
   taskNoteId: string,
   noteData: any,
-  config: BatchConfig,
-  generateCount: number
+  config: BatchConfig
 ): Promise<void> {
   try {
     // 更新任务笔记状态为处理中
@@ -30,99 +28,108 @@ async function processNoteRewrite(
       .update({ status: 'processing' })
       .eq('id', taskNoteId)
 
-    console.log(`开始处理笔记改写: ${taskNoteId}, 生成数量: ${generateCount}`)
+    console.log(`开始处理笔记改写: ${taskNoteId}，生成3个版本`)
 
     // 准备原始内容
     const originalContent = `标题: ${noteData.title || '无标题'}
 内容: ${noteData.content || '无内容'}
 标签: ${noteData.tags ? noteData.tags.join(', ') : '无标签'}`
 
-    // 为每个生成数量创建内容记录
-    const contentPromises = Array.from({ length: generateCount }, async (_, index) => {
-      try {
-        // 创建生成内容记录
-        const { data: generatedContent, error: createError } = await supabase
-          .from('generated_contents')
-          .insert({
-            task_note_id: taskNoteId,
-            content_type: config.type === 'video' ? 'video_script' : 'article',
-            generation_config: config,
-            status: 'generating'
-          })
-          .select()
-          .single()
+    // 先创建3个生成内容记录
+    const contentRecords: any[] = []
+    for (let i = 0; i < 3; i++) {
+      const { data: generatedContent, error: createError } = await supabase
+        .from('generated_contents')
+        .insert({
+          task_note_id: taskNoteId,
+          content_type: config.type === 'video' ? 'video_script' : 'article',
+          generation_config: config,
+          status: 'generating'
+        })
+        .select()
+        .single()
 
-        if (createError) {
-          console.error('创建生成内容记录失败:', createError)
-          return
-        }
+      if (createError) {
+        console.error('创建生成内容记录失败:', createError)
+        continue
+      }
 
-        let fullContent = ''
-        let currentTitle = ''
+      contentRecords.push(generatedContent)
+    }
 
-        // 调用ARK API生成内容
-        await generateRewriteContent(
-          originalContent,
-          config,
-          // onChunk - 流式内容回调（这里可以实现实时更新数据库）
-          (chunk: string) => {
-            fullContent += chunk
-            // 可以在这里实时更新数据库的content字段
-            // 为了性能考虑，这里不做实时更新，而是等待完成后统一更新
-          },
-          // onComplete - 完成回调
-          async (finalContent: string) => {
-            try {
-              // 提取标题
-              currentTitle = extractTitleFromContent(finalContent)
+    if (contentRecords.length === 0) {
+      throw new Error('无法创建生成内容记录')
+    }
 
-              // 更新生成内容记录
-              await supabase
-                .from('generated_contents')
-                .update({
-                  title: currentTitle,
-                  content: finalContent,
-                  status: 'completed',
-                  completed_at: new Date().toISOString()
-                })
-                .eq('id', generatedContent.id)
+    let fullContent = ''
 
-              console.log(`笔记 ${taskNoteId} 的第 ${index + 1} 个内容生成完成`)
-            } catch (error) {
-              console.error('更新生成内容失败:', error)
-              
-              // 标记为失败
-              await supabase
-                .from('generated_contents')
-                .update({
-                  status: 'failed',
-                  error_message: error instanceof Error ? error.message : '更新内容失败'
-                })
-                .eq('id', generatedContent.id)
-            }
-          },
-          // onError - 错误回调
-          async (errorMessage: string) => {
-            console.error(`生成内容失败 (${taskNoteId}-${index}):`, errorMessage)
+    // 调用ARK API生成内容（一次调用）
+    await generateRewriteContent(
+      originalContent,
+      config,
+      // onChunk - 流式内容回调
+      (chunk: string) => {
+        fullContent += chunk
+        // 可以在这里实现实时更新进度
+      },
+      // onComplete - 完成回调
+      async (finalContent: string) => {
+        try {
+          console.log(`笔记 ${taskNoteId} 内容生成完成，开始解析三个版本`)
+          
+          // 解析三个版本的内容
+          const versions = parseThreeVersions(finalContent)
+          
+          // 更新每个版本的内容记录
+          for (let i = 0; i < Math.min(versions.length, contentRecords.length); i++) {
+            const version = versions[i]
+            const record = contentRecords[i]
             
-            // 标记为失败
+            await supabase
+              .from('generated_contents')
+              .update({
+                title: version.title,
+                content: version.content,
+                status: 'completed',
+                completed_at: new Date().toISOString()
+              })
+              .eq('id', record.id)
+            
+            console.log(`笔记 ${taskNoteId} 的版本 ${i + 1} 保存完成`)
+          }
+          
+          console.log(`笔记 ${taskNoteId} 所有版本生成完成`)
+        } catch (error) {
+          console.error('处理生成内容失败:', error)
+          
+          // 标记所有记录为失败
+          for (const record of contentRecords) {
             await supabase
               .from('generated_contents')
               .update({
                 status: 'failed',
-                error_message: errorMessage
+                error_message: error instanceof Error ? error.message : '处理内容失败'
               })
-              .eq('id', generatedContent.id)
+              .eq('id', record.id)
           }
-        )
-
-      } catch (error) {
-        console.error(`处理单个内容生成失败 (${taskNoteId}-${index}):`, error)
+        }
+      },
+      // onError - 错误回调
+      async (errorMessage: string) => {
+        console.error(`生成内容失败 (${taskNoteId}):`, errorMessage)
+        
+        // 标记所有记录为失败
+        for (const record of contentRecords) {
+          await supabase
+            .from('generated_contents')
+            .update({
+              status: 'failed',
+              error_message: errorMessage
+            })
+            .eq('id', record.id)
+        }
       }
-    })
-
-    // 等待所有内容生成完成
-    await Promise.all(contentPromises)
+    )
 
     // 更新任务笔记状态为完成
     await supabase
@@ -259,7 +266,6 @@ export async function POST(request: NextRequest) {
 
     // 解析配置
     const config = task.config as BatchConfig
-    const generateCount = parseInt(config.count || '3')
 
     // 异步处理所有笔记（不阻塞响应）
     setImmediate(async () => {
@@ -284,7 +290,7 @@ export async function POST(request: NextRequest) {
           }
 
           // 处理单个笔记的改写
-          await processNoteRewrite(taskNote.id, noteData, config, generateCount)
+          await processNoteRewrite(taskNote.id, noteData, config)
 
           // 在处理下一个笔记前稍作延迟，避免API限流
           await new Promise(resolve => setTimeout(resolve, 1000))
