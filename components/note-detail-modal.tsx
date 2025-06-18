@@ -51,7 +51,7 @@ export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-5xl h-[72vh] overflow-hidden p-0 bg-white dark:bg-slate-900 rounded-2xl border-0">
+      <DialogContent className="max-w-5xl h-[80vh] overflow-hidden p-0 bg-white dark:bg-slate-900 rounded-2xl border-0 z-[999]">
         {/* 隐藏的标题和描述，用于可访问性 */}
         <DialogTitle className="sr-only">笔记详情 - {note.title}</DialogTitle>
         <DialogDescription className="sr-only">
@@ -74,100 +74,102 @@ export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
         </div>
 
         <div className="flex h-full">
-          {/* 左侧：图片展示区域 */}
-          <div className="flex-1 relative bg-black overflow-hidden">
-            {images.length > 0 && images[currentImageIndex] ? (
-              <>
-                {/* 主图片展示区域 - 填满整个左侧容器 */}
-                <div className="relative w-full h-full">
-                  <Image 
-                    src={images[currentImageIndex]} 
-                    alt={`${note.title} - 图片 ${currentImageIndex + 1}`} 
-                    fill 
-                    className="object-contain" 
-                    sizes="(max-width: 768px) 100vw, 60vw"
-                    priority={currentImageIndex === 0}
-                    onError={(e) => {
-                      console.error('图片加载失败:', images[currentImageIndex])
-                      // 如果当前图片加载失败，尝试显示下一张有效图片
-                      const nextValidIndex = images.findIndex((img, index) => 
-                        index > currentImageIndex && img && img.trim() !== ''
-                      )
-                      if (nextValidIndex !== -1) {
-                        setCurrentImageIndex(nextValidIndex)
-                      }
-                    }}
-                    onLoad={() => {
-                      console.log('图片加载成功:', images[currentImageIndex])
-                    }}
-                  />
-                  
-                  {/* 图片导航按钮 */}
-                  {hasMultipleImages && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handlePrevImage}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full border-0"
-                      >
-                        <ChevronLeft className="h-6 w-6" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleNextImage}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full border-0"
-                      >
-                        <ChevronRight className="h-6 w-6" />
-                      </Button>
-                    </>
-                  )}
-                  
-                  {/* 图片指示器 */}
-                  {hasMultipleImages && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
-                      {images.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleImageSelect(index)}
-                          className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                            index === currentImageIndex 
-                              ? 'bg-white scale-110' 
-                              : 'bg-white/50 hover:bg-white/75'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
+          {/* 左侧：图片展示区域 - 按3:4比例设置，使用更兼容的方式 */}
+          <div className="relative bg-black overflow-hidden flex-shrink-0" style={{ width: '52%', minWidth: '320px', maxWidth: '580px' }}>
+            <div className="w-full" style={{ paddingBottom: '133.33%', position: 'relative' }}>
+              {images.length > 0 && images[currentImageIndex] ? (
+                <>
+                  {/* 主图片展示区域 - 保持3:4比例 */}
+                  <div className="absolute inset-0 w-full h-full">
+                    <Image 
+                      src={images[currentImageIndex]} 
+                      alt={`${note.title} - 图片 ${currentImageIndex + 1}`} 
+                      fill 
+                      className="object-cover" 
+                      sizes="(max-width: 768px) 100vw, 52vw"
+                      priority={currentImageIndex === 0}
+                      onError={(e) => {
+                        console.error('图片加载失败:', images[currentImageIndex])
+                        // 如果当前图片加载失败，尝试显示下一张有效图片
+                        const nextValidIndex = images.findIndex((img, index) => 
+                          index > currentImageIndex && img && img.trim() !== ''
+                        )
+                        if (nextValidIndex !== -1) {
+                          setCurrentImageIndex(nextValidIndex)
+                        }
+                      }}
+                      onLoad={() => {
+                        console.log('图片加载成功:', images[currentImageIndex])
+                      }}
+                    />
+                    
+                    {/* 图片导航按钮 */}
+                    {hasMultipleImages && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handlePrevImage}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black bg-opacity-30 hover:bg-black hover:bg-opacity-50 text-white rounded-full border-0"
+                        >
+                          <ChevronLeft className="h-6 w-6" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleNextImage}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black bg-opacity-30 hover:bg-black hover:bg-opacity-50 text-white rounded-full border-0"
+                        >
+                          <ChevronRight className="h-6 w-6" />
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* 图片指示器 */}
+                    {hasMultipleImages && (
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1">
+                        {images.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleImageSelect(index)}
+                            className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                              index === currentImageIndex 
+                                ? 'bg-white transform scale-110' 
+                                : 'bg-white bg-opacity-50 hover:bg-white hover:bg-opacity-75'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
 
-                  {/* 图片计数显示 */}
-                  {hasMultipleImages && (
-                    <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                      {currentImageIndex + 1} / {images.length}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              // 无图片时显示占位符
-              <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-                <div className="text-center text-gray-500 dark:text-gray-400">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <User className="h-8 w-8" />
+                    {/* 图片计数显示 */}
+                    {hasMultipleImages && (
+                      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                        {currentImageIndex + 1} / {images.length}
+                      </div>
+                    )}
                   </div>
-                  <p>暂无图片</p>
+                </>
+              ) : (
+                // 无图片时显示占位符
+                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <User className="h-8 w-8" />
+                    </div>
+                    <p>暂无图片</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* 右侧：详情内容区域 - 使用固定高度布局 */}
-          <div className="w-[420px] bg-white dark:bg-slate-900 flex flex-col h-full">
-            {/* 作者信息区域 - 固定高度64px */}
-            <div className="h-16 p-4 border-b border-gray-100 dark:border-slate-700 flex items-center">
-              <div className="flex items-center gap-3 w-full">
-                <div className="relative w-10 h-10 flex-shrink-0">
+          {/* 右侧：详情内容区域 - 使用更稳定的布局 */}
+          <div className="flex-1 bg-white dark:bg-slate-900 min-w-0" style={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
+            {/* 作者信息区域 */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-100 dark:border-slate-700" style={{ height: '64px' }}>
+              <div className="flex items-center gap-3 h-full">
+                <div className="relative flex-shrink-0" style={{ width: '40px', height: '40px' }}>
                   {note.authorAvatar && note.authorAvatar.trim() !== '' ? (
                     <Image
                       src={note.authorAvatar}
@@ -195,31 +197,31 @@ export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
               </div>
             </div>
 
-            {/* 标题区域 - 固定高度48px */}
-            <div className="h-12 p-4 border-b border-gray-100 dark:border-slate-700 flex items-center">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white leading-tight line-clamp-1 truncate">
-                {note.title}
+            {/* 标题区域 */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-100 dark:border-slate-700" style={{ minHeight: '48px' }}>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white leading-tight overflow-hidden">
+                <span className="line-clamp-2">{note.title}</span>
               </h2>
             </div>
 
-            {/* 正文内容区域 - 固定高度，内容可滚动 */}
-            <div className="h-[550px] p-4 border-b border-gray-100 dark:border-slate-700 overflow-y-auto">
+            {/* 正文内容区域 - 可滚动区域 */}
+            <div className="flex-1 p-4 border-b border-gray-100 dark:border-slate-700 overflow-y-auto" style={{ minHeight: '200px', maxHeight: '400px' }}>
               <div className="prose max-w-none">
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm whitespace-pre-wrap">
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm whitespace-pre-wrap break-words">
                   {note.content}
                 </p>
               </div>
             </div>
 
-            {/* 标签区域 - 固定高度80px */}
-            <div className="h-[140px] p-4 border-b border-gray-100 dark:border-slate-700">
+            {/* 标签区域 */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-100 dark:border-slate-700" style={{ maxHeight: '120px' }}>
               <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-2">话题标签</h3>
-              <div className="flex-wrap gap-1 overflow-y-auto h-[80px]">
+              <div className="flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '80px' }}>
                 {note.tags && note.tags.length > 0 ? (
                   note.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="inline-block px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-full cursor-pointer transition-colors flex-shrink-0"
+                      className="inline-block px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:bg-opacity-40 dark:hover:bg-blue-900 dark:hover:bg-opacity-60 text-blue-700 dark:text-blue-300 rounded-full cursor-pointer transition-colors flex-shrink-0"
                     >
                       #{tag}
                     </span>
@@ -230,17 +232,15 @@ export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
               </div>
             </div>
 
-
-
-            {/* 固定在底部的互动数据区域 - 固定高度64px */}
-            <div className="mt-auto h-16 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+            {/* 底部的互动数据区域 */}
+            <div className="flex-shrink-0 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" style={{ height: '64px' }}>
               {/* 互动按钮 */}
               <div className="grid grid-cols-4 gap-2 h-full">
-                <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900 dark:hover:bg-opacity-20 rounded-lg transition-colors">
                   <Heart className={`h-4 w-4 ${note.isLiked ? 'text-red-500 fill-red-500' : ''}`} />
                   <span className="text-xs font-medium">{note.likeCount.toLocaleString()}</span>
                 </button>
-                <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900 dark:hover:bg-opacity-20 rounded-lg transition-colors">
                   <Bookmark className={`h-4 w-4 ${note.isCollected ? 'text-blue-500 fill-blue-500' : ''}`} />
                   <span className="text-xs font-medium">{note.collectCount.toLocaleString()}</span>
                 </button>
