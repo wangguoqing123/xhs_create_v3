@@ -117,18 +117,41 @@ function ResultsPageContent() {
 
   // 转换选中的任务数据格式，兼容现有UI组件
   // 将任务的笔记数据转换为Task数组，每个笔记对应一个Task
-  const convertedTasks: Task[] = selectedTask?.notes?.map((note: any, index: number) => ({
-    id: note.id,
-    noteTitle: note.noteData?.title || `笔记 ${index + 1}`,
-    noteCover: note.noteData?.cover || "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=300&h=400&fit=crop&crop=center",
-    status: note.status === 'completed' ? 'completed' : note.status === 'failed' ? 'failed' : 'generating',
-    results: note.generatedContents?.map((content: any) => ({
-      id: content.id,
-      title: content.title || "生成中...",
-      content: content.content || "内容生成中，请稍候...",
-      status: content.status === 'completed' ? 'completed' : content.status === 'failed' ? 'failed' : 'generating'
-    })) || []
-  })) || []
+  const convertedTasks: Task[] = useMemo(() => {
+    if (!selectedTask?.notes) return []
+    
+    return selectedTask.notes.map((note: any, index: number) => {
+      // 确保每个笔记至少有一个占位的生成内容，即使还没开始生成
+      let results = []
+      
+      if (note.generatedContents && note.generatedContents.length > 0) {
+        // 如果有生成内容，使用实际数据
+        results = note.generatedContents.map((content: any) => ({
+          id: content.id,
+          title: content.title || "", // 使用空字符串而不是null
+          content: content.content || "", // 使用空字符串而不是null
+          status: content.status === 'completed' ? 'completed' : content.status === 'failed' ? 'failed' : 'generating'
+        }))
+      } else {
+        // 如果没有生成内容，创建占位内容（根据配置决定数量，默认3个）
+        const contentCount = selectedTask.config?.contentCount || 3
+        results = Array.from({ length: contentCount }, (_, i) => ({
+          id: `placeholder-${note.id}-${i}`,
+          title: "",
+          content: "",
+          status: note.status === 'processing' ? 'generating' : 'generating' as const
+        }))
+      }
+
+      return {
+        id: note.id,
+        noteTitle: note.noteData?.title || `笔记 ${index + 1}`,
+        noteCover: note.noteData?.cover || "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=300&h=400&fit=crop&crop=center",
+        status: note.status === 'completed' ? 'completed' : note.status === 'failed' ? 'failed' : 'generating' as const,
+        results
+      }
+    })
+  }, [selectedTask])
 
   // 当前选中的笔记ID（用于在笔记列表中高亮显示）
   const [selectedNoteId, setSelectedNoteId] = useState<string>("")
@@ -186,7 +209,11 @@ function ResultsPageContent() {
               </div>
             </div>
           ) : selectedTask && convertedTasks.length > 0 ? (
-            <ResultViewer task={convertedTasks.find(t => t.id === selectedNoteId) || convertedTasks[0]} />
+            <ResultViewer 
+              task={convertedTasks.find(t => t.id === selectedNoteId) || convertedTasks[0]} 
+              taskName={selectedTask?.taskName}
+              allTasks={convertedTasks}
+            />
           ) : selectedTask ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">

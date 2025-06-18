@@ -4,9 +4,10 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Clock, XCircle, Sparkles, Download, ChevronLeft, ChevronRight } from "lucide-react"
+import { CheckCircle, Clock, XCircle, Sparkles, Download, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import * as XLSX from 'xlsx'
 
 interface GeneratedContent {
   id: string
@@ -75,10 +76,12 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
     }
   }
 
-  const handleExportAllTasks = () => {
+  // 导出TXT文件
+  const handleExportTxt = () => {
     const allTasksContent = tasks
       .map((task, taskIndex) => {
         const taskContent = task.results
+          .filter(result => result.status === "completed") // 只导出已完成的内容
           .map((result, resultIndex) => {
             return `${result.title}\n\n${result.content}`
           })
@@ -97,6 +100,106 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  // 导出Excel文件（任务汇总）
+  const handleExportExcel = () => {
+    // 检查是否有已完成的内容
+    const hasCompletedContent = tasks.some(task => 
+      task.results.some(result => result.status === "completed")
+    )
+    
+    if (!hasCompletedContent) {
+      alert("暂无已完成的内容可导出")
+      return
+    }
+
+    // 准备Excel数据
+    const excelData = []
+    
+    // 添加表头
+    excelData.push([
+      '任务名称',
+      '笔记编号',
+      '仿写笔记标题', 
+      '仿写笔记封面链接',
+      '内容编号',
+      '仿写标题',
+      '仿写内容',
+      '生成状态',
+      '导出时间'
+    ])
+
+    // 遍历所有任务
+    tasks.forEach((task, taskIndex) => {
+      // 只导出已完成的内容
+      const completedResults = task.results.filter(result => result.status === "completed")
+      
+      if (completedResults.length > 0) {
+        completedResults.forEach((result, resultIndex) => {
+          excelData.push([
+            taskName || `批量改写任务`, // 任务名称
+            taskIndex + 1, // 笔记编号
+            task.noteTitle, // 仿写笔记标题
+            task.noteCover, // 仿写笔记封面链接
+            resultIndex + 1, // 内容编号
+            result.title || '', // 仿写标题
+            result.content || '', // 仿写内容
+            '已完成', // 生成状态
+            new Date().toLocaleString('zh-CN') // 导出时间
+          ])
+        })
+      }
+    })
+
+    // 如果没有数据行，说明没有已完成的内容
+    if (excelData.length <= 1) {
+      alert("暂无已完成的内容可导出")
+      return
+    }
+
+    // 创建工作簿
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData)
+    const workbook = XLSX.utils.book_new()
+    
+    // 设置列宽
+    worksheet['!cols'] = [
+      { wch: 20 }, // 任务名称
+      { wch: 10 }, // 笔记编号
+      { wch: 30 }, // 仿写笔记标题
+      { wch: 40 }, // 仿写笔记封面链接
+      { wch: 10 }, // 内容编号
+      { wch: 35 }, // 仿写标题
+      { wch: 60 }, // 仿写内容
+      { wch: 10 }, // 生成状态
+      { wch: 20 }  // 导出时间
+    ]
+    
+    // 设置表头样式（加粗）
+    const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:I1')
+    for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col })
+      if (!worksheet[cellAddress]) continue
+      worksheet[cellAddress].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "E3F2FD" } },
+        alignment: { horizontal: "center" }
+      }
+    }
+    
+    // 添加工作表到工作簿
+    XLSX.utils.book_append_sheet(workbook, worksheet, '批量改写汇总')
+    
+    // 生成文件名
+    const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')
+    const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false }).replace(/:/g, '-')
+    const fileName = `${taskName || '批量改写任务'}_汇总_${dateStr}_${timeStr}.xlsx`
+    
+    // 导出Excel文件
+    XLSX.writeFile(workbook, fileName)
+    
+    // 显示成功提示
+    alert(`Excel文件导出成功！\n文件名：${fileName}\n共导出 ${excelData.length - 1} 条记录`)
   }
 
   return (
@@ -185,14 +288,24 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
             </Button>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">{taskName || '任务详情'}</h3>
           </div>
-          <Button
-            onClick={handleExportAllTasks}
-            size="sm"
-            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-sm text-xs px-3 py-1 h-7"
-          >
-            <Download className="h-3 w-3 mr-1" />
-            导出全部
-          </Button>
+          <div className="flex items-center gap-1">
+            {/* <Button
+              onClick={handleExportTxt}
+              size="sm"
+              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg shadow-sm text-xs px-2 py-1 h-7"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              TXT
+            </Button> */}
+            <Button
+              onClick={handleExportExcel}
+              size="sm"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-sm text-xs px-2 py-1 h-7"
+            >
+              <FileSpreadsheet className="h-3 w-3 mr-1" />
+              Excel
+            </Button>
+          </div>
         </div>
 
         <div className="p-2 space-y-2">
