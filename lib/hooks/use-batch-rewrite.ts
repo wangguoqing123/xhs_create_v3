@@ -1,12 +1,7 @@
 import { useState, useCallback } from 'react'
 import { BatchConfig } from '@/lib/types'
-import { createClient } from '@supabase/supabase-js'
-
-// 创建Supabase客户端
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { useCreditsContext } from '@/components/credits-context'
+import { supabase } from '@/lib/supabase'
 
 interface BatchRewriteState {
   isCreating: boolean
@@ -64,6 +59,9 @@ export function useBatchRewrite() {
     taskId: null
   })
 
+  // 获取积分Context
+  const { updateBalance, refreshBalance } = useCreditsContext()
+
   // 获取用户认证token
   const getAuthToken = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -99,7 +97,7 @@ export function useBatchRewrite() {
         ? `${searchKeywords}_${timeStr}`
         : `批量改写_${timeStr}`
 
-      console.log('创建批量改写任务:', {
+      console.log('🚀 [前端] 创建批量改写任务:', {
         selectedNotes: selectedNotes.length,
         taskName,
         config
@@ -133,11 +131,18 @@ export function useBatchRewrite() {
         taskId: result.taskId 
       }))
 
-      console.log('批量改写任务创建成功:', result.taskId)
+      // 乐观更新积分（预扣积分）
+      const requiredCredits = selectedNotes.length
+      updateBalance({ 
+        current: (result.currentCredits || 0) - requiredCredits 
+      })
+
+      console.log('✅ [前端] 批量改写任务创建成功:', result.taskId)
+      console.log('💰 [前端] 已预扣积分:', requiredCredits)
       return result.taskId
 
     } catch (error) {
-      console.error('创建批量改写任务失败:', error)
+      console.error('❌ [前端] 创建批量改写任务失败:', error)
       setState(prev => ({ 
         ...prev, 
         isCreating: false, 
@@ -158,7 +163,7 @@ export function useBatchRewrite() {
         throw new Error('用户未登录')
       }
 
-      console.log('开始处理批量改写任务:', taskId)
+      console.log('🚀 [前端] 开始处理批量改写任务:', taskId)
 
       // 调用处理任务API
       const response = await fetch('/api/batch-rewrite/process', {
@@ -179,11 +184,11 @@ export function useBatchRewrite() {
       
       setState(prev => ({ ...prev, isProcessing: false }))
 
-      console.log('批量改写任务开始处理:', result)
+      console.log('✅ [前端] 批量改写任务开始处理:', result)
       return true
 
     } catch (error) {
-      console.error('处理批量改写任务失败:', error)
+      console.error('❌ [前端] 处理批量改写任务失败:', error)
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 

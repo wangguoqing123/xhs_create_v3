@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef, useMemo } from 'react'
 import { AuthUser, getCurrentUser, onAuthStateChange, getProfile, updateLastLogin } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
 import { storage } from '@/lib/utils'
@@ -22,8 +22,8 @@ const STORAGE_KEYS = {
   LAST_VERIFIED: 'xhs_last_verified'
 }
 
-// 验证间隔时间（5分钟）
-const VERIFICATION_INTERVAL = 5 * 60 * 1000
+// 验证间隔时间（30分钟）
+const VERIFICATION_INTERVAL = 30 * 60 * 1000
 
 // 性能监控工具（仅开发环境）
 const perf = {
@@ -43,44 +43,57 @@ const perf = {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // 为了避免hydration不匹配，服务端和客户端都使用相同的初始状态
   const [user, setUser] = useState<AuthUser | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // 添加状态变化日志 - 优化：减少日志频率
+  const prevStateRef = useRef<{hasUser: boolean, hasProfile: boolean, loading: boolean, isHydrated: boolean, isInitialized: boolean} | null>(null)
+  useEffect(() => {
+    const currentState = { 
+      hasUser: !!user, 
+      hasProfile: !!profile, 
+      loading, 
+      isHydrated, 
+      isInitialized 
+    }
+    
+    // 只在状态真正变化时才打印日志
+    if (!prevStateRef.current || 
+        prevStateRef.current.hasUser !== currentState.hasUser ||
+        prevStateRef.current.hasProfile !== currentState.hasProfile ||
+        prevStateRef.current.loading !== currentState.loading ||
+        prevStateRef.current.isHydrated !== currentState.isHydrated ||
+        prevStateRef.current.isInitialized !== currentState.isInitialized) {
+      console.log(`🔐 [认证] 用户状态变化:`, currentState)
+      prevStateRef.current = currentState
+    }
+  }, [user, profile, loading, isHydrated, isInitialized])
 
   // 从本地存储读取数据
   const loadFromStorage = () => {
     perf.start('本地存储加载')
-    const storedUser = storage.getItem<AuthUser>(STORAGE_KEYS.USER)
-    const storedProfile = storage.getItem<Profile>(STORAGE_KEYS.PROFILE)
-    const lastVerified = storage.getItem<number>(STORAGE_KEYS.LAST_VERIFIED, 0)
+    
+    try {
+      const storedUser = storage.getItem<AuthUser>(STORAGE_KEYS.USER)
+      const storedProfile = storage.getItem<Profile>(STORAGE_KEYS.PROFILE)
+      const lastVerified = storage.getItem<number>(STORAGE_KEYS.LAST_VERIFIED, 0)
 
-    if (storedUser && storedProfile && lastVerified) {
-      // 如果数据不太旧，直接使用
-      if (Date.now() - lastVerified < VERIFICATION_INTERVAL) {
-        setUser(storedUser)
-        setProfile(storedProfile)
-        setLoading(false)
-        perf.end('本地存储加载')
-        
-        // 开发环境下显示缓存命中信息
-        if (process.env.NODE_ENV === 'development') {
-          const cacheAge = Math.round((Date.now() - lastVerified) / 1000)
-          console.log(`✅ [缓存命中] 使用本地数据，缓存年龄: ${cacheAge}秒`)
-        }
-        
-        return true
-      } else {
-        // 开发环境下显示缓存过期信息
-        if (process.env.NODE_ENV === 'development') {
-          const cacheAge = Math.round((Date.now() - lastVerified) / 1000)
-          console.log(`⏰ [缓存过期] 缓存年龄: ${cacheAge}秒，需要重新验证`)
+      if (storedUser && storedProfile && lastVerified) {
+        // 如果数据不太旧，直接使用
+        if (Date.now() - lastVerified < VERIFICATION_INTERVAL) {
+          setUser(storedUser)
+          setProfile(storedProfile)
+          setLoading(false)
+          perf.end('本地存储加载')
+          return true
         }
       }
-    } else {
-      // 开发环境下显示缓存未命中信息
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`❌ [缓存未命中] 本地无有效数据`)
-      }
+    } catch (error) {
+      console.error(`❌ [性能监控] localStorage读取失败`, error)
     }
     
     perf.end('本地存储加载')
@@ -108,16 +121,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // 后台验证用户状态
-  const verifyUserInBackground = async () => {
+  const verifyUserInBackground = useCallback(async () => {
     try {
       perf.start('后台验证')
       const { user: currentUser } = await getCurrentUser()
       
       if (!currentUser) {
         // 用户已登出，清除本地数据
-        setUser(null)
-        setProfile(null)
-        clearStorage()
+        if (user || profile) { // 只有在状态真正需要更新时才更新
+          setUser(null)
+          setProfile(null)
+          clearStorage()
+        }
         perf.end('后台验证')
         return
       }
@@ -140,10 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       perf.end('后台验证')
       // 验证失败，可能网络问题，保持当前状态
     }
-  }
+  }, [user, profile])
 
   // 完整加载用户数据（用于首次登录或验证失败时）
-  const loadUserData = async (userId: string) => {
+  const loadUserData = useCallback(async (userId: string) => {
     try {
       perf.start('加载用户数据')
       const { data: profileData } = await getProfile(userId)
@@ -168,31 +183,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       perf.end('加载用户数据')
     }
     return null
-  }
+  }, [])
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user?.id) {
       const profileData = await loadUserData(user.id)
       if (profileData) {
         saveToStorage(user, profileData)
       }
     }
-  }
+  }, [user, loadUserData])
+
+  // 处理客户端hydration - 立刻标记为已hydrated并预加载数据
+  useEffect(() => {
+    // 立即标记为已hydrated
+    setIsHydrated(true)
+    
+    // 预加载本地数据，减少闪烁
+    const hasLocalData = loadFromStorage()
+    if (!hasLocalData) {
+      // 如果没有本地数据，立即设置loading为false，避免长时间的loading状态
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    // 1. 首先尝试从本地存储加载
-    const hasLocalData = loadFromStorage()
+    // 只在客户端hydration完成后执行，且未初始化时才执行
+    if (!isHydrated || isInitialized) return
 
-    // 2. 如果有本地数据，跳过认证初始化，直接在后台验证
-    if (hasLocalData) {
-      // 延迟执行后台验证，不阻塞UI
+    setIsInitialized(true)
+
+    // 1. 如果已经有本地数据，直接在后台验证
+    if (user && profile) {
+      // 延迟后台验证，避免阻塞UI
       setTimeout(() => {
         verifyUserInBackground()
-      }, 100)
+      }, 1000) // 增加延迟到1秒
       return
     }
 
-    // 3. 没有本地数据时才执行完整的认证初始化
+    // 2. 没有本地数据时才执行完整的认证初始化
     const initializeAuth = async () => {
       try {
         perf.start('认证初始化')
@@ -217,9 +247,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    initializeAuth()
+    // 延迟初始化，让页面先渲染
+    setTimeout(() => {
+      initializeAuth()
+    }, 100)
 
-    // 4. 监听认证状态变化
+    // 3. 监听认证状态变化
     const { data: { subscription } } = onAuthStateChange(async (authUser) => {
       const userData = authUser as AuthUser | null
       
@@ -241,9 +274,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [isHydrated, isInitialized])
 
-  // 定期后台验证（每5分钟）
+  // 定期后台验证（每30分钟）
   useEffect(() => {
     if (user) {
       const interval = setInterval(verifyUserInBackground, VERIFICATION_INTERVAL)
@@ -259,14 +292,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearStorage()
   }
 
+  // 使用useMemo缓存context值，避免每次渲染都创建新对象
+  const contextValue = useMemo(() => ({
+    user, 
+    profile, 
+    loading, 
+    signOut: handleSignOut,
+    refreshProfile 
+  }), [user, profile, loading, refreshProfile])
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile, 
-      loading, 
-      signOut: handleSignOut,
-      refreshProfile 
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

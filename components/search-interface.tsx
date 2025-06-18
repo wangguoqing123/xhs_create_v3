@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal, Sparkles, ChevronDown, Check } from "lucide-
 import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import { SearchConfig } from "@/lib/types"
+import { useCreditsContext } from "@/components/credits-context"
 
 interface SearchInterfaceProps {
   searchQuery: string
@@ -33,6 +34,9 @@ export function SearchInterface({
   const [showFilterPanel, setShowFilterPanel] = useState(false)
   const [tempConfig, setTempConfig] = useState<SearchConfig>(searchConfig)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
+  
+  // 获取积分Context
+  const { refreshBalance } = useCreditsContext()
 
   // 同步外部配置变化
   useEffect(() => {
@@ -47,6 +51,30 @@ export function SearchInterface({
       }
     }
   }, [hoverTimeout])
+
+  // 页面焦点时刷新积分（智能检测用户返回）
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 [搜索页面] 页面获得焦点，刷新积分')
+      refreshBalance()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 [搜索页面] 页面变为可见，刷新积分')
+        refreshBalance()
+      }
+    }
+
+    // 监听页面焦点和可见性变化
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [refreshBalance])
 
   const handleSearch = async () => {
     if (onSearch) {
@@ -106,7 +134,7 @@ export function SearchInterface({
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <Input
                   type="text"
-                  placeholder="搜索笔记内容、标签或作者..."
+                  placeholder="搜索行业关键词，抓取爆文笔记"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSearch()}

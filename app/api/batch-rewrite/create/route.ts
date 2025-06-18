@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Database, BatchConfig } from '@/lib/types'
+import { supabaseServer } from '@/lib/supabase-server'
+import { BatchConfig } from '@/lib/types'
 import { searchXiaohongshuNotes } from '@/lib/coze-api'
 
-// 创建 Supabase 客户端
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// 使用单例 Supabase 客户端
+const supabase = supabaseServer
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,16 +57,34 @@ export async function POST(request: NextRequest) {
 
     const userId = userData.user.id
 
-    // 获取用户的cookie信息（用于获取笔记详情）
+    // 获取用户的cookie信息和积分（用于获取笔记详情和检查积分）
     const { data: profile } = await supabase
       .from('profiles')
-      .select('user_cookie')
+      .select('user_cookie, credits')
       .eq('id', userId)
       .single()
 
     if (!profile?.user_cookie) {
       return NextResponse.json(
         { error: '用户Cookie未设置，无法获取笔记详情' },
+        { status: 400 }
+      )
+    }
+
+    // 检查积分是否足够
+    const requiredCredits = selectedNotes.length
+    const currentCredits = profile.credits || 0
+
+    if (currentCredits < requiredCredits) {
+      return NextResponse.json(
+        { 
+          error: '积分不足',
+          details: {
+            required: requiredCredits,
+            current: currentCredits,
+            shortage: requiredCredits - currentCredits
+          }
+        },
         { status: 400 }
       )
     }
@@ -103,6 +118,27 @@ export async function POST(request: NextRequest) {
 
     console.log('批量任务创建成功:', task.id)
 
+    // 扣除积分
+    const { data: creditResult, error: creditError } = await supabase
+      .rpc('consume_credits', {
+        p_user_id: userId,
+        p_amount: requiredCredits,
+        p_reason: `批量生成任务：${taskName}`,
+        p_task_id: task.id
+      })
+
+    if (creditError || !creditResult) {
+      console.error('扣除积分失败:', creditError)
+      // 删除已创建的任务
+      await supabase.from('batch_tasks').delete().eq('id', task.id)
+      return NextResponse.json(
+        { error: '积分扣除失败，任务已取消' },
+        { status: 500 }
+      )
+    }
+
+    console.log('积分扣除成功，扣除数量:', requiredCredits)
+
     // 为每个选中的笔记创建任务笔记记录
     const taskNotes = selectedNotes.map((noteId, index) => {
       // 从传入的笔记数据中找到对应的笔记
@@ -131,6 +167,13 @@ export async function POST(request: NextRequest) {
 
     console.log('任务笔记关联创建成功，数量:', createdTaskNotes.length)
 
+    // 获取扣除积分后的余额
+    const { data: updatedProfile } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', userId)
+      .single()
+
     // 返回创建成功的任务信息
     return NextResponse.json({
       success: true,
@@ -138,7 +181,8 @@ export async function POST(request: NextRequest) {
       taskName: task.task_name,
       status: task.status,
       selectedNotesCount: selectedNotes.length,
-      createdAt: task.created_at
+      createdAt: task.created_at,
+      currentCredits: updatedProfile?.credits || 0
     })
 
   } catch (error) {

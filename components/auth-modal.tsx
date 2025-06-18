@@ -63,7 +63,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       const { data, error } = await verifyOtpCode(email, verificationCode)
       if (error) {
         setError(error.message)
-      } else if (data.user) {
+      } else if (data?.user) {
         // 登录/注册成功
         onClose()
         resetForm()

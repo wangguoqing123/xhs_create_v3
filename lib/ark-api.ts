@@ -189,14 +189,19 @@ export async function createStreamChatCompletion(messages: ARKMessage[]): Promis
     model: ARK_MODEL,
     stream: true,
     temperature: 0.7, // 设置一定的创造性
-    max_tokens: 2000 // 限制最大生成长度
+    max_tokens: 2000, // 限制最大生成长度
+    stream_options: {
+      include_usage: true // 在流式响应中包含tokens使用统计
+    }
   }
 
   console.log('发送ARK API请求:', {
     url: ARK_API_URL,
     model: ARK_MODEL,
     messageCount: messages.length,
-    hasKey: !!ARK_API_KEY
+    hasKey: !!ARK_API_KEY,
+    stream: requestBody.stream,
+    includeUsage: requestBody.stream_options?.include_usage
   })
 
   // 发送API请求
@@ -256,12 +261,17 @@ export async function parseStreamResponse(
   const decoder = new TextDecoder()
   let fullContent = ''
   let buffer = ''
+  let totalTokens = { completion_tokens: 0, prompt_tokens: 0, total_tokens: 0 }
+  let hasReceivedTokens = false
+
+  console.log('🚀 [ARK API] 开始解析流式响应')
 
   try {
     while (true) {
       const { done, value } = await reader.read()
       
       if (done) {
+        console.log('📡 [ARK API] 流式响应读取完成')
         break
       }
 
@@ -287,6 +297,17 @@ export async function parseStreamResponse(
           
           // 检查是否为结束标志
           if (dataStr === '[DONE]') {
+            console.log('🏁 [ARK API] 收到结束标志 [DONE]')
+            if (hasReceivedTokens && totalTokens.total_tokens > 0) {
+              console.log('📊 [ARK API] 流式响应完成，最终Tokens使用统计:', {
+                prompt_tokens: totalTokens.prompt_tokens,
+                completion_tokens: totalTokens.completion_tokens,
+                total_tokens: totalTokens.total_tokens
+              })
+            } else {
+              console.log('⚠️ [ARK API] 未收到tokens使用统计信息')
+              console.log('💡 [ARK API] 已设置include_usage=true但仍未收到tokens统计')
+            }
             onComplete(fullContent)
             return
           }
@@ -294,6 +315,32 @@ export async function parseStreamResponse(
           try {
             // 解析JSON数据
             const data: ARKStreamChunk = JSON.parse(dataStr)
+            
+            // 打印原始响应数据用于调试（只在有特殊情况时打印）
+            if (data.usage || data.choices?.[0]?.finish_reason) {
+              console.log('📥 [ARK API] 收到特殊响应数据:', {
+                hasChoices: !!(data.choices && data.choices.length > 0),
+                hasUsage: !!data.usage,
+                finishReason: data.choices?.[0]?.finish_reason,
+                hasContent: !!(data.choices?.[0]?.delta?.content),
+                rawUsage: data.usage
+              })
+            }
+            
+            // 检查并处理tokens使用情况
+            if (data.usage) {
+              totalTokens = {
+                completion_tokens: data.usage.completion_tokens || 0,
+                prompt_tokens: data.usage.prompt_tokens || 0,
+                total_tokens: data.usage.total_tokens || 0
+              }
+              hasReceivedTokens = true
+              console.log('🔥 [ARK API] 收到Tokens使用统计:', {
+                prompt_tokens: totalTokens.prompt_tokens,
+                completion_tokens: totalTokens.completion_tokens,
+                total_tokens: totalTokens.total_tokens
+              })
+            }
             
             if (data.choices && data.choices.length > 0) {
               const choice = data.choices[0]
@@ -306,12 +353,43 @@ export async function parseStreamResponse(
 
               // 检查是否完成
               if (choice.finish_reason === 'stop') {
+                console.log('🛑 [ARK API] 收到完成信号 finish_reason=stop')
+                
+                // 如果在这个响应中包含usage信息，再次打印
+                if (data.usage && !hasReceivedTokens) {
+                  totalTokens = {
+                    completion_tokens: data.usage.completion_tokens || 0,
+                    prompt_tokens: data.usage.prompt_tokens || 0,
+                    total_tokens: data.usage.total_tokens || 0
+                  }
+                  hasReceivedTokens = true
+                  console.log('🔥 [ARK API] 在完成响应中收到Tokens统计:', {
+                    prompt_tokens: totalTokens.prompt_tokens,
+                    completion_tokens: totalTokens.completion_tokens,
+                    total_tokens: totalTokens.total_tokens
+                  })
+                }
+                
+                if (hasReceivedTokens && totalTokens.total_tokens > 0) {
+                  console.log('📊 [ARK API] 生成完成，最终Tokens使用统计:', {
+                    prompt_tokens: totalTokens.prompt_tokens,
+                    completion_tokens: totalTokens.completion_tokens,
+                    total_tokens: totalTokens.total_tokens
+                  })
+                } else {
+                  console.log('⚠️ [ARK API] 生成完成但未收到tokens统计')
+                  console.log('💡 [ARK API] 可能的原因：')
+                  console.log('   1. ARK API版本不支持stream_options.include_usage参数')
+                  console.log('   2. 当前模型不返回tokens统计信息')
+                  console.log('   3. API配置问题，请检查ARK API文档')
+                }
+                
                 onComplete(fullContent)
                 return
               }
             }
           } catch (error) {
-            console.error('解析ARK API响应数据失败:', error, 'data:', dataStr)
+            console.error('❌ [ARK API] 解析响应数据失败:', error, 'data:', dataStr.substring(0, 200) + '...')
             // 继续处理下一行，不中断整个流程
           }
         }
@@ -319,10 +397,21 @@ export async function parseStreamResponse(
     }
 
     // 流结束但没有收到 [DONE] 标志
+    console.log('📡 [ARK API] 流结束，未收到[DONE]标志')
+    if (hasReceivedTokens && totalTokens.total_tokens > 0) {
+      console.log('📊 [ARK API] 流结束，最终Tokens使用统计:', {
+        prompt_tokens: totalTokens.prompt_tokens,
+        completion_tokens: totalTokens.completion_tokens,
+        total_tokens: totalTokens.total_tokens
+      })
+    } else {
+      console.log('⚠️ [ARK API] 流结束但未收到tokens统计信息')
+      console.log('💡 [ARK API] 请检查ARK API是否支持stream_options.include_usage参数')
+    }
     onComplete(fullContent)
 
   } catch (error) {
-    console.error('处理ARK API流式响应失败:', error)
+    console.error('❌ [ARK API] 处理流式响应失败:', error)
     onError(error instanceof Error ? error.message : '未知错误')
   } finally {
     reader.releaseLock()
@@ -345,6 +434,14 @@ export async function generateRewriteContent(
   onError: (error: string) => void
 ): Promise<void> {
   try {
+    console.log('🚀 [ARK API] 开始生成改写内容，配置:', {
+      type: config.type,
+      persona: config.persona,
+      purpose: config.purpose,
+      theme: config.theme || '无特定主题',
+      originalContentLength: originalContent.length
+    })
+
     // 构建消息
     const messages: ARKMessage[] = [
       {
@@ -364,7 +461,7 @@ export async function generateRewriteContent(
     await parseStreamResponse(stream, onChunk, onComplete, onError)
 
   } catch (error) {
-    console.error('生成改写内容失败:', error)
+    console.error('❌ [ARK API] 生成改写内容失败:', error)
     onError(error instanceof Error ? error.message : '生成内容时发生未知错误')
   }
 }

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Database, TaskWithDetails } from '@/lib/types'
+import { supabaseServer } from '@/lib/supabase-server'
+import { TaskWithDetails } from '@/lib/types'
 
-// 创建 Supabase 客户端
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// 使用单例 Supabase 客户端
+const supabase = supabaseServer
 
 export async function GET(request: NextRequest) {
   try {

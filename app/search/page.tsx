@@ -11,6 +11,7 @@ import { useSearch } from "@/lib/hooks/use-search"
 import { useNoteDetail } from "@/lib/hooks/use-note-detail"
 import { useAuth } from "@/components/auth-context"
 import { SearchConfig, Note } from "@/lib/types"
+import { useCreditsContext } from "@/components/credits-context"
 
 function SearchPageContent() {
   const searchParams = useSearchParams()
@@ -55,6 +56,13 @@ function SearchPageContent() {
       })
     }
   }, [searchParams, searchNotes]) // 移除searchConfig依赖，避免重复搜索
+
+  useEffect(() => {
+    console.log(`📄 [页面] 搜索页面组件已挂载`)
+    console.timeEnd('页面切换-/search')
+  }, [])
+
+  console.log(`🎨 [渲染] 搜索页面组件正在渲染...`)
 
   // 处理搜索请求
   const handleSearch = async (query: string) => {

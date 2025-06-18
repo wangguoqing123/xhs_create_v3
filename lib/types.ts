@@ -14,6 +14,7 @@ export interface Database {
           display_name: string | null
           avatar_url: string | null
           last_login_at: string
+          credits: number
         }
         Insert: {
           id: string
@@ -25,6 +26,7 @@ export interface Database {
           display_name?: string | null
           avatar_url?: string | null
           last_login_at?: string
+          credits?: number
         }
         Update: {
           id?: string
@@ -36,6 +38,7 @@ export interface Database {
           display_name?: string | null
           avatar_url?: string | null
           last_login_at?: string
+          credits?: number
         }
       }
       batch_tasks: {
@@ -147,6 +150,35 @@ export interface Database {
           created_at?: string
           updated_at?: string
           completed_at?: string | null
+        }
+      }
+      credit_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          transaction_type: 'reward' | 'consume' | 'refund'
+          amount: number
+          reason: string
+          related_task_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          transaction_type: 'reward' | 'consume' | 'refund'
+          amount: number
+          reason: string
+          related_task_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          transaction_type?: 'reward' | 'consume' | 'refund'
+          amount?: number
+          reason?: string
+          related_task_id?: string | null
+          created_at?: string
         }
       }
     }
@@ -339,6 +371,9 @@ export interface ARKChatRequest {
   stream: boolean
   temperature?: number
   max_tokens?: number
+  stream_options?: {
+    include_usage?: boolean
+  }
 }
 
 // ARK API流式响应类型
@@ -356,7 +391,11 @@ export interface ARKStreamChunk {
   model: string
   service_tier: string
   object: string
-  usage?: any
+  usage?: {
+    completion_tokens: number
+    prompt_tokens: number
+    total_tokens: number
+  }
 }
 
 // 改写任务状态类型
@@ -379,4 +418,24 @@ export interface TaskWithDetails extends Task {
   config: BatchConfig
   createdAt: string
   noteData: any // 笔记原始数据
-} 
+}
+
+// 积分相关类型定义
+export type CreditTransaction = Database['public']['Tables']['credit_transactions']['Row']
+export type CreditTransactionInsert = Database['public']['Tables']['credit_transactions']['Insert']
+export type CreditTransactionUpdate = Database['public']['Tables']['credit_transactions']['Update']
+
+export type TransactionType = 'reward' | 'consume' | 'refund'
+
+export interface CreditBalance {
+  current: number
+  total_earned: number
+  total_consumed: number
+}
+
+export interface CreditCheck {
+  sufficient: boolean
+  current: number
+  required: number
+  shortage: number
+}

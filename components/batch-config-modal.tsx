@@ -11,6 +11,9 @@ import { Sparkles, Settings, Zap, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useBatchRewrite } from "@/lib/hooks/use-batch-rewrite"
 import { BatchConfig } from "@/lib/types"
+import { useCreditsContext } from "@/components/credits-context"
+import { CreditsWarning, CreditsInfo } from "@/components/credits-warning"
+import { useEffect } from "react"
 
 interface BatchConfigModalProps {
   open: boolean
@@ -33,6 +36,9 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
     clearError 
   } = useBatchRewrite()
 
+  // 积分Hook（使用全局Context）
+  const { balance, getLatestBalance } = useCreditsContext()
+
   // 配置状态
   const [config, setConfig] = useState<BatchConfig>({
     type: 'auto',
@@ -40,6 +46,14 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
     persona: 'default',
     purpose: 'default'
   })
+
+  // 每次模态框打开时获取最新积分
+  useEffect(() => {
+    if (open) {
+      console.log('🔄 [批量配置] 模态框打开，获取最新积分')
+      getLatestBalance()
+    }
+  }, [open, getLatestBalance])
 
   // 处理批量生成
   const handleBatchGenerate = async () => {
@@ -193,6 +207,17 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">留空则保持原主题风格</p>
           </div>
+
+          {/* 积分检查 */}
+          <div className="mt-6 space-y-3">
+            <CreditsInfo selectedCount={selectedNotes.length} />
+            {balance && selectedNotes.length > 0 && (
+              <CreditsWarning 
+                currentCredits={balance.current} 
+                requiredCredits={selectedNotes.length} 
+              />
+            )}
+          </div>
         </div>
 
         {/* 错误信息显示 */}
@@ -213,7 +238,12 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
           </Button>
           <Button
             onClick={handleBatchGenerate}
-            disabled={selectedNotes.length === 0 || isCreating || isProcessing}
+            disabled={
+              selectedNotes.length === 0 || 
+              isCreating || 
+              isProcessing ||
+              (balance ? balance.current < selectedNotes.length : false)
+            }
             className="px-8 py-2 h-auto bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isCreating ? (

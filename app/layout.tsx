@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-context"
+import { CreditsProvider } from "@/components/credits-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -20,10 +21,31 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            /* 临时测试：防止闪屏的CSS */
+            * { 
+              transition: none !important; 
+              animation-duration: 0s !important; 
+            }
+            html, body { 
+              background: white !important; 
+            }
+          `
+        }} />
+      </head>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="light" 
+          enableSystem={true}
+          disableTransitionOnChange={false}
+        >
           <AuthProvider>
-            {children}
+            <CreditsProvider>
+              {children}
+            </CreditsProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

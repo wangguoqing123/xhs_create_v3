@@ -1,10 +1,20 @@
+"use client"
+
 import { SearchHero } from "@/components/search-hero"
 import { FeatureModules } from "@/components/feature-modules"
 import { Header } from "@/components/header"
 import { SupabaseStatus } from "@/components/supabase-status"
 import { ProfileStatus } from "@/components/profile-status"
+import { useEffect } from "react"
 
 export default function HomePage() {
+  useEffect(() => {
+    console.log(`📄 [页面] 主页组件已挂载`)
+    console.timeEnd('页面切换-/')
+  }, [])
+
+  console.log(`🎨 [渲染] 主页组件正在渲染...`)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900 transition-colors duration-300">
       <Header />
