@@ -157,13 +157,17 @@ function SearchPageContent() {
           open={showBatchModal}
           onClose={() => setShowBatchModal(false)}
           selectedNotes={selectedNotes}
+          searchKeywords={searchQuery} // 传递搜索关键词
+          notesData={displayNotes} // 传递笔记数据
         />
 
         {/* 笔记详情模态框 */}
         <NoteDetailModal 
           note={noteDetail} 
           open={!!selectedNoteForDetail && !isLoadingDetail} 
-          onClose={handleCloseNoteDetail} 
+          onClose={handleCloseNoteDetail}
+          selectedNotes={selectedNotes}
+          onNoteSelect={handleNoteSelect}
         />
 
         {/* 笔记详情加载提示 */}

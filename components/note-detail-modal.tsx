@@ -13,9 +13,11 @@ interface NoteDetailModalProps {
   note: NoteDetail | null // 使用NoteDetail类型
   open: boolean
   onClose: () => void
+  selectedNotes?: string[] // 新增：当前选中的笔记ID列表
+  onNoteSelect?: (noteId: string, selected: boolean) => void // 新增：笔记选择回调
 }
 
-export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
+export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNoteSelect }: NoteDetailModalProps) {
   // 当前显示的图片索引
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -33,6 +35,16 @@ export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
   }, [open, images.length])
 
   if (!note) return null
+
+  // 检查当前笔记是否被选中
+  const isSelected = selectedNotes.includes(note.id)
+
+  // 处理多选框状态变化
+  const handleCheckboxChange = (checked: boolean) => {
+    if (onNoteSelect) {
+      onNoteSelect(note.id, checked)
+    }
+  }
 
   // 切换到上一张图片
   const handlePrevImage = () => {
@@ -61,7 +73,11 @@ export function NoteDetailModal({ note, open, onClose }: NoteDetailModalProps) {
         {/* 关闭按钮和多选框 */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
           <div className="w-8 h-8 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
-            <Checkbox className="w-5 h-5 border-gray-300 dark:border-gray-600" />
+            <Checkbox 
+              className="w-5 h-5 border-gray-300 dark:border-gray-600" 
+              checked={isSelected} 
+              onCheckedChange={handleCheckboxChange}
+            />
           </div>
           <Button
             variant="ghost"

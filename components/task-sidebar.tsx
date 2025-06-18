@@ -24,12 +24,16 @@ interface Task {
 }
 
 interface TaskSidebarProps {
-  tasks: Task[]
+  tasks: Task[] // 当前选中任务的笔记列表（用于右侧显示）
   selectedTaskId: string
   onTaskSelect: (taskId: string) => void
+  selectedNoteId?: string // 当前选中的笔记ID
+  onNoteSelect?: (noteId: string) => void // 选择笔记的回调
+  taskName?: string // 当前任务名
+  taskList?: any[] // 用户的所有任务列表（用于左侧任务列表）
 }
 
-export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect }: TaskSidebarProps) {
+export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteId, onNoteSelect, taskName, taskList }: TaskSidebarProps) {
   const [isTaskListCollapsed, setIsTaskListCollapsed] = useState(false)
 
   const getStatusIcon = (status: string) => {
@@ -115,14 +119,14 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect }: TaskSidebar
               <Sparkles className="h-3 w-3 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">任务列表</h2>
-              <p className="text-xs text-gray-600 dark:text-gray-400">共 {tasks.length} 个</p>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">我的任务</h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400">共 {taskList?.length || 0} 个任务</p>
             </div>
           </div>
         </div>
 
         <div className="p-2 space-y-2">
-          {tasks.map((task, index) => (
+          {taskList?.map((task, index) => (
             <Card
               key={task.id}
               className={cn(
@@ -137,7 +141,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect }: TaskSidebar
                 <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">#{index + 1}</div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-1 mb-1">
-                    任务 {index + 1}
+                    {task.taskName || `任务 ${index + 1}`}
                   </h3>
                   <div className="flex items-center justify-between">
                     <Badge className={cn("text-xs px-2 py-0.5 rounded-full border-0", getStatusColor(task.status))}>
@@ -147,10 +151,17 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect }: TaskSidebar
                       </div>
                     </Badge>
                   </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {task.progress?.total || 0} 个笔记 · {task.contentStats?.completed || 0} 个内容
+                  </div>
                 </div>
               </div>
             </Card>
-          ))}
+          )) || (
+            <div className="text-center text-gray-500 dark:text-gray-400 text-xs py-4">
+              暂无任务
+            </div>
+          )}
         </div>
       </div>
 
@@ -172,7 +183,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect }: TaskSidebar
             >
               {isTaskListCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </Button>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">笔记详情</h3>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">{taskName || '任务详情'}</h3>
           </div>
           <Button
             onClick={handleExportAllTasks}
@@ -184,36 +195,60 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect }: TaskSidebar
           </Button>
         </div>
 
-        <div className="p-2">
-          {selectedTaskId && (
-            <Card className="bg-white dark:bg-slate-800 border-0 shadow-sm">
-              <CardContent className="p-2">
-                <div className="flex gap-2">
-                  <div className="w-10 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
-                    <Image
-                      src={tasks.find((t) => t.id === selectedTaskId)?.noteCover || "/placeholder.svg"}
-                      alt="笔记封面"
-                      width={40}
-                      height={48}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 mb-2 leading-tight">
-                      {tasks.find((t) => t.id === selectedTaskId)?.noteTitle}
-                    </h4>
-                    <div className="flex items-center gap-1">
-                      <Badge className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-0 rounded-full">
-                        图文笔记
-                      </Badge>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {tasks.find((t) => t.id === selectedTaskId)?.results.length}篇内容
-                      </span>
+        <div className="p-2 space-y-2">
+          {selectedTaskId && tasks.length > 0 ? (
+            tasks.map((task, index) => (
+              <Card 
+                key={task.id}
+                className={cn(
+                  "cursor-pointer transition-all duration-200 hover:shadow-md border-0",
+                  selectedNoteId === task.id
+                    ? "ring-1 ring-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
+                    : "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
+                )}
+                onClick={() => onNoteSelect?.(task.id)}
+              >
+                <CardContent className="p-2">
+                  <div className="flex gap-2">
+                    <div className="w-10 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                      <Image
+                        src={task.noteCover || "/placeholder.svg"}
+                        alt="笔记封面"
+                        width={40}
+                        height={48}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">#{index + 1}</span>
+                        <Badge className={cn("text-xs px-2 py-0.5 rounded-full border-0", getStatusColor(task.status))}>
+                          <div className="flex items-center gap-1">
+                            {getStatusIcon(task.status)}
+                            <span className="text-xs">{getStatusText(task.status)}</span>
+                          </div>
+                        </Badge>
+                      </div>
+                      <h4 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 mb-2 leading-tight">
+                        {task.noteTitle}
+                      </h4>
+                      <div className="flex items-center gap-1">
+                        <Badge className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-0 rounded-full">
+                          图文笔记
+                        </Badge>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {task.results.length}篇内容
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="text-center text-gray-500 dark:text-gray-400 text-xs py-4">
+              暂无笔记
+            </div>
           )}
         </div>
       </div>

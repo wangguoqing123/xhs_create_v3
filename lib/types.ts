@@ -38,6 +38,117 @@ export interface Database {
           last_login_at?: string
         }
       }
+      batch_tasks: {
+        Row: {
+          id: string
+          user_id: string
+          task_name: string
+          search_keywords: string | null
+          config: any // JSONB类型
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          task_name: string
+          search_keywords?: string | null
+          config?: any
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          task_name?: string
+          search_keywords?: string | null
+          config?: any
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+      }
+      task_notes: {
+        Row: {
+          id: string
+          task_id: string
+          note_id: string
+          note_data: any // JSONB类型
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          note_id: string
+          note_data?: any
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          note_id?: string
+          note_data?: any
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      generated_contents: {
+        Row: {
+          id: string
+          task_note_id: string
+          title: string | null
+          content: string | null
+          content_type: string
+          generation_config: any // JSONB类型
+          status: 'generating' | 'completed' | 'failed'
+          error_message: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          task_note_id: string
+          title?: string | null
+          content?: string | null
+          content_type?: string
+          generation_config?: any
+          status?: 'generating' | 'completed' | 'failed'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          task_note_id?: string
+          title?: string | null
+          content?: string | null
+          content_type?: string
+          generation_config?: any
+          status?: 'generating' | 'completed' | 'failed'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+      }
     }
   }
 }
@@ -188,4 +299,85 @@ export interface NoteDetail {
     h264?: string // H264格式视频URL
     h265?: string // H265格式视频URL
   }
+}
+
+// 批量改写相关类型定义
+
+// 数据库表类型别名
+export type BatchTask = Database['public']['Tables']['batch_tasks']['Row']
+export type BatchTaskInsert = Database['public']['Tables']['batch_tasks']['Insert']
+export type BatchTaskUpdate = Database['public']['Tables']['batch_tasks']['Update']
+
+export type TaskNote = Database['public']['Tables']['task_notes']['Row']
+export type TaskNoteInsert = Database['public']['Tables']['task_notes']['Insert']
+export type TaskNoteUpdate = Database['public']['Tables']['task_notes']['Update']
+
+export type GeneratedContent = Database['public']['Tables']['generated_contents']['Row']
+export type GeneratedContentInsert = Database['public']['Tables']['generated_contents']['Insert']
+export type GeneratedContentUpdate = Database['public']['Tables']['generated_contents']['Update']
+
+// 批量配置类型
+export interface BatchConfig {
+  count: string // 每篇笔记生成数量："1" | "3"
+  type: string // 内容类型："auto" | "article" | "video"  
+  theme: string // 特定主题
+  persona: string // 人设定位："default" | "expert" | "friend" | "humor" | "professional"
+  purpose: string // 营销目的："default" | "brand" | "review" | "traffic" | "education"
+}
+
+// ARK API相关类型
+
+// ARK API消息类型
+export interface ARKMessage {
+  content: string
+  role: 'system' | 'user' | 'assistant'
+}
+
+// ARK API请求参数
+export interface ARKChatRequest {
+  messages: ARKMessage[]
+  model: string
+  stream: boolean
+  temperature?: number
+  max_tokens?: number
+}
+
+// ARK API流式响应类型
+export interface ARKStreamChunk {
+  choices: Array<{
+    delta: {
+      content: string
+      role?: string
+    }
+    index: number
+    finish_reason?: string | null
+  }>
+  created: number
+  id: string
+  model: string
+  service_tier: string
+  object: string
+  usage?: any
+}
+
+// 改写任务状态类型
+export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type ContentStatus = 'generating' | 'completed' | 'failed'
+
+// 前端展示用的任务类型
+export interface Task {
+  id: string
+  noteTitle: string
+  noteCover: string
+  status: TaskStatus
+  results: GeneratedContent[]
+}
+
+// 用于Results页面的扩展任务类型
+export interface TaskWithDetails extends Task {
+  taskName: string
+  searchKeywords: string | null
+  config: BatchConfig
+  createdAt: string
+  noteData: any // 笔记原始数据
 } 
