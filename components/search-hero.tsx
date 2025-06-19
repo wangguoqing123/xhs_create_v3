@@ -68,7 +68,7 @@ export function SearchHero() {
                   className="h-12 px-8 mr-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-2xl text-lg font-medium shadow-lg"
                 >
                   <Sparkles className="h-5 w-5 mr-2" />
-                  开始创作
+                  立即登录
                 </Button>
               </div>
             </div>

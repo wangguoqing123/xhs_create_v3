@@ -162,7 +162,7 @@ export const Header = memo(function Header() {
         onClick={handleAuthModalOpen}
         className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-6 py-2.5 rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105 border-0"
       >
-        开始创作
+        立即登录
       </Button>
     )
   }, [isHydrated, loading, user, handleAuthModalOpen])
@@ -187,7 +187,7 @@ export const Header = memo(function Header() {
         onClick={handleMobileAuthClick}
         className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold px-6 py-2 rounded-full shadow-lg"
       >
-        开始创作
+        立即登录
       </Button>
     )
   }, [isHydrated, loading, user, handleMobileAuthClick])
@@ -216,6 +216,10 @@ export const Header = memo(function Header() {
           <nav className="hidden lg:flex items-center space-x-8">
             <NavLink href="/">
               <span>首页</span>
+            </NavLink>
+            
+            <NavLink href="/rewrite">
+              <span>爆文改写</span>
             </NavLink>
             
             <NavLink href="/search">
@@ -252,6 +256,10 @@ export const Header = memo(function Header() {
           <div className="p-6 space-y-1">
             <MobileNavLink href="/" onClick={handleMobileMenuClose}>
               首页
+            </MobileNavLink>
+            
+            <MobileNavLink href="/rewrite" onClick={handleMobileMenuClose}>
+              爆文改写
             </MobileNavLink>
             
             <MobileNavLink href="/search" onClick={handleMobileMenuClose}>
