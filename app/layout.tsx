@@ -21,26 +21,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <head>
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            /* 临时测试：防止闪屏的CSS */
-            * { 
-              transition: none !important; 
-              animation-duration: 0s !important; 
-            }
-            html, body { 
-              background: white !important; 
-            }
-          `
-        }} />
-      </head>
       <body className={inter.className}>
         <ThemeProvider 
           attribute="class" 
-          defaultTheme="light" 
+          defaultTheme="system" 
           enableSystem={true}
           disableTransitionOnChange={false}
+          storageKey="theme-preference"
         >
           <AuthProvider>
             <CreditsProvider>

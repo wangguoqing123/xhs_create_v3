@@ -7,6 +7,7 @@ import { User, Edit, List, Settings, LogOut, ChevronDown, Cookie } from 'lucide-
 import { useAuth } from '@/components/auth-context'
 import { CookieSettingsModal } from '@/components/cookie-settings-modal'
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal'
+import { useRouter } from 'next/navigation'
 
 export const UserDropdown = memo(function UserDropdown() {
   const { user, profile, signOut } = useAuth()
@@ -15,13 +16,9 @@ export const UserDropdown = memo(function UserDropdown() {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
+  const router = useRouter()
 
-  if (!user || !profile) return null
-
-  // 检查Cookie是否已设置
-  const isCookieConfigured = profile.user_cookie && profile.user_cookie.trim().length > 0
-
-  // 清理timeout
+  // 清理timeout - 必须在早期返回之前调用
   useEffect(() => {
     return () => {
       if (hoverTimeout) {
@@ -29,6 +26,12 @@ export const UserDropdown = memo(function UserDropdown() {
       }
     }
   }, [hoverTimeout])
+
+  // 早期返回必须在所有Hooks之后
+  if (!user || !profile) return null
+
+  // 检查Cookie是否已设置
+  const isCookieConfigured = profile.user_cookie && profile.user_cookie.trim().length > 0
 
   // 处理鼠标进入
   const handleMouseEnter = () => {
@@ -64,13 +67,9 @@ export const UserDropdown = memo(function UserDropdown() {
     setIsOpen(false)
     
     switch (action) {
-      case 'profile':
-        // TODO: 跳转到编辑资料页面
-        console.log('编辑资料')
-        break
-      case 'tasks':
-        // TODO: 跳转到任务列表页面
-        console.log('任务列表')
+      case 'results':
+        // 跳转到任务结果页面
+        router.push('/results')
         break
       case 'cookies':
         setShowCookieModal(true)
@@ -128,18 +127,9 @@ export const UserDropdown = memo(function UserDropdown() {
 
             {/* 菜单项 */}
             <div className="py-1">
-              {/* 编辑资料 */}
-              <button
-                onClick={() => handleMenuItemClick('profile')}
-                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <Edit className="h-4 w-4 mr-3" />
-                编辑资料
-              </button>
-
               {/* 任务列表 */}
               <button
-                onClick={() => handleMenuItemClick('tasks')}
+                onClick={() => handleMenuItemClick('results')}
                 className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <List className="h-4 w-4 mr-3" />

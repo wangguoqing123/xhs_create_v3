@@ -20,8 +20,8 @@ export interface AuthUser {
   }
 }
 
-// 发送邮箱验证码
-export const sendVerificationCode = async (email: string) => {
+// 发送邮箱验证码（强制OTP模式）
+export const sendOtpCode = async (email: string) => {
   if (!isSupabaseConfigured) {
     return { 
       data: null, 
@@ -29,32 +29,63 @@ export const sendVerificationCode = async (email: string) => {
     }
   }
   
+  // 使用signInWithOtp发送验证码，明确指定不使用Magic Link
   const { data, error } = await supabase.auth.signInWithOtp({
-    email,
+    email: email,
     options: {
-      shouldCreateUser: true, // 如果用户不存在则自动创建
-    },
+      shouldCreateUser: true,
+      emailRedirectTo: undefined, // 明确设置为undefined，禁用Magic Link
+      data: {
+        // 添加一些元数据来标识这是OTP请求
+        auth_type: 'otp'
+      }
+    }
   })
+  
+  console.log('OTP发送结果:', { data, error }) // 调试信息
   
   return { data, error }
 }
 
+// 发送邮箱验证码
+export const sendVerificationCode = async (email: string) => {
+  return await sendOtpCode(email)
+}
+
 // 验证邮箱验证码并登录/注册
 export const verifyOtpCode = async (email: string, token: string) => {
+  console.log('🔍 [Supabase] 开始验证OTP:', { email, token })
+  
   if (!isSupabaseConfigured) {
+    console.error('❌ [Supabase] 环境变量未配置')
     return { 
       data: null, 
       error: { message: '请先配置 Supabase 环境变量' } 
     }
   }
   
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: 'email',
-  })
-  
-  return { data, error }
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    })
+    
+    console.log('🔍 [Supabase] OTP验证结果:', { 
+      hasData: !!data,
+      hasUser: !!data?.user,
+      hasSession: !!data?.session,
+      error: error?.message 
+    })
+    
+    return { data, error }
+  } catch (err) {
+    console.error('❌ [Supabase] OTP验证异常:', err)
+    return { 
+      data: null, 
+      error: { message: '验证过程中发生错误' } 
+    }
+  }
 }
 
 // 获取当前用户

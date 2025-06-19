@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
 
     // 获取用户认证信息
     const authHeader = request.headers.get('authorization')
+    console.log('🔐 [API] 收到认证头:', authHeader ? '有' : '无')
+    
     if (!authHeader) {
+      console.error('🔐 [API] 未提供认证信息')
       return NextResponse.json(
         { error: '未提供认证信息' },
         { status: 401 }
@@ -23,10 +26,21 @@ export async function GET(request: NextRequest) {
 
     // 解析Bearer token
     const token = authHeader.replace('Bearer ', '')
+    console.log('🔐 [API] Token长度:', token.length)
     
     // 获取用户信息
     const { data: userData, error: userError } = await supabase.auth.getUser(token)
-    if (userError || !userData?.user) {
+    
+    if (userError) {
+      console.error('🔐 [API] 用户认证失败 - 错误:', userError)
+      return NextResponse.json(
+        { error: '用户认证失败' },
+        { status: 401 }
+      )
+    }
+    
+    if (!userData?.user) {
+      console.error('🔐 [API] 用户认证失败 - 无用户数据')
       return NextResponse.json(
         { error: '用户认证失败' },
         { status: 401 }
@@ -34,6 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = userData.user.id
+    console.log('✅ [API] 用户认证成功:', userId)
 
     // 获取用户的所有批量任务
     const { data: tasks, error: tasksError } = await supabase
@@ -66,12 +81,14 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (tasksError) {
-      console.error('获取任务列表失败:', tasksError)
+      console.error('📋 [API] 获取任务列表失败:', tasksError)
       return NextResponse.json(
         { error: '获取任务列表失败' },
         { status: 500 }
       )
     }
+
+    console.log('📋 [API] 获取任务列表成功，数量:', tasks?.length || 0)
 
     // 获取总数
     const { count, error: countError } = await supabase

@@ -2,35 +2,124 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Sparkles, Mail, Lock, Eye, EyeOff, User } from "lucide-react"
+import { Sparkles, Mail, KeyRound, Timer, User } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { sendVerificationCode, verifyOtpCode, onAuthStateChange } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth-context"
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [email, setEmail] = useState("")
+  const [name, setName] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [isCodeSent, setIsCodeSent] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [countdown, setCountdown] = useState(0)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const router = useRouter()
+  const { user } = useAuth()
 
-  const handleRegister = (e: React.FormEvent) => {
+  useEffect(() => {
+    console.log('🔐 [注册页面] 认证状态变化:', { user: !!user, isVerifying })
+    if (user && isVerifying) {
+      console.log('✅ [注册页面] 用户已注册，准备跳转到首页')
+      // 用户已登录且正在验证过程中，跳转到首页
+      router.push("/")
+    }
+  }, [user, isVerifying, router])
+
+  // 发送验证码
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 注册逻辑
-    console.log("Register:", formData)
+    if (!email) {
+      setError("请输入邮箱地址")
+      return
+    }
+    if (!name.trim()) {
+      setError("请输入用户名")
+      return
+    }
+    if (!agreeToTerms) {
+      setError("请先同意用户协议和隐私政策")
+      return
+    }
+
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const { error } = await sendVerificationCode(email)
+      if (error) {
+        setError(error.message || "发送验证码失败")
+      } else {
+        setIsCodeSent(true)
+        setError("")
+        // 开始60秒倒计时
+        setCountdown(60)
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+      }
+    } catch (err) {
+      setError("发送验证码失败，请重试")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  // 验证注册
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!verificationCode) {
+      setError("请输入验证码")
+      return
+    }
+
+    setIsLoading(true)
+    setIsVerifying(true)
+    setError("")
+
+    try {
+      const { data, error } = await verifyOtpCode(email, verificationCode)
+      if (error) {
+        setError(error.message || "验证码错误")
+        setIsVerifying(false)
+      } else if (data?.user) {
+        // 验证成功，等待认证状态更新
+        // 不立即跳转，而是等待useEffect中的认证状态监听
+        setError("")
+      } else {
+        setError("注册失败，请重试")
+        setIsVerifying(false)
+      }
+    } catch (err) {
+      setError("注册失败，请重试")
+      setIsVerifying(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 重新发送验证码
+  const handleResendCode = () => {
+    setIsCodeSent(false)
+    setVerificationCode("")
+    setError("")
   }
 
   return (
@@ -57,161 +146,209 @@ export default function RegisterPage() {
           </div>
 
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2">
-            加入灵感矩阵
+            {isCodeSent ? "输入验证码" : "加入灵感矩阵"}
           </CardTitle>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">开启您的AI创作之旅</p>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            {isCodeSent ? `验证码已发送至 ${email}` : "开启您的AI创作之旅"}
+          </p>
         </CardHeader>
 
         <CardContent className="px-10 pb-10">
-          <form onSubmit={handleRegister} className="space-y-6">
-            {/* Name Input */}
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                用户名
-              </Label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="请输入您的用户名"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="h-12 pl-12 pr-4 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  required
+          {!isCodeSent ? (
+            // 第一步：输入基本信息
+            <form onSubmit={handleSendCode} className="space-y-6">
+              {/* Name Input */}
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  用户名
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="请输入您的用户名"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-12 pl-12 pr-4 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Email Input */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  邮箱地址
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="请输入您的邮箱"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 pl-12 pr-4 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Terms Agreement */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="terms"
+                  checked={agreeToTerms}
+                  onCheckedChange={(checked) => setAgreeToTerms(!!checked)}
+                  className="mt-1"
+                  disabled={isLoading}
                 />
+                <Label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  我已阅读并同意{" "}
+                  <Link
+                    href="/terms"
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
+                  >
+                    用户协议
+                  </Link>{" "}
+                  和{" "}
+                  <Link
+                    href="/privacy"
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
+                  >
+                    隐私政策
+                  </Link>
+                </Label>
               </div>
-            </div>
 
-            {/* Email Input */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                邮箱地址
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="请输入您的邮箱"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="h-12 pl-12 pr-4 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
+              {/* Error Message */}
+              {error && (
+                <div className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">
+                  {error}
+                </div>
+              )}
+
+              {/* Send Code Button */}
+              <Button
+                type="submit"
+                disabled={isLoading || !agreeToTerms}
+                className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 text-white text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                {isLoading ? "发送中..." : "发送验证码"}
+              </Button>
+
+              {/* Divider */}
+              <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-slate-600" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400">或者</span>
+                </div>
               </div>
-            </div>
 
-            {/* Password Input */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                密码
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="请设置您的密码"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
-                  className="h-12 pl-12 pr-12 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+              {/* Login Link */}
+              <div className="text-center">
+                <p className="text-gray-600 dark:text-gray-400">
+                  已有账户？{" "}
+                  <Link
+                    href="/login"
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-semibold transition-colors"
+                  >
+                    立即登录
+                  </Link>
+                </p>
               </div>
-            </div>
-
-            {/* Confirm Password Input */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                确认密码
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="请再次输入密码"
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                  className="h-12 pl-12 pr-12 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+            </form>
+          ) : (
+            // 第二步：输入验证码
+            <form onSubmit={handleVerifyCode} className="space-y-6">
+              {/* User Info Display */}
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <User className="h-4 w-4 mr-2" />
+                  用户名: {name}
+                </div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <Mail className="h-4 w-4 mr-2" />
+                  邮箱: {email}
+                </div>
               </div>
-            </div>
 
-            {/* Terms Agreement */}
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="terms"
-                checked={agreeToTerms}
-                onCheckedChange={(checked) => setAgreeToTerms(!!checked)}
-                className="mt-1"
-              />
-              <Label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                我已阅读并同意{" "}
-                <Link
-                  href="/terms"
-                  className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
-                >
-                  用户协议
-                </Link>{" "}
-                和{" "}
-                <Link
-                  href="/privacy"
-                  className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
-                >
-                  隐私政策
-                </Link>
-              </Label>
-            </div>
-
-            {/* Register Button */}
-            <Button
-              type="submit"
-              disabled={!agreeToTerms}
-              className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 text-white text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              注册账户
-            </Button>
-
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-slate-600" />
+              {/* Verification Code Input */}
+              <div className="space-y-2">
+                <Label htmlFor="code" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  验证码
+                </Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder="请输入6位验证码"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className="h-12 pl-12 pr-4 text-base border-gray-200 dark:border-slate-600 rounded-2xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-center tracking-widest"
+                    maxLength={6}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400">或者</span>
-              </div>
-            </div>
 
-            {/* Login Link */}
-            <div className="text-center">
-              <p className="text-gray-600 dark:text-gray-400">
-                已有账户？{" "}
-                <Link
-                  href="/login"
-                  className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-semibold transition-colors"
-                >
-                  立即登录
-                </Link>
-              </p>
-            </div>
-          </form>
+                             {/* Status Messages */}
+               {error && (
+                 <div className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">
+                   {error}
+                 </div>
+               )}
+               {isVerifying && !error && (
+                 <div className="text-green-600 text-sm text-center bg-green-50 dark:bg-green-900/20 p-3 rounded-xl">
+                   验证成功！正在完成注册...
+                 </div>
+               )}
+
+               {/* Resend Code */}
+              <div className="text-center">
+                {countdown > 0 ? (
+                  <div className="flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm">
+                    <Timer className="h-4 w-4 mr-2" />
+                    {countdown}秒后可重新发送
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors text-sm"
+                  >
+                    没收到验证码？重新发送
+                  </button>
+                )}
+              </div>
+
+                             {/* Verify Button */}
+               <Button
+                 type="submit"
+                 disabled={isLoading || isVerifying}
+                 className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+               >
+                 {isVerifying ? "注册中..." : isLoading ? "验证中..." : "完成注册"}
+               </Button>
+
+              {/* Back Button */}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleResendCode}
+                className="w-full h-12 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              >
+                返回修改信息
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

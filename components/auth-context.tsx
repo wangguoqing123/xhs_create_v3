@@ -251,30 +251,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       initializeAuth()
     }, 100)
+  }, [isHydrated, isInitialized, user, profile, loadUserData, verifyUserInBackground])
 
-    // 3. 监听认证状态变化
+  // 独立的认证状态监听器 - 确保总是注册
+  useEffect(() => {
+    if (!isHydrated) return
+
+    console.log('🎯 [认证上下文] 注册认证状态监听器')
+    
+    // 监听认证状态变化
     const { data: { subscription } } = onAuthStateChange(async (authUser) => {
       const userData = authUser as AuthUser | null
+      console.log('🔄 [认证上下文] 认证状态变化:', { 
+        hasUser: !!userData, 
+        userId: userData?.id,
+        email: userData?.email 
+      })
       
       if (userData) {
-        // 用户登录，加载完整数据
+        // 用户登录，立即更新用户状态，然后加载完整数据
+        console.log('✅ [认证上下文] 用户登录，更新状态')
+        setUser(userData)
+        setLoading(false) // 立即停止loading状态
+        
+        // 异步加载profile数据
         const profileData = await loadUserData(userData.id)
         if (profileData) {
-          setUser(userData)
+          console.log('📝 [认证上下文] Profile数据加载完成')
           setProfile(profileData)
           saveToStorage(userData, profileData)
         }
       } else {
         // 用户登出
+        console.log('🚪 [认证上下文] 用户登出，清除状态')
         setUser(null)
         setProfile(null)
         clearStorage()
+        setLoading(false)
       }
-      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
-  }, [isHydrated, isInitialized])
+    return () => {
+      console.log('🎯 [认证上下文] 取消认证状态监听器')
+      subscription.unsubscribe()
+    }
+  }, [isHydrated, loadUserData])
 
   // 定期后台验证（每30分钟）
   useEffect(() => {

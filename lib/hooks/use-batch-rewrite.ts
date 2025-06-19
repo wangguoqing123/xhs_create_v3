@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { BatchConfig } from '@/lib/types'
 import { useCreditsContext } from '@/components/credits-context'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/components/auth-context'
 
 interface BatchRewriteState {
   isCreating: boolean
@@ -61,12 +62,77 @@ export function useBatchRewrite() {
 
   // 获取积分Context
   const { updateBalance, refreshBalance } = useCreditsContext()
+  
+  // 获取认证上下文
+  const { user } = useAuth()
 
-  // 获取用户认证token
-  const getAuthToken = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token
-  }, [])
+  // 获取用户认证token - 改进版本，更可靠
+  const getAuthToken = useCallback(async (): Promise<string | null> => {
+    try {
+      // 首先检查认证上下文中是否有用户
+      if (!user) {
+        console.warn('🔐 [认证] 用户未登录 - 认证上下文中无用户')
+        return null
+      }
+
+      // 尝试获取当前session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('🔐 [认证] 获取session失败:', error)
+        return null
+      }
+
+      if (session?.access_token) {
+        // 检查token是否即将过期（提前5分钟刷新）
+        const expiresAt = session.expires_at
+        const now = Math.floor(Date.now() / 1000)
+        const fiveMinutes = 5 * 60
+        
+        if (expiresAt && (expiresAt - now) < fiveMinutes) {
+          console.log('🔐 [认证] Token即将过期，尝试刷新...')
+          
+          // 尝试刷新token
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+          
+          if (refreshError) {
+            console.error('🔐 [认证] 刷新token失败:', refreshError)
+            return null
+          }
+          
+          if (refreshData.session?.access_token) {
+            console.log('🔐 [认证] Token刷新成功')
+            return refreshData.session.access_token
+          }
+        }
+        
+        return session.access_token
+      }
+
+      // 如果没有session，尝试重新获取用户信息
+      console.warn('🔐 [认证] 无有效session，尝试重新获取用户信息...')
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !currentUser) {
+        console.error('🔐 [认证] 重新获取用户信息失败:', userError)
+        return null
+      }
+
+      // 重新获取session
+      const { data: { session: newSession } } = await supabase.auth.getSession()
+      if (newSession?.access_token) {
+        console.log('🔐 [认证] 重新获取session成功')
+        return newSession.access_token
+      }
+
+      console.error('🔐 [认证] 无法获取有效的访问token')
+      return null
+
+    } catch (error) {
+      console.error('🔐 [认证] 获取认证token时发生异常:', error)
+      return null
+    }
+  }, [user])
 
   // 创建批量改写任务
   const createBatchTask = useCallback(async (

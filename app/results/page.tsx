@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, Suspense, useMemo } from "react"
+import { useState, useEffect, Suspense, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { TaskSidebar } from "@/components/task-sidebar"
 import { ResultViewer } from "@/components/result-viewer"
 import { useBatchRewrite } from "@/lib/hooks/use-batch-rewrite"
+import { useAuth } from "@/components/auth-context"
 
 // 任务显示接口（兼容现有UI组件）
 interface Task {
@@ -23,56 +24,88 @@ interface Task {
 
 function ResultsPageContent() {
   const searchParams = useSearchParams()
+  const [taskList, setTaskList] = useState<any[]>([])
   const [selectedTaskId, setSelectedTaskId] = useState<string>("")
-  const [taskList, setTaskList] = useState<any[]>([]) // 用户的所有任务列表
-  const [selectedTask, setSelectedTask] = useState<any>(null) // 当前选中的任务详情
+  const [selectedTask, setSelectedTask] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   // 批量改写Hook
   const { getTaskList, getTaskStatus } = useBatchRewrite()
+  
+  // 获取认证状态
+  const { user, loading: authLoading } = useAuth()
 
   // 获取URL参数中的taskId（如果有的话，默认选中这个任务）
   const urlTaskId = searchParams?.get("taskId")
 
   // 获取用户所有任务列表
-  useEffect(() => {
-    const fetchTaskList = async () => {
-      try {
+  const fetchTaskList = useCallback(async (isRetry: boolean = false) => {
+    try {
+      if (!isRetry) {
         setIsLoading(true)
-        const result = await getTaskList()
-        
-        if (!result) {
-          setError("获取任务列表失败")
-          return
-        }
+        setError(null)
+      }
+      
+      console.log('📋 [任务列表] 开始获取任务列表...')
+      const result = await getTaskList()
+      
+      if (!result) {
+        throw new Error("获取任务列表失败")
+      }
 
-        setTaskList(result.tasks || [])
-        
-        // 如果URL有taskId参数，默认选中该任务
-        if (urlTaskId && result.tasks?.length > 0) {
-          const targetTask = result.tasks.find((task: any) => task.id === urlTaskId)
-          if (targetTask) {
-            setSelectedTaskId(urlTaskId)
-          } else {
-            // 如果找不到指定任务，选中第一个
-            setSelectedTaskId(result.tasks[0].id)
-          }
-        } else if (result.tasks?.length > 0) {
-          // 没有指定taskId，选中第一个任务
+      console.log('📋 [任务列表] 获取成功，任务数量:', result.tasks?.length || 0)
+      setTaskList(result.tasks || [])
+      
+      // 如果URL有taskId参数，默认选中该任务
+      if (urlTaskId && result.tasks?.length > 0) {
+        const targetTask = result.tasks.find((task: any) => task.id === urlTaskId)
+        if (targetTask) {
+          setSelectedTaskId(urlTaskId)
+        } else {
+          // 如果找不到指定任务，选中第一个
           setSelectedTaskId(result.tasks[0].id)
         }
-        
-        setIsLoading(false)
-      } catch (error) {
-        console.error('获取任务列表失败:', error)
-        setError(error instanceof Error ? error.message : '获取任务列表失败')
-        setIsLoading(false)
+      } else if (result.tasks?.length > 0) {
+        // 没有指定taskId，选中第一个任务
+        setSelectedTaskId(result.tasks[0].id)
       }
+      
+      setIsLoading(false)
+      setRetryCount(0) // 重置重试计数
+      
+    } catch (error) {
+      console.error('📋 [任务列表] 获取失败:', error)
+      const errorMessage = error instanceof Error ? error.message : '获取任务列表失败'
+      
+      // 如果是认证错误且还没重试过多次，尝试重试
+      if (errorMessage.includes('认证') && retryCount < 2) {
+        console.log('📋 [任务列表] 认证错误，1秒后重试...', retryCount + 1)
+        setRetryCount(prev => prev + 1)
+        setTimeout(() => {
+          fetchTaskList(true)
+        }, 1000)
+        return
+      }
+      
+      setError(errorMessage)
+      setIsLoading(false)
     }
+  }, [getTaskList, urlTaskId, retryCount])
 
-    fetchTaskList()
-  }, [getTaskList, urlTaskId])
+  // 监听认证状态变化，用户登录后重新获取数据
+  useEffect(() => {
+    // 只有在认证完成且有用户时才获取数据
+    if (!authLoading && user) {
+      console.log('👤 [认证状态] 用户已登录，获取任务列表')
+      fetchTaskList()
+    } else if (!authLoading && !user) {
+      console.log('👤 [认证状态] 用户未登录')
+      setError('请先登录')
+      setIsLoading(false)
+    }
+  }, [user, authLoading, fetchTaskList])
 
   // 当选中任务变化时，获取该任务的详细信息
   useEffect(() => {
