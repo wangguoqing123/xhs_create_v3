@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Link, FileText, Sparkles, Copy, Check, X, Plus, Wand2, User, Target, Info } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
+import { AccountPositioning } from "@/components/account-positioning"
 
 interface GeneratedContent {
   id: string
@@ -35,6 +36,7 @@ export function RewriteInterface() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [inputMode, setInputMode] = useState<"link" | "text" | null>(null)
   const [parseError, setParseError] = useState<string | null>(null) // 解析错误状态
+  const [selectedPosition, setSelectedPosition] = useState<string>("") // 账号定位选择状态
 
   // 人设选项
   const personaOptions = [
@@ -283,6 +285,7 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
     setGeneratedContents([]) // 清空生成的内容
     setInputMode(null) // 重置输入模式
     setParseError(null) // 清除解析错误
+          setSelectedPosition("") // 清空账号定位选择
   }
 
   const hasResults = generatedContents.length > 0
@@ -412,25 +415,12 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
                   />
                 </div>
 
-                {/* 人设选择 */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-sm font-medium">
-                    <User className="h-3 w-3 text-indigo-600" />
-                    人设
-                  </Label>
-                  <Select value={persona} onValueChange={setPersona}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="选择人设" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {personaOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* 账号定位选择 */}
+                <AccountPositioning 
+                  selectedPosition={selectedPosition}
+                  onSelectionChange={setSelectedPosition}
+                  placeholder="选择账号定位"
+                />
               </div>
 
               {/* 笔记目的和关键词 - 一行显示 */}

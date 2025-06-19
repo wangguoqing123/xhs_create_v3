@@ -14,6 +14,7 @@ import { BatchConfig } from "@/lib/types"
 import { useCreditsContext } from "@/components/credits-context"
 import { CreditsWarning, CreditsInfo } from "@/components/credits-warning"
 import { useEffect } from "react"
+import { AccountPositioning } from "@/components/account-positioning"
 
 interface BatchConfigModalProps {
   open: boolean
@@ -46,6 +47,9 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
     persona: 'default',
     purpose: 'default'
   })
+  
+  // 账号定位选择状态
+  const [selectedPosition, setSelectedPosition] = useState<string>("")
 
   // 每次模态框打开时获取最新积分
   useEffect(() => {
@@ -141,44 +145,41 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
 
         {/* Configuration Grid */}
         <div className="px-6 py-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             {/* 内容类型 */}
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-900 dark:text-white">内容类型</Label>
               <Select value={config.type} onValueChange={(value) => setConfig({ ...config, type: value })}>
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                <SelectTrigger className="h-10 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 rounded-lg text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                <SelectItem value="auto">自动识别</SelectItem>
+                  <SelectItem value="auto">自动识别</SelectItem>
                   <SelectItem value="article">全部生成图文笔记</SelectItem>
                   <SelectItem value="video">全部生成口播视频稿</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* 人设定位 */}
+            {/* 账号定位 */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-900 dark:text-white">人设定位</Label>
-              <Select value={config.persona} onValueChange={(value) => setConfig({ ...config, persona: value })}>
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 rounded-xl text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">默认风格</SelectItem>
-                  <SelectItem value="expert">专业导师</SelectItem>
-                  <SelectItem value="friend">贴心闺蜜</SelectItem>
-                  <SelectItem value="humor">幽默达人</SelectItem>
-                  <SelectItem value="professional">商务专业</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-semibold text-gray-900 dark:text-white">账号定位</Label>
+              <div className="h-10 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg flex items-center">
+                <AccountPositioning 
+                  selectedPosition={selectedPosition}
+                  onSelectionChange={setSelectedPosition}
+                  placeholder="选择账号定位"
+                  className="flex-1 space-y-0"
+                  hideLabel={true}
+                />
+              </div>
             </div>
 
             {/* 营销目的 */}
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-900 dark:text-white">营销目的</Label>
               <Select value={config.purpose} onValueChange={(value) => setConfig({ ...config, purpose: value })}>
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                <SelectTrigger className="h-10 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 rounded-lg text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -191,22 +192,21 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
               </Select>
             </div>
 
-            {/* 空占位，保持布局 */}
-            <div></div>
+            {/* 特定主题 */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-900 dark:text-white">特定主题</Label>
+              <Input
+                type="text"
+                placeholder="输入特定主题，如：美妆护肤、职场成长等"
+                value={config.theme}
+                onChange={(e) => setConfig({ ...config, theme: e.target.value })}
+                className="h-10 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 rounded-lg text-sm px-3"
+              />
+            </div>
           </div>
-
-          {/* 特定主题 - 单独一行 */}
-          <div className="mt-4 space-y-2">
-            <Label className="text-sm font-semibold text-gray-900 dark:text-white">特定主题</Label>
-            <Input
-              type="text"
-              placeholder="输入特定主题，如：美妆护肤、职场成长等"
-              value={config.theme}
-              onChange={(e) => setConfig({ ...config, theme: e.target.value })}
-              className="h-10 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 rounded-xl text-sm px-3"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">留空则保持原主题风格</p>
-          </div>
+          
+          {/* 特定主题说明 */}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 px-1">留空则保持原主题风格</p>
 
           {/* 积分检查 */}
           <div className="mt-6 space-y-3">
