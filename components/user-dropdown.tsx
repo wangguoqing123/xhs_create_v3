@@ -14,7 +14,8 @@ import {
   Mail,
   Calendar,
   List,
-  Cookie
+  Cookie,
+  FileText
 } from 'lucide-react'
 import { CookieSettingsModal } from '@/components/cookie-settings-modal'
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal'
@@ -81,6 +82,14 @@ export const UserDropdown = memo(function UserDropdown() {
       case 'results':
         // 跳转到任务结果页面
         router.push('/results')
+        break
+      case 'rewrite-history':
+        // 跳转到改写记录页面
+        router.push('/rewrite-history')
+        break
+      case 'credits-history':
+        // 跳转到积分账单页面
+        router.push('/credits-history')
         break
       case 'cookies':
         setShowCookieModal(true)
@@ -150,6 +159,27 @@ export const UserDropdown = memo(function UserDropdown() {
                     {profile.task_indices.length}
                   </Badge>
                 )}
+              </button>
+
+              {/* 改写记录 */}
+              <button
+                onClick={() => handleMenuItemClick('rewrite-history')}
+                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <FileText className="h-4 w-4 mr-3" />
+                <span className="flex-1 text-left">改写记录</span>
+              </button>
+
+              {/* 积分账单 */}
+              <button
+                onClick={() => handleMenuItemClick('credits-history')}
+                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Coins className="h-4 w-4 mr-3" />
+                <span className="flex-1 text-left">积分账单</span>
+                <Badge variant="outline" className="text-xs">
+                  {profile.credits || 0}
+                </Badge>
               </button>
 
               {/* Cookie设置 */}

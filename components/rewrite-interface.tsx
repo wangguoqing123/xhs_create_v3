@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Link, FileText, Sparkles, Copy, Check, X, Plus, Wand2, User, Target, Info } from "lucide-react"
+import { Loader2, Link, FileText, Sparkles, Copy, Check, X, Plus, Wand2, User, Target, Info, History } from "lucide-react"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { AccountPositioning } from "@/components/account-positioning"
 
@@ -21,12 +21,12 @@ interface GeneratedContent {
 
 export function RewriteInterface() {
   // 获取认证上下文，用于检查登录状态和用户信息
-  const { user, profile } = useMySQLAuth()
+  const { user, profile, refreshProfile } = useMySQLAuth()
   
   const [linkInput, setLinkInput] = useState("")
   const [originalText, setOriginalText] = useState("")
   const [theme, setTheme] = useState("")
-  const [persona, setPersona] = useState("")
+
   const [purpose, setPurpose] = useState("")
   const [keywordInput, setKeywordInput] = useState("")
   const [keywords, setKeywords] = useState<string[]>([])
@@ -34,23 +34,14 @@ export function RewriteInterface() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedContents, setGeneratedContents] = useState<GeneratedContent[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [showResults, setShowResults] = useState(false) // 控制结果区域显示
   const [inputMode, setInputMode] = useState<"link" | "text" | null>(null)
   const [parseError, setParseError] = useState<string | null>(null) // 解析错误状态
   const [selectedPosition, setSelectedPosition] = useState<string>("") // 账号定位选择状态
+  const [accountPositions, setAccountPositions] = useState<any[]>([]) // 账号定位列表
+  const [sourceUrl, setSourceUrl] = useState<string>("") // 原始链接状态，用于数据库记录
 
-  // 人设选项
-  const personaOptions = [
-    { value: "college-student", label: "大学生" },
-    { value: "office-worker", label: "上班族" },
-    { value: "stay-at-home-mom", label: "全职妈妈" },
-    { value: "beauty-blogger", label: "美妆博主" },
-    { value: "fitness-enthusiast", label: "健身达人" },
-    { value: "food-lover", label: "美食爱好者" },
-    { value: "travel-blogger", label: "旅行博主" },
-    { value: "fashion-influencer", label: "时尚达人" },
-    { value: "tech-geek", label: "数码达人" },
-    { value: "lifestyle-blogger", label: "生活博主" },
-  ]
+  // 人设选项已移除，现在使用账号定位
 
   // 笔记目的选项
   const purposeOptions = [
@@ -65,6 +56,32 @@ export function RewriteInterface() {
     { value: "personal-story", label: "个人故事" },
     { value: "knowledge-sharing", label: "知识科普" },
   ]
+
+  // 获取账号定位列表
+  const fetchAccountPositions = async () => {
+    if (!user) return
+    
+    try {
+      const response = await fetch('/api/account-positioning', {
+        method: 'GET',
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setAccountPositions(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('获取账号定位列表失败:', error)
+    }
+  }
+
+  // 组件挂载时获取账号定位列表
+  useEffect(() => {
+    fetchAccountPositions()
+  }, [user])
 
   // 处理链接解析功能
   const handleLinkParse = async () => {
@@ -150,6 +167,9 @@ export function RewriteInterface() {
       // 设置格式化后的内容到输入框中（保持可编辑状态）
       setOriginalText(formattedContent)
       
+      // 保存原始链接，用于数据库记录
+      setSourceUrl(linkInput.trim())
+      
       // 解析成功后重置输入模式，让用户可以编辑原文
       setInputMode(null)
 
@@ -206,59 +226,95 @@ export function RewriteInterface() {
   const handleGenerate = async () => {
     if (!originalText.trim()) return
 
+    // 检查是否登录
+    if (!user) {
+      alert('请先登录后再使用生成功能')
+      return
+    }
+
+    // 检查积分是否足够
+    if (profile && profile.credits < 1) {
+      alert('积分不足，生成爆文需要1积分')
+      return
+    }
+
     setIsGenerating(true)
+    setShowResults(true) // 立即显示结果区域
+    setGeneratedContents([]) // 清空之前的结果
 
-    // 模拟生成过程
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    try {
+      console.log('🚀 开始调用爆文改写API')
+      
+      // 获取选中的账号定位信息
+      let accountPositioningText = ''
+      if (selectedPosition) {
+        const selectedPositionData = accountPositions.find(pos => pos.id === selectedPosition)
+        if (selectedPositionData) {
+          // 构建完整的账号定位信息
+          const parts = []
+          if (selectedPositionData.name) parts.push(`定位名称: ${selectedPositionData.name}`)
+          if (selectedPositionData.one_line_description) parts.push(`一句话定位: ${selectedPositionData.one_line_description}`)
+          if (selectedPositionData.core_value) parts.push(`核心价值: ${selectedPositionData.core_value}`)
+          if (selectedPositionData.target_audience) parts.push(`目标用户: ${selectedPositionData.target_audience}`)
+          if (selectedPositionData.key_persona) parts.push(`关键人设: ${selectedPositionData.key_persona}`)
+          if (selectedPositionData.core_style) parts.push(`核心风格: ${selectedPositionData.core_style}`)
+          
+          accountPositioningText = parts.join(', ')
+        }
+      }
 
-    // 模拟生成结果
-    const mockResults: GeneratedContent[] = [
-      {
-        id: "1",
-        title: "💕 姐妹们！我要分享一个让我皮肤变好的神仙方法！",
-        content: `真的不是夸张，用了这个方法后，连男朋友都说我皮肤变嫩了 😍
+      const response = await fetch('/api/rewrite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          originalText: originalText.trim(),
+          theme: theme.trim(),
+          persona: 'default', // 使用默认人设，因为我们现在用账号定位
+          purpose: purpose,
+          keywords: keywords,
+          accountPositioning: accountPositioningText,
+          sourceUrl: sourceUrl || null // 传递原始链接（如果有的话）
+        })
+      })
 
-方法超简单：
-✨ 洗完脸不要完全擦干
-💧 趁着脸上还有水珠，立刻拍爽肤水
-🌟 然后马上涂精华，不要等！
+      const result = await response.json()
 
-为什么这样做？
-因为湿润的皮肤更容易吸收护肤品，就像海绵一样！
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP错误: ${response.status}`)
+      }
 
-我坚持了两周，皮肤真的变得水润透亮 ✨
-摸起来像剥了壳的鸡蛋一样嫩滑！
+      if (!result.success) {
+        throw new Error(result.error || '生成失败')
+      }
 
-${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
-      },
-      {
-        id: "2",
-        title: "🔥 护肤干货分享！这个方法让我告别干燥肌！",
-        content: `【核心技巧】湿敷护肤法
-📍 适用人群：所有肌肤类型
-⏰ 最佳时间：洁面后30秒内
+      console.log('✅ 爆文改写API调用成功')
 
-【具体步骤】
-1️⃣ 温和洁面，用毛巾轻拍至半干状态
-2️⃣ 立即使用爽肤水，充分拍打至吸收
-3️⃣ 趁皮肤湿润，涂抹精华液按摩吸收
+      // 转换API返回的数据格式为组件需要的格式
+      const generatedResults: GeneratedContent[] = result.data.versions.map((version: any, index: number) => ({
+        id: `version-${index + 1}`,
+        title: version.title || `版本${index + 1}`,
+        content: version.content || ''
+      }))
 
-【科学原理】
-💡 湿润环境提高护肤品渗透率
-💡 减少水分流失，增强保湿效果
-💡 促进有效成分深层吸收
+      setGeneratedContents(generatedResults)
+      
+      // 显示积分消耗信息
+      console.log(`💰 消耗积分: ${result.data.creditsConsumed}`)
+      
+      // 刷新用户资料以更新积分显示
+      console.log('🔄 开始刷新用户资料以更新积分显示')
+      await refreshProfile()
+      console.log('✅ 用户资料刷新完成')
 
-【效果反馈】
-✅ 7天：皮肤明显水润
-✅ 14天：细纹淡化，光泽度提升
-✅ 30天：整体肌肤状态改善
-
-${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
-      },
-    ]
-
-    setGeneratedContents(mockResults)
-    setIsGenerating(false)
+    } catch (error) {
+      console.error('❌ 生成爆文失败:', error)
+      alert(`生成失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   // 处理复制
@@ -278,22 +334,24 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
     setLinkInput("") // 清空链接输入
     setOriginalText("") // 清空原文输入
     setTheme("") // 清空主题
-    setPersona("") // 清空人设
+    // 不再需要清空人设，因为使用账号定位
     setPurpose("") // 清空目的
     setKeywords([]) // 清空关键词列表
     setKeywordInput("") // 清空关键词输入
     setGeneratedContents([]) // 清空生成的内容
+    setShowResults(false) // 隐藏结果区域
     setInputMode(null) // 重置输入模式
     setParseError(null) // 清除解析错误
-          setSelectedPosition("") // 清空账号定位选择
+    setSelectedPosition("") // 清空账号定位选择
+    setSourceUrl("") // 清空原始链接
   }
 
-  const hasResults = generatedContents.length > 0
+  const hasResults = showResults // 改为基于showResults状态
 
   return (
     <div className="container mx-auto px-4 h-[calc(100vh-4.5rem)] flex flex-col">
       {/* 页面标题 */}
-      <div className="text-center py-4">
+      <div className="relative text-center py-4">
         <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl mb-2 shadow-md">
           <Wand2 className="h-6 w-6 text-white" />
         </div>
@@ -301,6 +359,19 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
           爆文改写
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">基于爆款笔记智能生成高质量仿写内容</p>
+        
+        {/* 历史记录按钮 - 仅登录用户可见 */}
+        {user && (
+          <Button
+            onClick={() => window.location.href = '/rewrite-history'}
+            variant="outline"
+            size="sm"
+            className="absolute top-4 right-4 flex items-center gap-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          >
+            <History className="h-4 w-4" />
+            改写记录
+          </Button>
+        )}
       </div>
 
       {/* 主要内容区域 */}
@@ -399,7 +470,7 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
                 />
               </div>
 
-              {/* 主题和人设 - 一行显示 */}
+              {/* 主题和账号定位 - 一行显示 */}
               <div className="grid grid-cols-2 gap-4">
                 {/* 主题输入 */}
                 <div className="space-y-2">
@@ -498,7 +569,7 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
                   <div className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
                     <p className="font-medium mb-1">智能提示</p>
                     <p>
-                      改写主题、人设、笔记目的、SEO关键词均为可选项，可根据需要选择性填写。未填写的项目将基于原文内容进行智能仿写。
+                      改写主题、账号定位、笔记目的、SEO关键词均为可选项，可根据需要选择性填写。未填写的项目将基于原文内容进行智能仿写。
                     </p>
                   </div>
                 </div>
@@ -506,24 +577,30 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
 
               {/* 操作按钮 */}
               <div className="flex gap-3 pt-2">
-                <Button
-                  onClick={handleGenerate}
-                  disabled={!originalText.trim() || isGenerating}
-                  className="flex-1 h-10 text-sm font-medium bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      生成中...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      生成爆文
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" onClick={handleReset} size="sm" className="px-4 h-10">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                    <span>消耗积分</span>
+                    <span className="font-medium text-orange-600 dark:text-orange-400">1积分</span>
+                  </div>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={!originalText.trim() || isGenerating}
+                    className="w-full h-10 text-sm font-medium bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        生成爆文
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <Button variant="outline" onClick={handleReset} size="sm" className="px-4 h-10 mt-6">
                   重置
                 </Button>
               </div>
@@ -539,7 +616,64 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
         >
           {hasResults && (
             <div className="h-full grid grid-cols-2 gap-4">
-              {generatedContents.map((content, index) => (
+              {isGenerating ? (
+                // 加载状态显示
+                <>
+                  {[0, 1].map((index) => (
+                    <Card
+                      key={`loading-${index}`}
+                      className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex flex-col"
+                    >
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <div
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                              index === 0
+                                ? "bg-gradient-to-r from-blue-500 to-blue-600"
+                                : "bg-gradient-to-r from-purple-500 to-purple-600"
+                            }`}
+                          >
+                            {index + 1}
+                          </div>
+                          <span className={index === 0 ? "text-blue-600" : "text-purple-600"}>
+                            {index === 0 ? "情感共鸣版" : "干货分享版"}
+                          </span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex flex-col flex-1">
+                        {/* 加载动画 - 鱼骨纹效果 */}
+                        <div className="flex-1 space-y-3 animate-pulse">
+                          {/* 标题骨架 */}
+                          <div className="space-y-2">
+                            <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-600 dark:via-slate-500 dark:to-slate-600 rounded animate-shimmer bg-[length:400%_100%]"></div>
+                            <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-600 dark:via-slate-500 dark:to-slate-600 rounded w-3/4 animate-shimmer bg-[length:400%_100%]"></div>
+                          </div>
+                          
+                          {/* 内容骨架 */}
+                          <div className="space-y-2">
+                            {[...Array(8)].map((_, i) => (
+                              <div
+                                key={i}
+                                className={`h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-600 dark:via-slate-500 dark:to-slate-600 rounded animate-shimmer bg-[length:400%_100%] ${
+                                  i === 3 || i === 7 ? 'w-1/2' : i === 5 ? 'w-2/3' : 'w-full'
+                                }`}
+                                style={{ animationDelay: `${i * 0.2}s` }}
+                              ></div>
+                            ))}
+                          </div>
+                          
+                          {/* 按钮骨架 */}
+                          <div className="mt-auto">
+                            <div className="h-8 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-600 dark:via-slate-500 dark:to-slate-600 rounded animate-shimmer bg-[length:400%_100%]"></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              ) : (
+                // 实际内容显示
+                generatedContents.map((content, index) => (
                 <Card
                   key={content.id}
                   className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex flex-col"
@@ -601,7 +735,8 @@ ${keywords.length > 0 ? `\n${keywords.map((k) => `#${k}`).join(" ")}` : ""}`,
                     </Button>
                   </CardContent>
                 </Card>
-              ))}
+                              ))
+              )}
             </div>
           )}
         </div>

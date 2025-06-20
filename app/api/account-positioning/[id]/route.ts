@@ -4,7 +4,7 @@ import { getAccountPositioningById, updateAccountPositioning, deleteAccountPosit
 import { AccountPositioningUpdate } from '@/lib/types'
 
 // GET - 根据ID获取单个账号定位
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // 从Cookie中获取JWT令牌
     const token = request.cookies.get('auth_token')?.value
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // 获取路径参数中的ID
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT - 更新账号定位
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // 从Cookie中获取JWT令牌
     const token = request.cookies.get('auth_token')?.value
@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // 获取路径参数中的ID
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -175,7 +175,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE - 删除账号定位
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // 从Cookie中获取JWT令牌
     const token = request.cookies.get('auth_token')?.value
@@ -197,7 +197,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     // 获取路径参数中的ID
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(

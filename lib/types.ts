@@ -440,6 +440,31 @@ export interface CreditCheck {
   shortage: number
 }
 
+// 积分账单相关类型定义
+export interface CreditHistoryParams {
+  user_id: string // 用户ID
+  transaction_type?: 'reward' | 'consume' | 'refund' | 'all' // 交易类型筛选
+  start_date?: string // 开始日期筛选
+  end_date?: string // 结束日期筛选
+  limit?: number // 每页数量，默认20
+  offset?: number // 偏移量，默认0
+}
+
+export interface CreditHistoryResponse {
+  success: boolean
+  data?: {
+    transactions: CreditTransaction[] // 交易记录列表
+    total: number // 总记录数
+    current_balance: number // 当前积分余额
+    summary: {
+      total_earned: number // 总获得积分
+      total_consumed: number // 总消费积分
+      total_refunded: number // 总退款积分
+    }
+  }
+  error?: string
+}
+
 // 账号定位相关类型定义
 export interface AccountPositioning {
   id: string // 账号定位ID
@@ -488,4 +513,78 @@ export interface AccountPositioningListParams {
   limit?: number // 每页数量，默认20
   offset?: number // 偏移量，默认0
   search?: string // 搜索关键词（按名称搜索）
+}
+
+// ============================================
+// 爆文改写记录相关类型定义
+// ============================================
+
+// 爆文改写记录表结构
+export interface RewriteRecord {
+  id: string // 记录唯一标识
+  user_id: string // 用户ID
+  original_text: string // 要改写的原文内容
+  source_url: string | null // 如果是链接解析的，保存原始链接
+  source_type: 'link' | 'text' // 来源类型：link=链接解析，text=直接输入
+  generation_config: RewriteGenerationConfig // 生成时的配置
+  generated_content: RewriteGeneratedVersion[] // 改写后的结果（包含多个版本）
+  status: 'generating' | 'completed' | 'failed' // 生成状态
+  credits_consumed: number // 消耗的积分数
+  error_message: string | null // 错误信息（如果生成失败）
+  created_at: string // 创建时间
+  completed_at: string | null // 完成时间
+  updated_at: string // 更新时间
+}
+
+// 爆文改写记录插入类型
+export interface RewriteRecordInsert {
+  user_id: string // 用户ID（必填）
+  original_text: string // 要改写的原文内容（必填）
+  source_url?: string | null // 原始链接（可选）
+  source_type: 'link' | 'text' // 来源类型（必填）
+  generation_config: RewriteGenerationConfig // 生成配置（必填）
+  credits_consumed: number // 消耗的积分数（必填）
+}
+
+// 爆文改写记录更新类型
+export interface RewriteRecordUpdate {
+  generated_content?: RewriteGeneratedVersion[] // 改写后的结果
+  status?: 'generating' | 'completed' | 'failed' // 生成状态
+  error_message?: string | null // 错误信息
+  completed_at?: string | null // 完成时间
+}
+
+// 爆文改写生成配置
+export interface RewriteGenerationConfig {
+  theme: string // 改写主题
+  persona: string // 人设定位
+  purpose: string // 笔记目的
+  keywords: string[] // SEO关键词
+  account_positioning: string // 账号定位信息
+  original_text_length: number // 原文长度
+}
+
+// 爆文改写生成版本
+export interface RewriteGeneratedVersion {
+  title: string // 生成的标题
+  content: string // 生成的内容
+  version_name: string // 版本名称（如：经典策略版、人设深耕版）
+}
+
+// 爆文改写记录响应类型
+export interface RewriteRecordResponse {
+  success: boolean
+  data?: RewriteRecord | RewriteRecord[] | null
+  error?: string
+}
+
+// 爆文改写记录列表查询参数
+export interface RewriteRecordListParams {
+  user_id: string // 用户ID
+  limit?: number // 每页数量，默认20
+  offset?: number // 偏移量，默认0
+  status?: 'generating' | 'completed' | 'failed' // 状态筛选
+  source_type?: 'link' | 'text' // 来源类型筛选
+  start_date?: string // 开始日期筛选
+  end_date?: string // 结束日期筛选
 }

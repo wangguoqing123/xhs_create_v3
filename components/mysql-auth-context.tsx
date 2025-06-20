@@ -193,17 +193,29 @@ export function MySQLAuthProvider({ children }: { children: ReactNode }) {
 
   // 刷新用户资料
   const refreshProfile = useCallback(async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      console.log('⚠️ [刷新资料] 用户未登录，跳过刷新')
+      return
+    }
     
+    console.log('🔄 [刷新资料] 开始刷新用户资料')
     try {
       const { user: currentUser } = await getCurrentUser()
       if (currentUser) {
+        console.log('✅ [刷新资料] 获取到最新用户数据:', {
+          id: currentUser.id,
+          email: currentUser.email,
+          credits: (currentUser as Profile).credits
+        })
         setUser(currentUser)
         setProfile(currentUser as Profile)
         saveToStorage(currentUser, currentUser as Profile)
+        console.log('✅ [刷新资料] 用户资料更新完成')
+      } else {
+        console.log('❌ [刷新资料] 未获取到用户数据')
       }
     } catch (error) {
-      console.error('刷新用户资料失败:', error)
+      console.error('❌ [刷新资料] 刷新用户资料失败:', error)
     }
   }, [user])
 

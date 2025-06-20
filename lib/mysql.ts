@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise'
-import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams } from './types'
+import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams, RewriteRecord, RewriteRecordInsert, RewriteRecordUpdate, RewriteRecordListParams, RewriteGenerationConfig, RewriteGeneratedVersion, CreditHistoryParams } from './types'
 import { sendVerificationEmail, isEmailConfigured } from './email'
 import crypto from 'crypto'
 
@@ -461,7 +461,15 @@ export const updateUserCookie = async (userId: string, userCookie: UserCookie) =
 
 // 积分操作
 export const consumeCredits = async (userId: string, amount: number, reason: string, taskId?: string) => {
+  console.log('💰 [MySQL] 开始扣除积分:', {
+    userId,
+    amount,
+    reason,
+    taskId: taskId || 'null'
+  })
+
   if (!isMySQLConfigured) {
+    console.error('❌ [MySQL] 环境变量未配置')
     return { 
       success: false, 
       error: '请先配置 MySQL 环境变量' 
@@ -470,6 +478,7 @@ export const consumeCredits = async (userId: string, amount: number, reason: str
 
   try {
     const connection = await getPool().getConnection()
+    console.log('✅ [MySQL] 数据库连接获取成功')
     
     const [results] = await connection.execute(
       'CALL ConsumeCredits(?, ?, ?, ?)',
@@ -477,9 +486,12 @@ export const consumeCredits = async (userId: string, amount: number, reason: str
     ) as any[]
     
     connection.release()
+    console.log('📊 [MySQL] 存储过程执行完成，结果:', results)
     
     if (results && results[0] && results[0][0]) {
       const result = results[0][0]
+      console.log('📋 [MySQL] 积分扣除结果:', result)
+      
       return { 
         success: result.success === 1, 
         remainingCredits: result.remaining_credits,
@@ -487,9 +499,10 @@ export const consumeCredits = async (userId: string, amount: number, reason: str
       }
     }
     
+    console.error('❌ [MySQL] 存储过程返回结果格式异常')
     return { success: false, error: '积分扣除失败' }
   } catch (error) {
-    console.error('积分扣除失败:', error)
+    console.error('❌ [MySQL] 积分扣除异常:', error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : '积分扣除失败' 
@@ -560,6 +573,100 @@ export const getCreditTransactions = async (userId: string, limit: number = 50, 
     return { 
       data: [], 
       error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
+// 获取积分账单详细信息（支持筛选）
+export const getCreditHistory = async (params: CreditHistoryParams) => {
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    const connection = await getPool().getConnection()
+    const { user_id, transaction_type, start_date, end_date, limit = 20, offset = 0 } = params
+    
+    // 构建WHERE条件
+    let whereConditions = ['user_id = ?']
+    let queryParams: any[] = [user_id]
+    
+    // 交易类型筛选
+    if (transaction_type && transaction_type !== 'all') {
+      whereConditions.push('transaction_type = ?')
+      queryParams.push(transaction_type)
+    }
+    
+    // 时间范围筛选
+    if (start_date) {
+      whereConditions.push('created_at >= ?')
+      queryParams.push(start_date)
+    }
+    
+    if (end_date) {
+      whereConditions.push('created_at <= ?')
+      queryParams.push(end_date)
+    }
+    
+    const whereClause = whereConditions.join(' AND ')
+    
+    // 获取交易记录
+    const [transactions] = await connection.execute(
+      `SELECT * FROM credit_transactions WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      queryParams
+    ) as any[]
+    
+    // 获取总记录数
+    const [countResult] = await connection.execute(
+      `SELECT COUNT(*) as total FROM credit_transactions WHERE ${whereClause}`,
+      queryParams
+    ) as any[]
+    
+    const total = countResult[0]?.total || 0
+    
+    // 获取用户当前积分余额
+    const profileResult = await getProfile(user_id)
+    const currentBalance = profileResult.data?.credits || 0
+    
+    // 获取积分统计
+    const [summaryResult] = await connection.execute(
+      `SELECT 
+        SUM(CASE WHEN transaction_type = 'reward' THEN amount ELSE 0 END) as total_earned,
+        SUM(CASE WHEN transaction_type = 'consume' THEN ABS(amount) ELSE 0 END) as total_consumed,
+        SUM(CASE WHEN transaction_type = 'refund' THEN amount ELSE 0 END) as total_refunded
+      FROM credit_transactions WHERE user_id = ?`,
+      [user_id]
+    ) as any[]
+    
+    const summary = summaryResult[0] || {
+      total_earned: 0,
+      total_consumed: 0,
+      total_refunded: 0
+    }
+    
+    connection.release()
+    
+    return {
+      data: {
+        transactions,
+        total,
+        current_balance: currentBalance,
+        summary: {
+          total_earned: summary.total_earned || 0,
+          total_consumed: summary.total_consumed || 0,
+          total_refunded: summary.total_refunded || 0
+        }
+      },
+      error: null
+    }
+  } catch (error) {
+    console.error('获取积分账单失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '获取积分账单失败' 
     }
   }
 }
@@ -1382,6 +1489,375 @@ export const deleteAccountPositioning = async (id: string, userId: string) => {
   }
 }
 
+// ============================================
+// 爆文改写记录相关函数
+// ============================================
+
+// 创建爆文改写记录
+export const createRewriteRecord = async (data: RewriteRecordInsert) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    console.log('🚀 [创建爆文改写记录] 开始创建记录:', {
+      userId: data.user_id,
+      originalTextLength: data.original_text.length,
+      sourceType: data.source_type,
+      creditsConsumed: data.credits_consumed
+    })
+    
+    // 生成UUID作为记录ID
+    const recordId = crypto.randomUUID()
+    
+    // 插入新记录（显式指定ID）
+    const [result] = await connection.execute(
+      `INSERT INTO rewrite_records 
+       (id, user_id, original_text, source_url, source_type, generation_config, credits_consumed) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        recordId,
+        data.user_id,
+        data.original_text,
+        data.source_url || null,
+        data.source_type,
+        JSON.stringify(data.generation_config), // 将配置对象转换为JSON字符串
+        data.credits_consumed
+      ]
+    ) as any[]
+    
+    // 查询刚插入的完整记录
+    const [rows] = await connection.execute(
+      'SELECT * FROM rewrite_records WHERE id = ?',
+      [recordId]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      const record = rows[0]
+      
+      // 安全解析JSON字段，处理可能的对象类型
+      try {
+        // 如果已经是对象，直接使用；如果是字符串，则解析
+        record.generation_config = typeof record.generation_config === 'string' 
+          ? JSON.parse(record.generation_config || '{}')
+          : record.generation_config || {}
+          
+        record.generated_content = typeof record.generated_content === 'string'
+          ? JSON.parse(record.generated_content || '[]')
+          : record.generated_content || []
+      } catch (parseError) {
+        console.error('❌ [创建爆文改写记录] JSON解析失败:', parseError)
+        console.error('❌ [创建爆文改写记录] 原始数据类型:', {
+          generationConfigType: typeof record.generation_config,
+          generationConfigValue: record.generation_config,
+          generatedContentType: typeof record.generated_content,
+          generatedContentValue: record.generated_content
+        })
+        // 使用默认值
+        record.generation_config = {}
+        record.generated_content = []
+      }
+      
+      console.log('✅ [创建爆文改写记录] 记录创建成功:', record.id)
+      return { data: record as RewriteRecord, error: null }
+    }
+    
+    return { data: null, error: '创建后查询失败' }
+  } catch (error) {
+    console.error('❌ [创建爆文改写记录] 创建失败:', error)
+    console.error('❌ [创建爆文改写记录] 详细错误信息:', {
+      errorMessage: error instanceof Error ? error.message : '未知错误',
+      errorStack: error instanceof Error ? error.stack : '无堆栈信息',
+      insertData: {
+        userId: data.user_id,
+        originalTextLength: data.original_text.length,
+        sourceType: data.source_type,
+        generationConfig: data.generation_config,
+        creditsConsumed: data.credits_consumed
+      }
+    })
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '创建失败' 
+    }
+  }
+}
+
+// 更新爆文改写记录
+export const updateRewriteRecord = async (recordId: string, updates: RewriteRecordUpdate) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    console.log('🔄 [更新爆文改写记录] 开始更新记录:', {
+      recordId,
+      status: updates.status,
+      hasGeneratedContent: !!updates.generated_content
+    })
+    
+    // 构建更新字段
+    const updateFields = []
+    const updateValues = []
+    
+    // 检查每个字段是否需要更新
+    if (updates.generated_content !== undefined) {
+      updateFields.push('generated_content = ?')
+      updateValues.push(JSON.stringify(updates.generated_content)) // 将数组转换为JSON字符串
+    }
+    
+    if (updates.status !== undefined) {
+      updateFields.push('status = ?')
+      updateValues.push(updates.status)
+    }
+    
+    if (updates.error_message !== undefined) {
+      updateFields.push('error_message = ?')
+      updateValues.push(updates.error_message)
+    }
+    
+    if (updates.completed_at !== undefined) {
+      updateFields.push('completed_at = ?')
+      // 将ISO字符串转换为MySQL DATETIME格式
+      const mysqlDateTime = updates.completed_at ? new Date(updates.completed_at).toISOString().slice(0, 19).replace('T', ' ') : null
+      console.log('🕐 [更新爆文改写记录] 日期时间转换:', {
+        original: updates.completed_at,
+        converted: mysqlDateTime
+      })
+      updateValues.push(mysqlDateTime)
+    }
+    
+    // 如果没有要更新的字段，返回错误
+    if (updateFields.length === 0) {
+      connection.release()
+      return { data: null, error: '没有要更新的字段' }
+    }
+    
+    // 添加WHERE条件的参数
+    updateValues.push(recordId)
+    
+    // 执行更新
+    const [result] = await connection.execute(
+      `UPDATE rewrite_records SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
+    ) as any[]
+    
+    // 检查是否有记录被更新
+    if (result.affectedRows === 0) {
+      connection.release()
+      return { data: null, error: '记录不存在' }
+    }
+    
+    // 查询更新后的记录
+    const [rows] = await connection.execute(
+      'SELECT * FROM rewrite_records WHERE id = ?',
+      [recordId]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      const record = rows[0]
+      
+      // 安全解析JSON字段，处理可能的对象类型
+      try {
+        // 如果已经是对象，直接使用；如果是字符串，则解析
+        record.generation_config = typeof record.generation_config === 'string' 
+          ? JSON.parse(record.generation_config || '{}')
+          : record.generation_config || {}
+          
+        record.generated_content = typeof record.generated_content === 'string'
+          ? JSON.parse(record.generated_content || '[]')
+          : record.generated_content || []
+      } catch (parseError) {
+        console.error('❌ [更新爆文改写记录] JSON解析失败:', parseError)
+        // 使用默认值
+        record.generation_config = {}
+        record.generated_content = []
+      }
+      
+      console.log('✅ [更新爆文改写记录] 记录更新成功:', record.id)
+      return { data: record as RewriteRecord, error: null }
+    }
+    
+    return { data: null, error: '更新后查询失败' }
+  } catch (error) {
+    console.error('❌ [更新爆文改写记录] 更新失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '更新失败' 
+    }
+  }
+}
+
+// 根据ID获取单个爆文改写记录
+export const getRewriteRecordById = async (recordId: string, userId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 查询指定ID和用户ID的记录（确保用户只能访问自己的数据）
+    const [rows] = await connection.execute(
+      'SELECT * FROM rewrite_records WHERE id = ? AND user_id = ?',
+      [recordId, userId]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      const record = rows[0]
+      
+      // 安全解析JSON字段，处理可能的对象类型
+      try {
+        // 如果已经是对象，直接使用；如果是字符串，则解析
+        record.generation_config = typeof record.generation_config === 'string' 
+          ? JSON.parse(record.generation_config || '{}')
+          : record.generation_config || {}
+          
+        record.generated_content = typeof record.generated_content === 'string'
+          ? JSON.parse(record.generated_content || '[]')
+          : record.generated_content || []
+      } catch (parseError) {
+        console.error('❌ [获取爆文改写记录] JSON解析失败:', parseError)
+        // 使用默认值
+        record.generation_config = {}
+        record.generated_content = []
+      }
+      
+      return { data: record as RewriteRecord, error: null }
+    }
+    
+    return { data: null, error: '记录不存在或无权限访问' }
+  } catch (error) {
+    console.error('❌ [获取爆文改写记录] 获取失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
+// 获取爆文改写记录列表
+export const getRewriteRecordList = async (params: RewriteRecordListParams) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: [], 
+      total: 0,
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 设置默认值并确保类型正确
+    const limit = Number(params.limit) || 20
+    const offset = Number(params.offset) || 0
+    const userId = String(params.user_id)
+    
+    console.log('🔍 [获取爆文改写记录列表] 开始查询:', {
+      userId,
+      limit,
+      offset,
+      limitType: typeof limit,
+      offsetType: typeof offset,
+      userIdType: typeof userId,
+      isLimitNaN: isNaN(limit),
+      isOffsetNaN: isNaN(offset)
+    })
+    
+    // 验证参数
+    if (isNaN(limit) || isNaN(offset) || limit < 0 || offset < 0) {
+      console.error('❌ [获取爆文改写记录列表] 参数验证失败:', { limit, offset })
+      return { 
+        data: [], 
+        total: 0,
+        error: '分页参数无效' 
+      }
+    }
+    
+    // 先尝试最简单的查询
+    const [countRows] = await connection.execute(
+      'SELECT COUNT(*) as total FROM rewrite_records WHERE user_id = ?',
+      [userId]
+    ) as any[]
+    
+    const total = countRows[0].total
+    console.log('📊 [获取爆文改写记录列表] 总记录数:', total)
+    
+    // 查询记录列表 - 先尝试不带分页的查询
+    console.log('🔍 [获取爆文改写记录列表] 执行查询，参数:', [userId])
+    const [rows] = await connection.execute(
+      'SELECT * FROM rewrite_records WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
+    ) as any[]
+    
+    // 手动应用分页
+    const paginatedRows = rows.slice(offset, offset + limit)
+    
+    console.log('📋 [获取爆文改写记录列表] 查询到记录数:', rows.length)
+    console.log('📋 [获取爆文改写记录列表] 分页后记录数:', paginatedRows.length)
+    
+    connection.release()
+    
+    // 安全解析JSON字段
+    const records = paginatedRows.map((record: any) => {
+      try {
+        // 如果已经是对象，直接使用；如果是字符串，则解析
+        record.generation_config = typeof record.generation_config === 'string' 
+          ? JSON.parse(record.generation_config || '{}')
+          : record.generation_config || {}
+          
+        record.generated_content = typeof record.generated_content === 'string'
+          ? JSON.parse(record.generated_content || '[]')
+          : record.generated_content || []
+      } catch (parseError) {
+        console.error('❌ [获取爆文改写记录列表] JSON解析失败:', parseError)
+        // 使用默认值
+        record.generation_config = {}
+        record.generated_content = []
+      }
+      return record as RewriteRecord
+    })
+    
+    console.log('✅ [获取爆文改写记录列表] 查询成功:', records.length, '条记录')
+    return { data: records, total, error: null }
+  } catch (error) {
+    console.error('❌ [获取爆文改写记录列表] 获取失败:', error)
+    return { 
+      data: [], 
+      total: 0,
+      error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
 export default {
   testConnection,
   sendVerificationCode,
@@ -1408,5 +1884,10 @@ export default {
   getAccountPositioningList,
   getAccountPositioningById,
   updateAccountPositioning,
-  deleteAccountPositioning
+  deleteAccountPositioning,
+  // 爆文改写记录相关函数
+  createRewriteRecord,
+  updateRewriteRecord,
+  getRewriteRecordById,
+  getRewriteRecordList
 } 

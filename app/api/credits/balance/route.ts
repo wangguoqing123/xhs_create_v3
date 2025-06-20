@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
     let totalConsumed = 0
 
     transactions?.forEach((transaction: CreditTransaction) => {
-      if (transaction.amount > 0) {
-        totalEarned += transaction.amount
-      } else {
+      if (transaction.transaction_type === 'reward' || transaction.transaction_type === 'refund') {
+        totalEarned += Math.abs(transaction.amount)
+      } else if (transaction.transaction_type === 'consume') {
         totalConsumed += Math.abs(transaction.amount)
       }
     })
