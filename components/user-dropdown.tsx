@@ -177,9 +177,9 @@ export const UserDropdown = memo(function UserDropdown() {
               >
                 <Coins className="h-4 w-4 mr-3" />
                 <span className="flex-1 text-left">积分账单</span>
-                <Badge variant="outline" className="text-xs">
+                {/* <Badge variant="outline" className="text-xs">
                   {profile.credits || 0}
-                </Badge>
+                </Badge> */}
               </button>
 
               {/* Cookie设置 */}

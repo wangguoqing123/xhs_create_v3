@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, User, Sparkles, X, ChevronDown, Edit } from "lucide-react"
+import { Plus, User, Sparkles, X, ChevronDown, Edit, Gem } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
+import { useCreditsContext } from "@/components/credits-context"
 import { AccountPositioning as AccountPositioningType } from "@/lib/types"
 
 // 账号定位数据类型（用于UI展示，映射数据库字段）
@@ -43,6 +44,8 @@ export function AccountPositioning({
 }: AccountPositioningProps) {
   // 获取认证状态
   const { user } = useMySQLAuth()
+  // 获取积分上下文
+  const { balance, refreshBalance } = useCreditsContext()
   
   // 组件状态 - 只显示数据库中的真实数据
   const [positions, setPositions] = useState<AccountPosition[]>([])
@@ -294,35 +297,84 @@ export function AccountPositioning({
     }
   }
 
-  // 处理AI生成（模拟功能）
+  // 处理AI生成（真实AI调用功能）
   const handleAIGenerate = async () => {
+    // 验证关键词输入
     if (!aiKeywords.trim()) {
       alert("请输入关键词")
       return
     }
 
-    setIsGenerating(true)
-
-    // 模拟AI生成过程
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    // 模拟生成结果
-    const generatedPosition = {
-      name: `${aiKeywords}专家`,
-      slogan: `${aiKeywords}专家：专业分享${aiKeywords}相关知识和经验，助你快速成长`,
-      coreValue: `通过专业的${aiKeywords}知识分享和实战经验传授，帮助用户在${aiKeywords}领域快速提升和成长。`,
-      targetUser: `对${aiKeywords}感兴趣的初学者和进阶者`,
-      keyPersona: `${aiKeywords}领域的专业导师——既有深厚专业功底又有良好的教学能力`,
-      coreStyle: "专业权威、通俗易懂、实用性强，注重理论与实践相结合"
+    // 检查用户登录状态
+    if (!user) {
+      alert("请先登录")
+      return
     }
 
-    // 填充到表单
-    setNewPosition(generatedPosition)
-    setIsGenerating(false)
-    setShowAIModal(false)
-    
-    // 清空关键词
-    setAiKeywords("")
+    // 检查积分是否足够
+    const requiredCredits = 1 // 生成账号定位需要1积分
+    if (!balance || balance.current < requiredCredits) {
+      alert(`积分不足！当前积分：${balance?.current || 0}，需要积分：${requiredCredits}`)
+      return
+    }
+
+    setIsGenerating(true)
+
+    try {
+      console.log('🚀 开始调用AI生成账号定位')
+      
+      // 调用后端API生成账号定位
+      const response = await fetch('/api/account-positioning/ai-generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          keywords: aiKeywords.trim()
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP错误: ${response.status}`)
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'AI生成失败')
+      }
+
+      // 解析AI生成的结果
+      const aiResult = result.data
+      
+      // 填充到表单
+      setNewPosition({
+        name: aiResult.name || `${aiKeywords}专家`,
+        slogan: aiResult.slogan || `${aiKeywords}专家：专业分享${aiKeywords}相关知识和经验，助你快速成长`,
+        coreValue: aiResult.coreValue || `通过专业的${aiKeywords}知识分享和实战经验传授，帮助用户在${aiKeywords}领域快速提升和成长。`,
+        targetUser: aiResult.targetUser || `对${aiKeywords}感兴趣的初学者和进阶者`,
+        keyPersona: aiResult.keyPersona || `${aiKeywords}领域的专业导师——既有深厚专业功底又有良好的教学能力`,
+        coreStyle: aiResult.coreStyle || "专业权威、通俗易懂、实用性强，注重理论与实践相结合"
+      })
+
+      // 关闭AI生成模态框
+      setShowAIModal(false)
+      
+      // 清空关键词
+      setAiKeywords("")
+
+      // 刷新积分余额
+      await refreshBalance()
+      
+      console.log('✅ AI生成账号定位成功')
+
+    } catch (error) {
+      console.error('❌ AI生成账号定位失败:', error)
+      alert(`AI生成失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -655,12 +707,28 @@ export function AccountPositioning({
               <Label className="text-sm font-medium text-gray-900 dark:text-white">
                 关键词
               </Label>
-              <Input
-                placeholder="如：美食、健身、科技..."
+              <Textarea
+                placeholder="请详细描述您的领域和特色，如：美食博主，专注家常菜制作，喜欢分享简单易学的菜谱，目标用户是年轻上班族..."
                 value={aiKeywords}
                 onChange={(e) => setAiKeywords(e.target.value)}
-                className="h-10 text-sm"
+                className="min-h-[100px] text-sm resize-none"
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                💡 提示：输入的信息越详细，AI生成的定位越精准
+              </p>
+            </div>
+
+            {/* 积分提示 */}
+            <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <Gem className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm text-purple-800 dark:text-purple-200">
+                本次AI生成将消耗 <strong>1</strong> 积分
+                {balance && (
+                  <span className="ml-2 text-purple-600 dark:text-purple-400">
+                    (当前积分：{balance.current})
+                  </span>
+                )}
+              </span>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -674,8 +742,8 @@ export function AccountPositioning({
               </Button>
               <Button
                 onClick={handleAIGenerate}
-                disabled={!aiKeywords.trim() || isGenerating}
-                className="px-6 py-2 h-auto bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium"
+                disabled={!aiKeywords.trim() || isGenerating || !balance || balance.current < 1}
+                className="px-6 py-2 h-auto bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium disabled:opacity-50"
               >
                 {isGenerating ? (
                   <>
@@ -685,7 +753,7 @@ export function AccountPositioning({
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
-                    生成定位
+                    生成定位 (1积分)
                   </>
                 )}
               </Button>
