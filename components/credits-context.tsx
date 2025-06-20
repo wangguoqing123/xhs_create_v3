@@ -2,8 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { CreditBalance } from '@/lib/types'
-import { useAuth } from '@/components/auth-context'
-import { supabase } from '@/lib/supabase'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
 
 interface CreditsContextType {
   balance: CreditBalance | null
@@ -22,7 +21,7 @@ interface CreditsProviderProps {
 }
 
 export function CreditsProvider({ children }: CreditsProviderProps) {
-  const { user } = useAuth()
+  const { user } = useMySQLAuth()
   const [balance, setBalance] = useState<CreditBalance | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -109,15 +108,9 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
     setError(null)
 
     try {
-      // 获取当前会话的access token
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        throw new Error('用户未登录')
-      }
-
       const response = await fetch('/api/credits/balance', {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
       })

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Header } from "@/components/header"
 import { Check, Sparkles, Crown, Gem, Star, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { AuthModal } from "@/components/auth-modal"
 import { useCreditsContext } from "@/components/credits-context"
 

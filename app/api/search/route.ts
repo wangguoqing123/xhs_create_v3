@@ -1,6 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth'
+import { getProfile } from '@/lib/mysql'
 import { searchXiaohongshuNotes, convertXiaohongshuNotesToNotes } from '@/lib/coze-api'
 import { SearchConfig } from '@/lib/types'
+
+// 用户认证和Cookie获取的通用函数
+async function authenticateAndGetCookie(request: NextRequest, providedCookie?: string): Promise<{ userId: string, userCookie: string }> {
+  // 从Cookie中获取JWT令牌进行用户认证
+  const token = request.cookies.get('auth_token')?.value
+  
+  if (!token) {
+    throw new Error('未提供认证信息')
+  }
+
+  // 验证JWT令牌
+  const payload = verifyToken(token)
+  if (!payload) {
+    throw new Error('用户认证失败')
+  }
+
+  const userId = payload.userId
+
+  // 如果没有提供cookieStr，尝试从用户profile获取
+  let userCookie: string = providedCookie || ''
+  if (!userCookie) {
+    const { data: profile, error: profileError } = await getProfile(userId)
+    if (profileError || !profile?.user_cookie) {
+      throw new Error('用户Cookie未设置，请先在设置中配置Cookie')
+    }
+    userCookie = profile.user_cookie
+  }
+
+  return { userId, userCookie }
+}
 
 // POST方法处理搜索请求
 export async function POST(request: NextRequest) {
@@ -17,12 +49,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!cookieStr || typeof cookieStr !== 'string') {
-      return NextResponse.json(
-        { error: '用户Cookie不能为空' },
-        { status: 400 }
-      )
-    }
+    // 用户认证和Cookie获取
+    const { userId, userCookie } = await authenticateAndGetCookie(request, cookieStr)
 
     // 设置默认搜索配置
     const searchConfig: SearchConfig = {
@@ -31,10 +59,19 @@ export async function POST(request: NextRequest) {
       totalNumber: config?.totalNumber ?? 20 // 默认20条
     }
 
+    // 记录搜索日志
+    console.log('接收到搜索请求:', {
+      userId,
+      keywords,
+      config: searchConfig,
+      hasCookie: !!userCookie,
+      cookieLength: userCookie.length
+    })
+
     // 调用Coze API搜索小红书笔记
     const xiaohongshuNotes = await searchXiaohongshuNotes(
       keywords,
-      cookieStr,
+      userCookie,
       searchConfig
     )
 
@@ -53,13 +90,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('搜索API错误:', error)
     
+    const errorMessage = error instanceof Error ? error.message : '搜索失败，请稍后重试'
+    const statusCode = errorMessage.includes('认证') || errorMessage.includes('Cookie') ? 401 : 500
+    
     // 返回错误信息
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : '搜索失败，请稍后重试',
+        error: errorMessage,
         success: false
       },
-      { status: 500 }
+      { status: statusCode }
     )
   }
 }
@@ -82,12 +122,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!cookieStr) {
-      return NextResponse.json(
-        { error: '用户Cookie不能为空' },
-        { status: 400 }
-      )
-    }
+    // 用户认证和Cookie获取
+    const { userId, userCookie } = await authenticateAndGetCookie(request, cookieStr || undefined)
 
     // 搜索配置
     const searchConfig: SearchConfig = {
@@ -96,10 +132,19 @@ export async function GET(request: NextRequest) {
       totalNumber
     }
 
+    // 记录搜索日志
+    console.log('接收到GET搜索请求:', {
+      userId,
+      keywords,
+      config: searchConfig,
+      hasCookie: !!userCookie,
+      cookieLength: userCookie.length
+    })
+
     // 调用Coze API搜索小红书笔记
     const xiaohongshuNotes = await searchXiaohongshuNotes(
       keywords,
-      cookieStr,
+      userCookie,
       searchConfig
     )
 
@@ -118,13 +163,28 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('搜索API错误:', error)
     
+    const errorMessage = error instanceof Error ? error.message : '搜索失败，请稍后重试'
+    const statusCode = errorMessage.includes('认证') || errorMessage.includes('Cookie') ? 401 : 500
+    
     // 返回错误信息
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : '搜索失败，请稍后重试',
+        error: errorMessage,
         success: false
       },
-      { status: 500 }
+      { status: statusCode }
     )
   }
+}
+
+// 处理OPTIONS请求（CORS预检请求）
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 } 

@@ -11,9 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles, Mail, KeyRound, Timer, User } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { sendVerificationCode, verifyOtpCode, onAuthStateChange } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -26,7 +25,7 @@ export default function RegisterPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, sendVerificationCode, verifyCode } = useMySQLAuth()
 
   useEffect(() => {
     console.log('🔐 [注册页面] 认证状态变化:', { user: !!user, isVerifying })
@@ -57,9 +56,9 @@ export default function RegisterPage() {
     setError("")
 
     try {
-      const { error } = await sendVerificationCode(email)
-      if (error) {
-        setError(error.message || "发送验证码失败")
+      const result = await sendVerificationCode(email)
+      if (result.error) {
+        setError(result.error || "发送验证码失败")
       } else {
         setIsCodeSent(true)
         setError("")
@@ -95,11 +94,11 @@ export default function RegisterPage() {
     setError("")
 
     try {
-      const { data, error } = await verifyOtpCode(email, verificationCode)
-      if (error) {
-        setError(error.message || "验证码错误")
+      const result = await verifyCode(email, verificationCode)
+      if (result.error) {
+        setError(result.error || "验证码错误")
         setIsVerifying(false)
-      } else if (data?.user) {
+      } else if (result.success) {
         // 验证成功，等待认证状态更新
         // 不立即跳转，而是等待useEffect中的认证状态监听
         setError("")

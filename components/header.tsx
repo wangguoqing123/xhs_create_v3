@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { AuthModal } from "@/components/auth-modal"
 import { UserDropdown } from "@/components/user-dropdown"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { CreditsDisplay } from "@/components/credits-display"
 
 // 骨架屏组件 - 使用memo优化
@@ -95,7 +95,7 @@ export const Header = memo(function Header() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading } = useMySQLAuth()
   const pathname = usePathname()
 
   // 使用useMemo减少不必要的计算

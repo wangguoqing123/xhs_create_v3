@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
-import { BatchConfig } from '@/lib/types'
+import { verifyToken } from '@/lib/auth'
+import { 
+  getBatchTaskWithNotes, 
+  updateBatchTaskStatus, 
+  getTaskNotes, 
+  updateTaskNoteStatus,
+  createGeneratedContent,
+  updateGeneratedContent,
+  refundCredits,
+  getProfile
+} from '@/lib/mysql'
+import type { BatchConfig, TaskNote } from '@/lib/types'
 import { generateRewriteContent, parseThreeVersions } from '@/lib/ark-api'
-import { fetchXiaohongshuNoteDetail } from '@/lib/coze-api'
-
-// 使用单例 Supabase 客户端
-const supabase = supabaseServer
 
 /**
  * 处理单个笔记的改写任务
@@ -21,10 +27,7 @@ async function processNoteRewrite(
   const startTime = Date.now()
   try {
     // 更新任务笔记状态为处理中
-    await supabase
-      .from('task_notes')
-      .update({ status: 'processing' })
-      .eq('id', taskNoteId)
+    await updateTaskNoteStatus(taskNoteId, 'processing')
 
     console.log(`🚀 [后端] 开始处理笔记改写: ${taskNoteId}，生成3个版本 (标题: ${noteData.title?.substring(0, 20) || '无标题'}...)`)
 
@@ -38,18 +41,13 @@ async function processNoteRewrite(
     // 先创建3个生成内容记录
     const contentRecords: any[] = []
     for (let i = 0; i < 3; i++) {
-      const { data: generatedContent, error: createError } = await supabase
-        .from('generated_contents')
-        .insert({
-          task_note_id: taskNoteId,
-          content_type: config.type === 'video' ? 'video_script' : 'article',
-          generation_config: config,
-          status: 'generating'
-        })
-        .select()
-        .single()
+      const { data: generatedContent, error: createError } = await createGeneratedContent(
+        taskNoteId,
+        config.type === 'video' ? 'video_script' : 'article',
+        config
+      )
 
-      if (createError) {
+      if (createError || !generatedContent) {
         console.error(`❌ [后端] 笔记 ${taskNoteId} 创建生成内容记录失败:`, createError)
         continue
       }
@@ -97,17 +95,25 @@ async function processNoteRewrite(
             const version = versions[i]
             const record = contentRecords[i]
             
-            await supabase
-              .from('generated_contents')
-              .update({
-                title: version.title,
-                content: version.content,
-                status: 'completed',
-                completed_at: new Date().toISOString()
-              })
-              .eq('id', record.id)
+            console.log(`🔄 [后端] 笔记 ${taskNoteId} 开始保存版本 ${i + 1}:`, {
+              recordId: record.id,
+              versionTitle: version.title,
+              versionContentLength: version.content?.length,
+              versionPreview: version.content?.substring(0, 100)
+            })
             
-            console.log(`✅ [后端] 笔记 ${taskNoteId} 的版本 ${i + 1} 保存完成 (标题: ${version.title.substring(0, 20)}...)`)
+            const updateResult = await updateGeneratedContent(record.id, {
+              title: version.title,
+              content: version.content,
+              status: 'completed',
+              completed_at: new Date().toISOString()
+            })
+            
+            if (updateResult.success) {
+              console.log(`✅ [后端] 笔记 ${taskNoteId} 的版本 ${i + 1} 保存完成 (标题: ${version.title?.substring(0, 20) || '无标题'}...)`)
+            } else {
+              console.error(`❌ [后端] 笔记 ${taskNoteId} 的版本 ${i + 1} 保存失败:`, updateResult.error)
+            }
           }
           
           console.log(`🎉 [后端] 笔记 ${taskNoteId} 所有版本生成完成`)
@@ -116,13 +122,10 @@ async function processNoteRewrite(
           
           // 标记所有记录为失败
           for (const record of contentRecords) {
-            await supabase
-              .from('generated_contents')
-              .update({
-                status: 'failed',
-                error_message: error instanceof Error ? error.message : '处理内容失败'
-              })
-              .eq('id', record.id)
+            await updateGeneratedContent(record.id, {
+              status: 'failed',
+              error_message: error instanceof Error ? error.message : '处理内容失败'
+            })
           }
         }
       },
@@ -132,22 +135,16 @@ async function processNoteRewrite(
         
         // 标记所有记录为失败
         for (const record of contentRecords) {
-          await supabase
-            .from('generated_contents')
-            .update({
-              status: 'failed',
-              error_message: errorMessage
-            })
-            .eq('id', record.id)
+          await updateGeneratedContent(record.id, {
+            status: 'failed',
+            error_message: errorMessage
+          })
         }
       }
     )
 
     // 更新任务笔记状态为完成
-    await supabase
-      .from('task_notes')
-      .update({ status: 'completed' })
-      .eq('id', taskNoteId)
+    await updateTaskNoteStatus(taskNoteId, 'completed')
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2)
     console.log(`✅ [后端] 笔记改写完成: ${taskNoteId}，耗时 ${duration}s`)
@@ -157,13 +154,11 @@ async function processNoteRewrite(
     console.error(`❌ [后端] 处理笔记改写失败 (${taskNoteId})，耗时 ${duration}s:`, error)
     
     // 标记任务笔记为失败
-    await supabase
-      .from('task_notes')
-      .update({
-        status: 'failed',
-        error_message: error instanceof Error ? error.message : '处理失败'
-      })
-      .eq('id', taskNoteId)
+    await updateTaskNoteStatus(
+      taskNoteId, 
+      'failed', 
+      error instanceof Error ? error.message : '处理失败'
+    )
   }
 }
 
@@ -181,36 +176,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 获取用户认证信息
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
+    // 从Cookie中获取JWT令牌
+    const token = request.cookies.get('auth_token')?.value
+    
+    if (!token) {
       return NextResponse.json(
         { error: '未提供认证信息' },
         { status: 401 }
       )
     }
 
-    // 解析Bearer token
-    const token = authHeader.replace('Bearer ', '')
-    
-    // 获取用户信息
-    const { data: userData, error: userError } = await supabase.auth.getUser(token)
-    if (userError || !userData?.user) {
+    // 验证JWT令牌
+    const payload = verifyToken(token)
+    if (!payload) {
       return NextResponse.json(
         { error: '用户认证失败' },
         { status: 401 }
       )
     }
 
-    const userId = userData.user.id
+    const userId = payload.userId
 
     // 获取任务信息
-    const { data: task, error: taskError } = await supabase
-      .from('batch_tasks')
-      .select('*')
-      .eq('id', taskId)
-      .eq('user_id', userId)
-      .single()
+    const { data: task, error: taskError } = await getBatchTaskWithNotes(taskId, userId)
 
     if (taskError || !task) {
       return NextResponse.json(
@@ -237,17 +225,10 @@ export async function POST(request: NextRequest) {
     console.log(`🚀 [后端] 开始处理批量改写任务: ${taskId}`)
 
     // 更新任务状态为处理中
-    await supabase
-      .from('batch_tasks')
-      .update({ status: 'processing' })
-      .eq('id', taskId)
+    await updateBatchTaskStatus(taskId, 'processing')
 
-    // 获取任务关联的笔记
-    const { data: taskNotes, error: taskNotesError } = await supabase
-      .from('task_notes')
-      .select('*')
-      .eq('task_id', taskId)
-      .eq('status', 'pending')
+    // 获取任务关联的待处理笔记
+    const { data: taskNotes, error: taskNotesError } = await getTaskNotes(taskId, 'pending')
 
     if (taskNotesError) {
       console.error('获取任务笔记失败:', taskNotesError)
@@ -264,14 +245,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 获取用户Cookie（用于获取笔记详情）
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_cookie')
-      .eq('id', userId)
-      .single()
-
-    if (!profile?.user_cookie) {
+    // 检查用户Cookie（用于获取笔记详情）
+    const { data: profile, error: profileError } = await getProfile(userId)
+    if (profileError || !profile?.user_cookie) {
       return NextResponse.json(
         { error: '用户Cookie未设置' },
         { status: 400 }
@@ -287,7 +263,7 @@ export async function POST(request: NextRequest) {
         console.log(`🚀 [后端] 开始并行处理 ${taskNotes.length} 个笔记`)
         
         // 并行处理所有笔记，提高效率
-        const processPromises = taskNotes.map(async (taskNote, index) => {
+        const processPromises = taskNotes.map(async (taskNote: TaskNote, index: number) => {
           try {
             // 这里可以从note_data中获取笔记信息，或者通过API重新获取
             // 为了简化，我们使用存储的note_data
@@ -296,13 +272,7 @@ export async function POST(request: NextRequest) {
             // 如果note_data为空，标记为失败
             if (!noteData || Object.keys(noteData).length === 0) {
               console.log(`❌ [后端] 笔记数据为空，跳过处理: ${taskNote.note_id}`)
-              await supabase
-                .from('task_notes')
-                .update({
-                  status: 'failed',
-                  error_message: '笔记数据为空'
-                })
-                .eq('id', taskNote.id)
+              await updateTaskNoteStatus(taskNote.id, 'failed', '笔记数据为空')
               return
             }
 
@@ -320,13 +290,11 @@ export async function POST(request: NextRequest) {
           } catch (error) {
             console.error(`❌ [后端] 处理笔记失败 (${taskNote.note_id}):`, error)
             // 单个笔记处理失败不影响其他笔记
-            await supabase
-              .from('task_notes')
-              .update({
-                status: 'failed',
-                error_message: error instanceof Error ? error.message : '处理失败'
-              })
-              .eq('id', taskNote.id)
+            await updateTaskNoteStatus(
+              taskNote.id, 
+              'failed', 
+              error instanceof Error ? error.message : '处理失败'
+            )
           }
         })
 
@@ -336,19 +304,16 @@ export async function POST(request: NextRequest) {
         console.log(`🎉 [后端] 所有笔记处理完成，共 ${taskNotes.length} 个`)
 
         // 检查所有任务笔记的状态
-        const { data: finalTaskNotes } = await supabase
-          .from('task_notes')
-          .select('status')
-          .eq('task_id', taskId)
+        const { data: finalTaskNotes } = await getTaskNotes(taskId)
 
-        const allCompleted = finalTaskNotes?.every(tn => 
+        const allCompleted = finalTaskNotes?.every((tn: TaskNote) => 
           tn.status === 'completed' || tn.status === 'failed'
         )
 
         if (allCompleted) {
           // 统计最终结果
-          const completedCount = finalTaskNotes?.filter(tn => tn.status === 'completed').length || 0
-          const failedCount = finalTaskNotes?.filter(tn => tn.status === 'failed').length || 0
+          const completedCount = finalTaskNotes?.filter((tn: TaskNote) => tn.status === 'completed').length || 0
+          const failedCount = finalTaskNotes?.filter((tn: TaskNote) => tn.status === 'failed').length || 0
           const totalCount = finalTaskNotes?.length || 0
           
           console.log(`📊 [后端] 任务 ${taskId} 处理统计: 总计 ${totalCount} 个笔记，成功 ${completedCount} 个，失败 ${failedCount} 个`)
@@ -356,26 +321,21 @@ export async function POST(request: NextRequest) {
           if (failedCount > 0) {
             // 返还失败笔记的积分
             try {
-              await supabase.rpc('refund_credits', {
-                p_user_id: userId,
-                p_amount: failedCount,
-                p_reason: `任务处理失败返还：${task.task_name}`,
-                p_task_id: taskId
-              })
-              console.log(`💰 [后端] 积分返还成功，返还数量: ${failedCount}`)
+              const refundAmount = failedCount * 10 // 每个笔记10积分
+              await refundCredits(
+                userId,
+                refundAmount,
+                `任务处理失败返还：${task.task_name}`,
+                taskId
+              )
+              console.log(`💰 [后端] 积分返还成功，返还数量: ${refundAmount}`)
             } catch (error) {
               console.error('❌ [后端] 积分返还失败:', error)
             }
           }
 
           // 更新任务状态为完成
-          await supabase
-            .from('batch_tasks')
-            .update({
-              status: 'completed',
-              completed_at: new Date().toISOString()
-            })
-            .eq('id', taskId)
+          await updateBatchTaskStatus(taskId, 'completed')
 
           console.log(`🎉 [后端] 批量改写任务处理完成: ${taskId}`)
         }
@@ -384,13 +344,11 @@ export async function POST(request: NextRequest) {
         console.error(`❌ [后端] 批量处理任务失败 ${taskId}:`, error)
         
         // 标记任务为失败
-        await supabase
-          .from('batch_tasks')
-          .update({
-            status: 'failed',
-            error_message: error instanceof Error ? error.message : '批量处理失败'
-          })
-          .eq('id', taskId)
+        await updateBatchTaskStatus(
+          taskId, 
+          'failed', 
+          error instanceof Error ? error.message : '批量处理失败'
+        )
       }
     })
 
@@ -411,14 +369,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 处理OPTIONS请求（CORS预检）
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
   })
 } 

@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Mail, Sparkles, ArrowLeft, Timer } from 'lucide-react'
-import { sendVerificationCode, verifyOtpCode } from '@/lib/supabase'
-import { useAuth } from '@/components/auth-context'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
 
 interface AuthModalProps {
   open: boolean
@@ -21,7 +20,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [countdown, setCountdown] = useState(0)
-  const { user } = useAuth()
+  const { user, sendVerificationCode, verifyCode } = useMySQLAuth()
 
   // 如果用户已登录，关闭弹框
   if (user && open) {
@@ -37,9 +36,9 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setError('')
 
     try {
-      const { error } = await sendVerificationCode(email)
-      if (error) {
-        setError(error.message)
+      const result = await sendVerificationCode(email)
+      if (result.error) {
+        setError(result.error)
       } else {
         setStep('verification')
         startCountdown()
@@ -60,10 +59,10 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setError('')
 
     try {
-      const { data, error } = await verifyOtpCode(email, verificationCode)
-      if (error) {
-        setError(error.message)
-      } else if (data?.user) {
+      const result = await verifyCode(email, verificationCode)
+      if (result.error) {
+        setError(result.error)
+      } else if (result.success) {
         // 登录/注册成功
         onClose()
         resetForm()
@@ -83,9 +82,9 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setError('')
 
     try {
-      const { error } = await sendVerificationCode(email)
-      if (error) {
-        setError(error.message)
+      const result = await sendVerificationCode(email)
+      if (result.error) {
+        setError(result.error)
       } else {
         startCountdown()
       }

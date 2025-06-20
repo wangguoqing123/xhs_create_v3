@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Link, FileText, Sparkles, Copy, Check, X, Plus, Wand2, User, Target, Info } from "lucide-react"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { AccountPositioning } from "@/components/account-positioning"
 
 interface GeneratedContent {
@@ -21,7 +21,7 @@ interface GeneratedContent {
 
 export function RewriteInterface() {
   // 获取认证上下文，用于检查登录状态和用户信息
-  const { user, profile } = useAuth()
+  const { user, profile } = useMySQLAuth()
   
   const [linkInput, setLinkInput] = useState("")
   const [originalText, setOriginalText] = useState("")

@@ -2,11 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useAuth } from '@/components/auth-context'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
 import { User, Calendar, Settings, List } from 'lucide-react'
 
 export function ProfileStatus() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading } = useMySQLAuth()
 
   if (loading) {
     return (

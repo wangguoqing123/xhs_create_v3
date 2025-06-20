@@ -3,14 +3,25 @@
 import { useState, useEffect, memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { User, Edit, List, Settings, LogOut, ChevronDown, Cookie } from 'lucide-react'
-import { useAuth } from '@/components/auth-context'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
+import { 
+  User, 
+  Settings, 
+  LogOut, 
+  ChevronDown,
+  Coins,
+  Clock,
+  Mail,
+  Calendar,
+  List,
+  Cookie
+} from 'lucide-react'
 import { CookieSettingsModal } from '@/components/cookie-settings-modal'
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal'
 import { useRouter } from 'next/navigation'
 
 export const UserDropdown = memo(function UserDropdown() {
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut } = useMySQLAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [showCookieModal, setShowCookieModal] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)

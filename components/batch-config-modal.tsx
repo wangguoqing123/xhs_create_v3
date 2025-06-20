@@ -117,6 +117,7 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
               </div>
               <div>
                 <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">批量生成配置</DialogTitle>
+                {/* 使用div替代DialogDescription，避免p标签嵌套div的HTML错误 */}
                 <div className="text-gray-600 dark:text-gray-400 mt-0.5 text-sm">
                   {selectedNotes.length > 0 ? (
                     <>
@@ -214,7 +215,7 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
             {balance && selectedNotes.length > 0 && (
               <CreditsWarning 
                 currentCredits={balance.current} 
-                requiredCredits={selectedNotes.length} 
+                requiredCredits={selectedNotes.length * 1} 
               />
             )}
           </div>
@@ -242,7 +243,7 @@ export function BatchConfigModal({ open, onClose, selectedNotes, searchKeywords,
               selectedNotes.length === 0 || 
               isCreating || 
               isProcessing ||
-              (balance ? balance.current < selectedNotes.length : false)
+              (balance ? balance.current < selectedNotes.length * 1 : false)
             }
             className="px-8 py-2 h-auto bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >

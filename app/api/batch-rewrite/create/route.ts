@@ -1,114 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
-import { BatchConfig } from '@/lib/types'
-import { searchXiaohongshuNotes } from '@/lib/coze-api'
-
-// 使用单例 Supabase 客户端
-const supabase = supabaseServer
+import { verifyToken } from '@/lib/auth'
+import { createBatchTask, createTaskNotes, consumeCredits, getProfile } from '@/lib/mysql'
+import type { BatchConfig } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   try {
-    // 解析请求体
-    const body = await request.json()
-    const { selectedNotes, config, taskName, notesData } = body
-
-    // 验证请求参数
-    if (!selectedNotes || !Array.isArray(selectedNotes) || selectedNotes.length === 0) {
-      return NextResponse.json(
-        { error: '请选择要改写的笔记' },
-        { status: 400 }
-      )
-    }
-
-    if (!config || !taskName) {
-      return NextResponse.json(
-        { error: '任务名称和配置信息不能为空' },
-        { status: 400 }
-      )
-    }
-
-    if (!notesData || !Array.isArray(notesData)) {
-      return NextResponse.json(
-        { error: '笔记数据不能为空' },
-        { status: 400 }
-      )
-    }
-
-    // 获取用户认证信息
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
+    // 从Cookie中获取JWT令牌
+    const token = request.cookies.get('auth_token')?.value
+    
+    if (!token) {
       return NextResponse.json(
         { error: '未提供认证信息' },
         { status: 401 }
       )
     }
 
-    // 解析Bearer token
-    const token = authHeader.replace('Bearer ', '')
-    
-    // 获取用户信息
-    const { data: userData, error: userError } = await supabase.auth.getUser(token)
-    if (userError || !userData?.user) {
+    // 验证JWT令牌
+    const payload = verifyToken(token)
+    if (!payload) {
       return NextResponse.json(
         { error: '用户认证失败' },
         { status: 401 }
       )
     }
 
-    const userId = userData.user.id
+    const userId = payload.userId
 
-    // 获取用户的cookie信息和积分（用于获取笔记详情和检查积分）
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_cookie, credits')
-      .eq('id', userId)
-      .single()
+    // 解析请求体
+    const body = await request.json()
+    const { taskName, searchKeywords, config, notes } = body
 
-    if (!profile?.user_cookie) {
+    // 验证必需参数
+    if (!taskName || !config || !Array.isArray(notes) || notes.length === 0) {
       return NextResponse.json(
-        { error: '用户Cookie未设置，无法获取笔记详情' },
+        { error: '缺少必需参数：taskName, config, notes' },
         { status: 400 }
       )
     }
 
-    // 检查积分是否足够
-    const requiredCredits = selectedNotes.length
-    const currentCredits = profile.credits || 0
+    // 验证配置参数
+    const batchConfig: BatchConfig = {
+      type: config.type || 'auto',
+      theme: config.theme || '',
+      persona: config.persona || 'default',
+      purpose: config.purpose || 'default'
+    }
 
-    if (currentCredits < requiredCredits) {
+    // 检查用户积分是否足够
+    const { data: profile, error: profileError } = await getProfile(userId)
+    if (profileError || !profile) {
       return NextResponse.json(
-        { 
-          error: '积分不足',
-          details: {
-            required: requiredCredits,
-            current: currentCredits,
-            shortage: requiredCredits - currentCredits
-          }
-        },
+        { error: '获取用户信息失败' },
+        { status: 500 }
+      )
+    }
+
+    const requiredCredits = notes.length * 1 // 每个笔记消耗1积分
+    if (profile.credits < requiredCredits) {
+      return NextResponse.json(
+        { error: '积分不足', required: requiredCredits, current: profile.credits },
         { status: 400 }
       )
     }
 
-    console.log('开始创建批量改写任务:', {
+    // 创建批量任务
+    const { data: task, error: taskError } = await createBatchTask(
       userId,
       taskName,
-      selectedNotesCount: selectedNotes.length,
-      config
-    })
+      {
+        ...batchConfig,
+        search_keywords: searchKeywords
+      }
+    )
 
-    // 创建批量任务记录
-    const { data: task, error: taskError } = await supabase
-      .from('batch_tasks')
-      .insert({
-        user_id: userId,
-        task_name: taskName,
-        config: config as BatchConfig,
-        status: 'pending'
-      })
-      .select()
-      .single()
-
-    if (taskError) {
+    if (taskError || !task) {
       console.error('创建批量任务失败:', taskError)
       return NextResponse.json(
         { error: '创建任务失败' },
@@ -116,77 +81,53 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('批量任务创建成功:', task.id)
+    // 创建任务笔记关联
+    const taskNotes = notes.map((note: any) => ({
+      task_id: task.id,
+      note_id: note.note_id || note.id,
+      note_data: note,
+      status: 'pending'
+    }))
 
-    // 扣除积分
-    const { data: creditResult, error: creditError } = await supabase
-      .rpc('consume_credits', {
-        p_user_id: userId,
-        p_amount: requiredCredits,
-        p_reason: `批量生成任务：${taskName}`,
-        p_task_id: task.id
-      })
-
-    if (creditError || !creditResult) {
-      console.error('扣除积分失败:', creditError)
-      // 删除已创建的任务
-      await supabase.from('batch_tasks').delete().eq('id', task.id)
+    const { data: createdNotes, error: notesError } = await createTaskNotes(taskNotes)
+    if (notesError) {
+      console.error('创建任务笔记关联失败:', notesError)
       return NextResponse.json(
-        { error: '积分扣除失败，任务已取消' },
+        { error: '创建笔记关联失败' },
         { status: 500 }
       )
     }
 
-    console.log('积分扣除成功，扣除数量:', requiredCredits)
+    // 扣除积分
+    const { success: creditSuccess, error: creditError } = await consumeCredits(
+      userId,
+      requiredCredits,
+      `批量改写任务: ${taskName}`,
+      task.id
+    )
 
-    // 为每个选中的笔记创建任务笔记记录
-    const taskNotes = selectedNotes.map((noteId, index) => {
-      // 从传入的笔记数据中找到对应的笔记
-      const noteData = notesData.find((note: any) => note.id === noteId) || {}
-      
-      return {
-        task_id: task.id,
-        note_id: noteId,
-        note_data: noteData, // 使用传入的笔记数据
-        status: 'pending' as const
+    if (!creditSuccess) {
+      console.error('扣除积分失败:', creditError)
+      return NextResponse.json(
+        { error: '积分扣除失败' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      task: {
+        id: task.id,
+        taskName: task.task_name,
+        status: task.status,
+        notesCount: createdNotes.length,
+        creditsConsumed: requiredCredits,
+        createdAt: task.created_at
       }
     })
 
-    const { data: createdTaskNotes, error: taskNotesError } = await supabase
-      .from('task_notes')
-      .insert(taskNotes)
-      .select()
-
-    if (taskNotesError) {
-      console.error('创建任务笔记关联失败:', taskNotesError)
-      return NextResponse.json(
-        { error: '创建任务笔记关联失败' },
-        { status: 500 }
-      )
-    }
-
-    console.log('任务笔记关联创建成功，数量:', createdTaskNotes.length)
-
-    // 获取扣除积分后的余额
-    const { data: updatedProfile } = await supabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', userId)
-      .single()
-
-    // 返回创建成功的任务信息
-    return NextResponse.json({
-      success: true,
-      taskId: task.id,
-      taskName: task.task_name,
-      status: task.status,
-      selectedNotesCount: selectedNotes.length,
-      createdAt: task.created_at,
-      currentCredits: updatedProfile?.credits || 0
-    })
-
   } catch (error) {
-    console.error('创建批量改写任务API错误:', error)
+    console.error('创建批量改写任务失败:', error)
     return NextResponse.json(
       { error: '服务器内部错误' },
       { status: 500 }
@@ -194,14 +135,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 处理OPTIONS请求（CORS预检）
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
   })
 } 

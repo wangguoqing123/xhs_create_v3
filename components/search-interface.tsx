@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, SlidersHorizontal, Sparkles, ChevronDown, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { SearchConfig } from "@/lib/types"
 import { useCreditsContext } from "@/components/credits-context"
 
@@ -37,6 +37,10 @@ export function SearchInterface({
   
   // 获取积分Context
   const { refreshBalance } = useCreditsContext()
+  
+  // 使用ref保存refreshBalance函数，避免依赖问题
+  const refreshBalanceRef = useRef(refreshBalance)
+  refreshBalanceRef.current = refreshBalance
 
   // 同步外部配置变化
   useEffect(() => {
@@ -56,13 +60,13 @@ export function SearchInterface({
   useEffect(() => {
     const handleFocus = () => {
       console.log('🔄 [搜索页面] 页面获得焦点，刷新积分')
-      refreshBalance()
+      refreshBalanceRef.current()
     }
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('🔄 [搜索页面] 页面变为可见，刷新积分')
-        refreshBalance()
+        refreshBalanceRef.current()
       }
     }
 
@@ -74,7 +78,7 @@ export function SearchInterface({
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [refreshBalance])
+  }, []) // 移除refreshBalance依赖，避免无限重新渲染
 
   const handleSearch = async () => {
     if (onSearch) {

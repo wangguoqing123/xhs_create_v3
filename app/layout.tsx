@@ -4,7 +4,9 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-context"
+import { MySQLAuthProvider } from "@/components/mysql-auth-context"
 import { CreditsProvider } from "@/components/credits-context"
+import { DatabaseInitializer } from "@/components/database-initializer"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -29,11 +31,14 @@ export default function RootLayout({
           disableTransitionOnChange={false}
           storageKey="theme-preference"
         >
+          <DatabaseInitializer />
+          <MySQLAuthProvider>
           <AuthProvider>
             <CreditsProvider>
               {children}
             </CreditsProvider>
           </AuthProvider>
+          </MySQLAuthProvider>
         </ThemeProvider>
       </body>
     </html>

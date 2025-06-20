@@ -6,7 +6,7 @@ import { Header } from "@/components/header"
 import { TaskSidebar } from "@/components/task-sidebar"
 import { ResultViewer } from "@/components/result-viewer"
 import { useBatchRewrite } from "@/lib/hooks/use-batch-rewrite"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 
 // 任务显示接口（兼容现有UI组件）
 interface Task {
@@ -32,10 +32,10 @@ function ResultsPageContent() {
   const [retryCount, setRetryCount] = useState(0)
 
   // 批量改写Hook
-  const { getTaskList, getTaskStatus } = useBatchRewrite()
+  const { getBatchTaskList, getBatchTaskStatus } = useBatchRewrite()
   
   // 获取认证状态
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading } = useMySQLAuth()
 
   // 获取URL参数中的taskId（如果有的话，默认选中这个任务）
   const urlTaskId = searchParams?.get("taskId")
@@ -49,7 +49,7 @@ function ResultsPageContent() {
       }
       
       console.log('📋 [任务列表] 开始获取任务列表...')
-      const result = await getTaskList()
+      const result = await getBatchTaskList()
       
       if (!result) {
         throw new Error("获取任务列表失败")
@@ -92,34 +92,46 @@ function ResultsPageContent() {
       setError(errorMessage)
       setIsLoading(false)
     }
-  }, [getTaskList, urlTaskId, retryCount])
+  }, [getBatchTaskList, urlTaskId, retryCount])
 
   // 监听认证状态变化，用户登录后重新获取数据
   useEffect(() => {
     // 只有在认证完成且有用户时才获取数据
-    if (!authLoading && user) {
+    if (!loading && user) {
       console.log('👤 [认证状态] 用户已登录，获取任务列表')
       fetchTaskList()
-    } else if (!authLoading && !user) {
+    } else if (!loading && !user) {
       console.log('👤 [认证状态] 用户未登录')
       setError('请先登录')
       setIsLoading(false)
     }
-  }, [user, authLoading, fetchTaskList])
+  }, [user, loading, fetchTaskList])
 
   // 当选中任务变化时，获取该任务的详细信息
   useEffect(() => {
     if (!selectedTaskId) return
 
+    // 立即获取任务详情（包含笔记数据）
+    const fetchTaskDetails = async () => {
+      try {
+        const taskDetails = await getBatchTaskStatus(selectedTaskId)
+        if (taskDetails) {
+          setSelectedTask(taskDetails)
+        }
+      } catch (error) {
+        console.error('获取任务详情失败:', error)
+      }
+    }
+
+    fetchTaskDetails()
+
     const selectedTaskData = taskList.find(task => task.id === selectedTaskId)
     if (selectedTaskData) {
-      setSelectedTask(selectedTaskData)
-
       // 如果任务还在处理中，设置轮询
       if (selectedTaskData.status === 'processing') {
         const intervalId = setInterval(async () => {
           try {
-            const updatedStatus = await getTaskStatus(selectedTaskId)
+            const updatedStatus = await getBatchTaskStatus(selectedTaskId)
             if (updatedStatus) {
               // 更新任务列表中的对应任务
               setTaskList(prev => prev.map(task => 
@@ -146,27 +158,46 @@ function ResultsPageContent() {
         return () => clearInterval(intervalId)
       }
     }
-  }, [selectedTaskId, taskList, getTaskStatus])
+  }, [selectedTaskId, taskList, getBatchTaskStatus])
 
   // 转换选中的任务数据格式，兼容现有UI组件
   // 将任务的笔记数据转换为Task数组，每个笔记对应一个Task
   const convertedTasks: Task[] = useMemo(() => {
     if (!selectedTask?.notes) return []
     
+    console.log('🔍 [前端] 转换任务数据:', selectedTask)
+    
     return selectedTask.notes.map((note: any, index: number) => {
+      console.log(`📝 [前端] 处理笔记 ${index + 1}:`, {
+        noteId: note.id,
+        noteStatus: note.status,
+        generatedContents: note.generatedContents,
+        generatedContentsLength: note.generatedContents?.length
+      })
+      
       // 确保每个笔记至少有一个占位的生成内容，即使还没开始生成
       let results = []
       
       if (note.generatedContents && note.generatedContents.length > 0) {
         // 如果有生成内容，使用实际数据
-        results = note.generatedContents.map((content: any) => ({
-          id: content.id,
-          title: content.title || "", // 使用空字符串而不是null
-          content: content.content || "", // 使用空字符串而不是null
-          status: content.status === 'completed' ? 'completed' : content.status === 'failed' ? 'failed' : 'generating'
-        }))
+        console.log(`✅ [前端] 笔记 ${index + 1} 有 ${note.generatedContents.length} 个生成内容`)
+        results = note.generatedContents.map((content: any, contentIndex: number) => {
+          console.log(`📄 [前端] 生成内容 ${contentIndex + 1}:`, {
+            id: content.id,
+            title: content.title,
+            contentLength: content.content?.length,
+            status: content.status
+          })
+          return {
+            id: content.id,
+            title: content.title || "", // 使用空字符串而不是null
+            content: content.content || "", // 使用空字符串而不是null
+            status: content.status === 'completed' ? 'completed' : content.status === 'failed' ? 'failed' : 'generating'
+          }
+        })
       } else {
         // 如果没有生成内容，创建占位内容（根据配置决定数量，默认3个）
+        console.log(`⚠️ [前端] 笔记 ${index + 1} 没有生成内容，创建占位内容`)
         const contentCount = selectedTask.config?.contentCount || 3
         results = Array.from({ length: contentCount }, (_, i) => ({
           id: `placeholder-${note.id}-${i}`,

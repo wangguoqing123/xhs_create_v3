@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react'
 import { BatchConfig } from '@/lib/types'
 import { useCreditsContext } from '@/components/credits-context'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/components/auth-context'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
 
 interface BatchRewriteState {
   isCreating: boolean
@@ -64,75 +63,7 @@ export function useBatchRewrite() {
   const { updateBalance, refreshBalance } = useCreditsContext()
   
   // 获取认证上下文
-  const { user } = useAuth()
-
-  // 获取用户认证token - 改进版本，更可靠
-  const getAuthToken = useCallback(async (): Promise<string | null> => {
-    try {
-      // 首先检查认证上下文中是否有用户
-      if (!user) {
-        console.warn('🔐 [认证] 用户未登录 - 认证上下文中无用户')
-        return null
-      }
-
-      // 尝试获取当前session
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error) {
-        console.error('🔐 [认证] 获取session失败:', error)
-        return null
-      }
-
-      if (session?.access_token) {
-        // 检查token是否即将过期（提前5分钟刷新）
-        const expiresAt = session.expires_at
-        const now = Math.floor(Date.now() / 1000)
-        const fiveMinutes = 5 * 60
-        
-        if (expiresAt && (expiresAt - now) < fiveMinutes) {
-          console.log('🔐 [认证] Token即将过期，尝试刷新...')
-          
-          // 尝试刷新token
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-          
-          if (refreshError) {
-            console.error('🔐 [认证] 刷新token失败:', refreshError)
-            return null
-          }
-          
-          if (refreshData.session?.access_token) {
-            console.log('🔐 [认证] Token刷新成功')
-            return refreshData.session.access_token
-          }
-        }
-        
-        return session.access_token
-      }
-
-      // 如果没有session，尝试重新获取用户信息
-      console.warn('🔐 [认证] 无有效session，尝试重新获取用户信息...')
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError || !currentUser) {
-        console.error('🔐 [认证] 重新获取用户信息失败:', userError)
-        return null
-      }
-
-      // 重新获取session
-      const { data: { session: newSession } } = await supabase.auth.getSession()
-      if (newSession?.access_token) {
-        console.log('🔐 [认证] 重新获取session成功')
-        return newSession.access_token
-      }
-
-      console.error('🔐 [认证] 无法获取有效的访问token')
-      return null
-
-    } catch (error) {
-      console.error('🔐 [认证] 获取认证token时发生异常:', error)
-      return null
-    }
-  }, [user])
+  const { user } = useMySQLAuth()
 
   // 创建批量改写任务
   const createBatchTask = useCallback(async (
@@ -144,9 +75,8 @@ export function useBatchRewrite() {
     try {
       setState(prev => ({ ...prev, isCreating: true, error: null }))
 
-      // 获取认证token
-      const token = await getAuthToken()
-      if (!token) {
+      // 检查用户认证状态
+      if (!user) {
         throw new Error('用户未登录')
       }
 
@@ -169,18 +99,33 @@ export function useBatchRewrite() {
         config
       })
 
-      // 调用创建任务API
+      // 准备笔记数据 - 将selectedNotes和notesData合并为API期望的格式
+      const notes = selectedNotes.map(noteId => {
+        // 从notesData中找到对应的笔记数据
+        const noteData = notesData?.find(note => 
+          note.id === noteId || note.note_id === noteId
+        )
+        
+        return {
+          note_id: noteId,
+          ...noteData // 包含完整的笔记数据
+        }
+      })
+
+      console.log('📝 [前端] 准备发送的笔记数据:', notes.length, '条')
+
+      // 调用创建任务API - 使用Cookie认证
       const response = await fetch('/api/batch-rewrite/create', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // 包含Cookie
         body: JSON.stringify({
-          selectedNotes,
-          config,
           taskName,
-          notesData: notesData || []
+          config,
+          notes,
+          searchKeywords
         })
       })
 
@@ -194,21 +139,17 @@ export function useBatchRewrite() {
       setState(prev => ({ 
         ...prev, 
         isCreating: false, 
-        taskId: result.taskId 
+        taskId: result.task?.id || null
       }))
 
       // 乐观更新积分（预扣积分）
-      const requiredCredits = selectedNotes.length
-      updateBalance({ 
-        current: (result.currentCredits || 0) - requiredCredits 
-      })
+      const totalCost = selectedNotes.length * 1 // 每个笔记1积分（与API一致）
+      updateBalance({ current: (result.task?.creditsConsumed ? -result.task.creditsConsumed : -totalCost) })
 
-      console.log('✅ [前端] 批量改写任务创建成功:', result.taskId)
-      console.log('💰 [前端] 已预扣积分:', requiredCredits)
-      return result.taskId
+      console.log('✅ [前端] 批量改写任务创建成功:', result.task?.id)
+      return result.task?.id || null
 
     } catch (error) {
-      console.error('❌ [前端] 创建批量改写任务失败:', error)
       setState(prev => ({ 
         ...prev, 
         isCreating: false, 
@@ -216,28 +157,27 @@ export function useBatchRewrite() {
       }))
       return null
     }
-  }, [getAuthToken])
+  }, [user, updateBalance])
 
-  // 开始处理批量改写任务
+  // 处理批量改写任务
   const processBatchTask = useCallback(async (taskId: string): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isProcessing: true, error: null }))
 
-      // 获取认证token
-      const token = await getAuthToken()
-      if (!token) {
+      // 检查用户认证状态
+      if (!user) {
         throw new Error('用户未登录')
       }
 
-      console.log('🚀 [前端] 开始处理批量改写任务:', taskId)
+      console.log('⚡ [前端] 开始处理批量改写任务:', taskId)
 
-      // 调用处理任务API
+      // 调用处理任务API - 使用Cookie认证
       const response = await fetch('/api/batch-rewrite/process', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // 包含Cookie
         body: JSON.stringify({ taskId })
       })
 
@@ -248,13 +188,17 @@ export function useBatchRewrite() {
 
       const result = await response.json()
       
-      setState(prev => ({ ...prev, isProcessing: false }))
+      setState(prev => ({ 
+        ...prev, 
+        isProcessing: false 
+      }))
 
-      console.log('✅ [前端] 批量改写任务开始处理:', result)
-      return true
+      // 刷新积分余额
+      await refreshBalance()
+
+      return result.success
 
     } catch (error) {
-      console.error('❌ [前端] 处理批量改写任务失败:', error)
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
@@ -262,91 +206,84 @@ export function useBatchRewrite() {
       }))
       return false
     }
-  }, [getAuthToken])
+  }, [user, refreshBalance])
 
-  // 获取用户所有任务列表
-  const getTaskList = useCallback(async (page: number = 1, limit: number = 20): Promise<any> => {
+  // 获取批量任务状态
+  const getBatchTaskStatus = useCallback(async (taskId: string): Promise<BatchTaskStatus | null> => {
     try {
-      // 获取认证token
-      const token = await getAuthToken()
-      if (!token) {
-        throw new Error('用户未登录')
+      // 检查用户认证状态
+      if (!user) {
+        console.warn('用户未登录，无法获取任务状态')
+        return null
       }
 
-      // 调用任务列表API
-      const response = await fetch(`/api/batch-rewrite/list?page=${page}&limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      // 调用状态查询API - 使用Cookie认证
+      const response = await fetch(`/api/batch-rewrite/status?taskId=${taskId}`, {
+        credentials: 'include' // 包含Cookie
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '获取任务列表失败')
+        console.error('获取任务状态失败:', response.status)
+        return null
       }
 
       const result = await response.json()
       return result
 
     } catch (error) {
-      console.error('获取任务列表失败:', error)
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : '获取任务列表失败' 
-      }))
+      console.error('获取任务状态异常:', error)
       return null
     }
-  }, [getAuthToken])
+  }, [user])
 
-  // 查询任务状态
-  const getTaskStatus = useCallback(async (taskId: string): Promise<BatchTaskStatus | null> => {
+  // 获取批量任务列表
+  const getBatchTaskList = useCallback(async (
+    limit: number = 20,
+    offset: number = 0,
+    status?: string
+  ): Promise<{ tasks: any[], total: number } | null> => {
     try {
-      // 获取认证token
-      const token = await getAuthToken()
-      if (!token) {
-        throw new Error('用户未登录')
+      // 检查用户认证状态
+      if (!user) {
+        console.warn('用户未登录，无法获取任务列表')
+        return null
       }
 
-      // 调用状态查询API
-      const response = await fetch(`/api/batch-rewrite/status?taskId=${taskId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      // 构建查询参数
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString()
+      })
+      
+      if (status) {
+        params.append('status', status)
+      }
+
+      // 调用列表查询API - 使用Cookie认证
+      const response = await fetch(`/api/batch-rewrite/list?${params}`, {
+        credentials: 'include' // 包含Cookie
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '查询任务状态失败')
+        console.error('获取任务列表失败:', response.status)
+        return null
       }
 
       const result = await response.json()
-      return result as BatchTaskStatus
+      return {
+        tasks: result.tasks,
+        total: result.total
+      }
 
     } catch (error) {
-      console.error('查询任务状态失败:', error)
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : '查询任务状态失败' 
-      }))
+      console.error('获取任务列表异常:', error)
       return null
     }
-  }, [getAuthToken])
+  }, [user])
 
   // 清除错误
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }))
-  }, [])
-
-  // 重置状态
-  const resetState = useCallback(() => {
-    setState({
-      isCreating: false,
-      isProcessing: false,
-      error: null,
-      taskId: null
-    })
   }, [])
 
   return {
@@ -356,12 +293,11 @@ export function useBatchRewrite() {
     error: state.error,
     taskId: state.taskId,
     
-    // 方法
+    // 操作方法
     createBatchTask,
     processBatchTask,
-    getTaskList,
-    getTaskStatus,
-    clearError,
-    resetState
+    getBatchTaskStatus,
+    getBatchTaskList,
+    clearError
   }
 } 

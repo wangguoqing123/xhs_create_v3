@@ -10,9 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Sparkles, Mail, KeyRound, Timer } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { sendVerificationCode, verifyOtpCode, onAuthStateChange } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -23,7 +22,7 @@ export default function LoginPage() {
   const [countdown, setCountdown] = useState(0)
   const [isVerifying, setIsVerifying] = useState(false)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, sendVerificationCode, verifyCode } = useMySQLAuth()
 
   // 组件挂载时的调试信息
   useEffect(() => {
@@ -55,10 +54,10 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const { error } = await sendVerificationCode(email)
-      console.log('📧 [登录页面] 验证码发送结果:', { error })
-      if (error) {
-        setError(error.message || "发送验证码失败")
+      const result = await sendVerificationCode(email)
+      console.log('📧 [登录页面] 验证码发送结果:', result)
+      if (result.error) {
+        setError(result.error || "发送验证码失败")
       } else {
         setIsCodeSent(true)
         setError("")
@@ -97,19 +96,14 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const { data, error } = await verifyOtpCode(email, verificationCode)
-      console.log('🔑 [登录页面] 验证结果:', { 
-        hasData: !!data, 
-        hasUser: !!data?.user, 
-        hasSession: !!data?.session,
-        error 
-      })
+      const result = await verifyCode(email, verificationCode)
+      console.log('🔑 [登录页面] 验证结果:', result)
       
-      if (error) {
-        console.error('❌ [登录页面] 验证失败:', error)
-        setError(error.message || "验证码错误")
+      if (result.error) {
+        console.error('❌ [登录页面] 验证失败:', result.error)
+        setError(result.error || "验证码错误")
         setIsVerifying(false)
-      } else if (data?.user) {
+      } else if (result.success) {
         console.log('✅ [登录页面] 验证成功，等待认证状态更新')
         // 验证成功，等待认证状态更新
         setError("")

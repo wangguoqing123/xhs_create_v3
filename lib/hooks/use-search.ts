@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Note, SearchConfig } from '@/lib/types'
-import { supabase } from '@/lib/supabase'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
 
 // 搜索结果类型
 interface SearchResult {
@@ -27,6 +27,7 @@ interface UseSearchReturn {
  * @returns UseSearchReturn 搜索相关的状态和方法
  */
 export function useSearch(): UseSearchReturn {
+  const { user, profile } = useMySQLAuth()
   const [searchResults, setSearchResults] = useState<Note[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,21 +35,8 @@ export function useSearch(): UseSearchReturn {
   // 获取用户Cookie
   const getUserCookie = useCallback(async (): Promise<string | null> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
       if (!user) {
         throw new Error('用户未登录，请先登录后再搜索')
-      }
-
-      // 获取用户profile中的cookie
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_cookie')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError) {
-        throw new Error('获取用户信息失败')
       }
 
       if (!profile?.user_cookie) {
@@ -61,7 +49,7 @@ export function useSearch(): UseSearchReturn {
       console.error('获取用户Cookie失败:', err)
       return null
     }
-  }, [])
+  }, [user?.id, profile?.user_cookie])
 
   // 搜索笔记
   const searchNotes = useCallback(async (

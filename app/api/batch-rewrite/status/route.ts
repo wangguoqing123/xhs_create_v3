@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
-import { TaskWithDetails } from '@/lib/types'
-
-// 使用单例 Supabase 客户端
-const supabase = supabaseServer
+import { verifyToken } from '@/lib/auth'
+import { getBatchTaskWithNotes, getTaskNotesWithContents } from '@/lib/mysql'
+import type { TaskWithDetails } from '@/lib/types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,36 +17,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 获取用户认证信息
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
+    // 从Cookie中获取JWT令牌
+    const token = request.cookies.get('auth_token')?.value
+    
+    if (!token) {
       return NextResponse.json(
         { error: '未提供认证信息' },
         { status: 401 }
       )
     }
 
-    // 解析Bearer token
-    const token = authHeader.replace('Bearer ', '')
-    
-    // 获取用户信息
-    const { data: userData, error: userError } = await supabase.auth.getUser(token)
-    if (userError || !userData?.user) {
+    // 验证JWT令牌
+    const payload = verifyToken(token)
+    if (!payload) {
       return NextResponse.json(
         { error: '用户认证失败' },
         { status: 401 }
       )
     }
 
-    const userId = userData.user.id
+    const userId = payload.userId
 
     // 获取任务信息
-    const { data: task, error: taskError } = await supabase
-      .from('batch_tasks')
-      .select('*')
-      .eq('id', taskId)
-      .eq('user_id', userId)
-      .single()
+    const { data: task, error: taskError } = await getBatchTaskWithNotes(taskId, userId)
 
     if (taskError || !task) {
       return NextResponse.json(
@@ -57,29 +48,23 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 获取任务关联的笔记
-    const { data: taskNotes, error: taskNotesError } = await supabase
-      .from('task_notes')
-      .select(`
-        *,
-        generated_contents (*)
-      `)
-      .eq('task_id', taskId)
-      .order('created_at', { ascending: true })
+    // 获取任务关联的笔记和生成内容
+    let taskNotes = []
+    const { data: taskNotesData, error: taskNotesError } = await getTaskNotesWithContents(taskId)
 
     if (taskNotesError) {
       console.error('获取任务笔记失败:', taskNotesError)
-      return NextResponse.json(
-        { error: '获取任务笔记失败' },
-        { status: 500 }
-      )
+      // 如果获取笔记失败，使用任务中的笔记数据作为后备
+      taskNotes = task.notes || []
+    } else {
+      taskNotes = taskNotesData || []
     }
 
     // 统计任务进度
     const totalNotes = taskNotes?.length || 0
-    const completedNotes = taskNotes?.filter(note => note.status === 'completed').length || 0
-    const failedNotes = taskNotes?.filter(note => note.status === 'failed').length || 0
-    const processingNotes = taskNotes?.filter(note => note.status === 'processing').length || 0
+    const completedNotes = taskNotes?.filter((note: any) => note.status === 'completed').length || 0
+    const failedNotes = taskNotes?.filter((note: any) => note.status === 'failed').length || 0
+    const processingNotes = taskNotes?.filter((note: any) => note.status === 'processing').length || 0
 
     // 构建响应数据
     const response = {
@@ -99,7 +84,7 @@ export async function GET(request: NextRequest) {
         processing: processingNotes,
         pending: totalNotes - completedNotes - failedNotes - processingNotes
       },
-      notes: taskNotes?.map(note => ({
+      notes: taskNotes?.map((note: any) => ({
         id: note.id,
         noteId: note.note_id,
         noteData: note.note_data,
@@ -122,14 +107,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 处理OPTIONS请求（CORS预检）
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
   })
 } 

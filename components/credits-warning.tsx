@@ -72,7 +72,7 @@ export function CreditsInfo({ selectedCount, className = "" }: CreditsInfoProps)
       <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       <AlertDescription className="text-blue-800 dark:text-blue-200">
         已选择 <strong>{selectedCount}</strong> 篇笔记，
-        本次批量生成将消耗 <strong>{selectedCount}</strong> 积分。
+        本次批量生成将消耗 <strong>{selectedCount * 1}</strong> 积分。
         {selectedCount > 1 && (
           <span className="block mt-1 text-sm text-blue-600 dark:text-blue-400">
             💡 提示：如果某些笔记处理失败，对应的积分将自动返还。

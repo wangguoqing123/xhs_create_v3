@@ -3,7 +3,7 @@
 import { SearchHero } from "@/components/search-hero"
 import { FeatureModules } from "@/components/feature-modules"
 import { Header } from "@/components/header"
-import { SupabaseStatus } from "@/components/supabase-status"
+import { MySQLStatus } from "@/components/mysql-status"
 import { ProfileStatus } from "@/components/profile-status"
 import { useEffect } from "react"
 
@@ -28,7 +28,7 @@ export default function HomePage() {
       {/* Development Status Cards */}
       <section className="py-16 px-6">
         <div className="container mx-auto flex justify-center gap-8 flex-wrap">
-          <SupabaseStatus />
+          <MySQLStatus />
           <ProfileStatus />
         </div>
       </section>

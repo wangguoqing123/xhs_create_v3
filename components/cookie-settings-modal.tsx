@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Cookie, Info, Copy, Check } from 'lucide-react'
-import { useAuth } from '@/components/auth-context'
-import { updateUserCookie } from '@/lib/supabase'
+import { useMySQLAuth } from '@/components/mysql-auth-context'
 
 interface CookieSettingsModalProps {
   open: boolean
@@ -15,7 +14,7 @@ interface CookieSettingsModalProps {
 }
 
 export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps) {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile } = useMySQLAuth()
   const [cookieValue, setCookieValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,9 +36,20 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
     setError('')
 
     try {
-      const { error } = await updateUserCookie(user.id, cookieValue.trim() || null)
-      if (error) {
-        setError(error.message)
+      const response = await fetch('/api/auth/update-cookie', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userCookie: cookieValue.trim() || null
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || '保存Cookie失败')
       } else {
         await refreshProfile() // 刷新用户资料
         onClose()

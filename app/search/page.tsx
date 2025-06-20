@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense, useEffect } from "react"
+import { useState, Suspense, useEffect, useCallback, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { SearchInterface } from "@/components/search-interface"
@@ -9,7 +9,7 @@ import { BatchConfigModal } from "@/components/batch-config-modal"
 import { NoteDetailModal } from "@/components/note-detail-modal"
 import { useSearch } from "@/lib/hooks/use-search"
 import { useNoteDetail } from "@/lib/hooks/use-note-detail"
-import { useAuth } from "@/components/auth-context"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { SearchConfig, Note } from "@/lib/types"
 import { useCreditsContext } from "@/components/credits-context"
 
@@ -21,7 +21,7 @@ function SearchPageContent() {
   const [showBatchModal, setShowBatchModal] = useState(false)
   
   // 使用认证Hook获取用户信息
-  const { profile } = useAuth()
+  const { profile } = useMySQLAuth()
   
   // 使用搜索Hook
   const { searchResults, isLoading, error, searchNotes, clearError } = useSearch()
@@ -47,15 +47,28 @@ function SearchPageContent() {
   useEffect(() => {
     const query = searchParams?.get("q")
     if (query && query.trim()) {
+      console.log('🔍 [搜索页面] 检测到URL查询参数，开始搜索:', query)
       setSearchQuery(query)
+      
       // 执行搜索，使用默认配置
-      searchNotes(query.trim(), {
-        noteType: 0, // 默认全部类型
-        sort: 0, // 默认综合排序
-        totalNumber: 20 // 默认20条
-      })
+      const performInitialSearch = async () => {
+        try {
+          await searchNotes(query.trim(), {
+            noteType: 0, // 默认全部类型
+            sort: 0, // 默认综合排序
+            totalNumber: 20 // 默认20条
+          })
+          console.log('✅ [搜索页面] 初始搜索完成')
+        } catch (error) {
+          console.error('❌ [搜索页面] 初始搜索失败:', error)
+        }
+      }
+      
+      // 延迟执行搜索，确保组件完全初始化
+      const timer = setTimeout(performInitialSearch, 100)
+      return () => clearTimeout(timer)
     }
-  }, [searchParams, searchNotes]) // 移除searchConfig依赖，避免重复搜索
+  }, [searchParams?.get("q")]) // 只依赖查询参数值，避免函数依赖导致的无限循环
 
   useEffect(() => {
     console.log(`📄 [页面] 搜索页面组件已挂载`)
@@ -65,46 +78,41 @@ function SearchPageContent() {
   console.log(`🎨 [渲染] 搜索页面组件正在渲染...`)
 
   // 处理搜索请求
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string) => {
     if (query.trim()) {
       clearError()
       await searchNotes(query.trim(), searchConfig)
     }
-  }
+  }, [searchConfig, clearError, searchNotes])
 
   // 处理配置变化
-  const handleConfigChange = (newConfig: SearchConfig) => {
+  const handleConfigChange = useCallback((newConfig: SearchConfig) => {
     setSearchConfig(newConfig)
     
     // 如果有搜索词，重新搜索
     if (searchQuery.trim()) {
       searchNotes(searchQuery.trim(), newConfig)
     }
-  }
+  }, [searchQuery, searchNotes])
 
   // 获取要显示的笔记列表（优先显示搜索结果）
-  const displayNotes = searchResults.length > 0 ? searchResults : []
+  const displayNotes = useMemo(() => {
+    return searchResults.length > 0 ? searchResults : []
+  }, [searchResults])
 
   // 处理笔记选择（用于批量操作）
-  const handleNoteSelect = (noteId: string, selected: boolean) => {
+  const handleNoteSelect = useCallback((noteId: string, selected: boolean) => {
     if (selected) {
-      setSelectedNotes([...selectedNotes, noteId])
+      setSelectedNotes(prev => [...prev, noteId])
     } else {
-      setSelectedNotes(selectedNotes.filter((id) => id !== noteId))
+      setSelectedNotes(prev => prev.filter((id) => id !== noteId))
     }
-  }
+  }, [])
 
   // 处理查看笔记详情
-  const handleNoteView = async (note: Note) => {
+  const handleNoteView = useCallback(async (note: Note) => {
     // 设置当前选中的笔记
     setSelectedNoteForDetail(note)
-    
-    // 获取用户cookie
-    const userCookie = profile?.user_cookie
-    if (!userCookie) {
-      console.error('用户Cookie未设置，无法获取笔记详情')
-      return
-    }
 
     // 从原始数据中获取笔记URL
     const noteUrl = note.originalData?.note_url
@@ -117,19 +125,28 @@ function SearchPageContent() {
       // 清除之前的错误
       clearDetailError()
       
-      // 获取笔记详情
-      await fetchNoteDetail(noteUrl, userCookie)
+      // 获取笔记详情 - API会自动使用用户的Cookie
+      await fetchNoteDetail(noteUrl, '')
     } catch (error) {
       console.error('获取笔记详情失败:', error)
     }
-  }
+  }, [clearDetailError, fetchNoteDetail])
 
   // 关闭笔记详情模态框
-  const handleCloseNoteDetail = () => {
+  const handleCloseNoteDetail = useCallback(() => {
     setSelectedNoteForDetail(null)
     clearNoteDetail()
     clearDetailError()
-  }
+  }, [clearNoteDetail, clearDetailError])
+
+  // 优化内联函数
+  const handleBatchGenerate = useCallback(() => {
+    setShowBatchModal(true)
+  }, [])
+
+  const handleCloseBatchModal = useCallback(() => {
+    setShowBatchModal(false)
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900 transition-colors duration-300">
@@ -142,7 +159,7 @@ function SearchPageContent() {
           searchConfig={searchConfig}
           onConfigChange={handleConfigChange}
           selectedCount={selectedNotes.length}
-          onBatchGenerate={() => setShowBatchModal(true)}
+          onBatchGenerate={handleBatchGenerate}
           onSearch={handleSearch}
           isLoading={isLoading}
           error={error}
@@ -163,7 +180,7 @@ function SearchPageContent() {
         {/* 批量配置模态框 */}
         <BatchConfigModal
           open={showBatchModal}
-          onClose={() => setShowBatchModal(false)}
+          onClose={handleCloseBatchModal}
           selectedNotes={selectedNotes}
           searchKeywords={searchQuery} // 传递搜索关键词
           notesData={displayNotes} // 传递笔记数据
