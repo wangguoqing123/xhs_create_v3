@@ -439,3 +439,53 @@ export interface CreditCheck {
   required: number
   shortage: number
 }
+
+// 账号定位相关类型定义
+export interface AccountPositioning {
+  id: string // 账号定位ID
+  user_id: string // 用户ID
+  name: string // 账号定位命名
+  one_line_description: string | null // 一句话定位
+  core_value: string | null // 核心价值
+  target_audience: string | null // 目标用户
+  key_persona: string | null // 关键人设
+  core_style: string | null // 核心风格
+  created_at: string // 创建时间
+  updated_at: string // 更新时间
+}
+
+// 创建账号定位的输入类型
+export interface AccountPositioningInsert {
+  user_id: string // 用户ID（必填）
+  name: string // 账号定位命名（必填）
+  one_line_description?: string | null // 一句话定位（可选）
+  core_value?: string | null // 核心价值（可选）
+  target_audience?: string | null // 目标用户（可选）
+  key_persona?: string | null // 关键人设（可选）
+  core_style?: string | null // 核心风格（可选）
+}
+
+// 更新账号定位的输入类型
+export interface AccountPositioningUpdate {
+  name?: string // 账号定位命名
+  one_line_description?: string | null // 一句话定位
+  core_value?: string | null // 核心价值
+  target_audience?: string | null // 目标用户
+  key_persona?: string | null // 关键人设
+  core_style?: string | null // 核心风格
+}
+
+// API响应类型
+export interface AccountPositioningResponse {
+  success: boolean
+  data?: AccountPositioning | AccountPositioning[] | null
+  error?: string
+}
+
+// 账号定位列表查询参数
+export interface AccountPositioningListParams {
+  user_id: string // 用户ID
+  limit?: number // 每页数量，默认20
+  offset?: number // 偏移量，默认0
+  search?: string // 搜索关键词（按名称搜索）
+}

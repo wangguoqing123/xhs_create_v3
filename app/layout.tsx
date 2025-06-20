@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth-context"
 import { MySQLAuthProvider } from "@/components/mysql-auth-context"
 import { CreditsProvider } from "@/components/credits-context"
 import { DatabaseInitializer } from "@/components/database-initializer"
@@ -33,11 +32,9 @@ export default function RootLayout({
         >
           <DatabaseInitializer />
           <MySQLAuthProvider>
-          <AuthProvider>
             <CreditsProvider>
               {children}
             </CreditsProvider>
-          </AuthProvider>
           </MySQLAuthProvider>
         </ThemeProvider>
       </body>

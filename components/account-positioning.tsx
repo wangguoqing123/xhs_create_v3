@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,16 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge"
 import { Plus, User, Sparkles, X, ChevronDown, Edit } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
+import { useMySQLAuth } from "@/components/mysql-auth-context"
+import { AccountPositioning as AccountPositioningType } from "@/lib/types"
 
-// 账号定位数据类型
+// 账号定位数据类型（用于UI展示，映射数据库字段）
 export interface AccountPosition {
   id: string
   name: string
-  slogan: string
-  coreValue: string
-  targetUser?: string
-  keyPersona: string
-  coreStyle: string
+  slogan: string // 对应数据库的 one_line_description
+  coreValue: string // 对应数据库的 core_value
+  targetUser?: string // 对应数据库的 target_audience
+  keyPersona: string // 对应数据库的 key_persona
+  coreStyle: string // 对应数据库的 core_style
   createdAt: Date
 }
 
@@ -30,39 +32,7 @@ interface AccountPositioningProps {
   hideLabel?: boolean // 是否隐藏标签
 }
 
-// 默认的账号定位数据
-const DEFAULT_POSITIONS: AccountPosition[] = [
-  {
-    id: "ai-life-mentor",
-    name: "AI实战派学姐",
-    slogan: "AI实战派学姐：手把手教你用AI解决日常问题，赢在求职&搞钱起跑线",
-    coreValue: "将复杂的AI技术简化为普通人可实操的生活工具，帮助用户用AI解决实际问题，提升效率与生活品质。",
-    targetUser: "18-35岁有效率提升需求的都市年轻人，特别是职场新人、学生党、自由职业者等数字原住民。",
-    keyPersona: "AI生活实验家——亲和友善的AI工具探索者与分享者，既是同辈朋友也是实用技能传授者。",
-    coreStyle: "轻松活泼、干货实用、通俗易懂，强调'小白也能学会'的亲民感。",
-    createdAt: new Date()
-  },
-  {
-    id: "beauty-expert",
-    name: "美妆护肤达人",
-    slogan: "美妆护肤达人：专业测评+真实体验，让你避坑不踩雷",
-    coreValue: "通过专业的产品测评和真实的使用体验，帮助用户选择适合自己的美妆护肤产品，避免消费陷阱。",
-    targetUser: "18-40岁爱美女性，特别是美妆新手和护肤困扰人群。",
-    keyPersona: "专业又贴心的美妆顾问——既有专业知识又有闺蜜般的亲和力。",
-    coreStyle: "专业可信、真实接地气、温暖贴心，注重实用性和性价比。",
-    createdAt: new Date()
-  },
-  {
-    id: "life-blogger",
-    name: "生活美学博主",
-    slogan: "生活美学博主：发现平凡生活中的小确幸与美好瞬间",
-    coreValue: "通过分享日常生活中的美好细节，传递积极的生活态度，帮助用户发现并创造属于自己的生活美学。",
-    targetUser: "20-35岁追求生活品质的都市人群，特别是注重精神层面满足的年轻人。",
-    keyPersona: "生活美学家——温暖治愈的生活观察者和美好传递者。",
-    coreStyle: "温暖治愈、文艺清新、细腻感性，注重情感共鸣和美感体验。",
-    createdAt: new Date()
-  }
-]
+// 不再使用默认的模拟数据，只显示数据库中的真实数据
 
 export function AccountPositioning({ 
   selectedPosition, 
@@ -71,12 +41,18 @@ export function AccountPositioning({
   placeholder = "选择账号定位",
   hideLabel = false
 }: AccountPositioningProps) {
-  // 组件状态
-  const [positions, setPositions] = useState<AccountPosition[]>(DEFAULT_POSITIONS)
+  // 获取认证状态
+  const { user } = useMySQLAuth()
+  
+  // 组件状态 - 只显示数据库中的真实数据
+  const [positions, setPositions] = useState<AccountPosition[]>([])
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAIModal, setShowAIModal] = useState(false)
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false) // 加载状态
+  const [isSaving, setIsSaving] = useState(false) // 保存状态
+  const [editingId, setEditingId] = useState<string | null>(null) // 正在编辑的账号定位ID
 
   // 空白定位项，用于新增时显示
   const blankPosition: AccountPosition = {
@@ -104,6 +80,65 @@ export function AccountPositioning({
   const [aiKeywords, setAiKeywords] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
 
+  // 数据转换函数：将数据库格式转换为UI格式
+  const convertDbToUi = (dbItem: AccountPositioningType): AccountPosition => {
+    return {
+      id: dbItem.id,
+      name: dbItem.name,
+      slogan: dbItem.one_line_description || "",
+      coreValue: dbItem.core_value || "",
+      targetUser: dbItem.target_audience || "",
+      keyPersona: dbItem.key_persona || "",
+      coreStyle: dbItem.core_style || "",
+      createdAt: new Date(dbItem.created_at)
+    }
+  }
+
+  // 数据转换函数：将UI格式转换为数据库格式
+  const convertUiToDb = (uiItem: Partial<AccountPosition>) => {
+    return {
+      name: uiItem.name || "",
+      one_line_description: uiItem.slogan || null,
+      core_value: uiItem.coreValue || null,
+      target_audience: uiItem.targetUser || null,
+      key_persona: uiItem.keyPersona || null,
+      core_style: uiItem.coreStyle || null
+    }
+  }
+
+  // 从API获取账号定位列表
+  const fetchPositions = async () => {
+    if (!user) return // 用户未登录时不获取数据
+    
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/account-positioning', {
+        method: 'GET',
+        credentials: 'include', // 包含Cookie
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          // 转换数据格式，只显示数据库中的真实数据
+          const dbPositions = result.data.map(convertDbToUi)
+          setPositions(dbPositions)
+        }
+      } else {
+        console.error('获取账号定位列表失败:', response.statusText)
+      }
+    } catch (error) {
+      console.error('获取账号定位列表异常:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 组件挂载时获取数据
+  useEffect(() => {
+    fetchPositions()
+  }, [user]) // 依赖用户状态
+
   // 获取已选择的账号定位对象
   const getSelectedPosition = () => {
     return positions.find((pos: AccountPosition) => pos.id === selectedPosition)
@@ -115,8 +150,23 @@ export function AccountPositioning({
     setIsDropdownOpen(false) // 单选后关闭下拉框
   }
 
-  // 处理添加新账号定位
-  const handleAddPosition = () => {
+  // 处理编辑账号定位
+  const handleEditPosition = (position: AccountPosition) => {
+    setEditingId(position.id) // 设置编辑状态
+    setSelectedHistoryId(position.id) // 选中该历史定位
+    setNewPosition({
+      name: position.name,
+      slogan: position.slogan,
+      coreValue: position.coreValue,
+      targetUser: position.targetUser || "",
+      keyPersona: position.keyPersona,
+      coreStyle: position.coreStyle
+    })
+    setShowAddModal(true) // 打开编辑模态框
+  }
+
+  // 处理保存账号定位（新建或更新）
+  const handleSavePosition = async () => {
     // 验证必填字段
     if (!newPosition.name.trim() || !newPosition.slogan.trim() || 
         !newPosition.coreValue.trim() || !newPosition.keyPersona.trim() || 
@@ -125,21 +175,96 @@ export function AccountPositioning({
       return
     }
 
-    // 创建新的账号定位
-    const position: AccountPosition = {
-      id: `custom-${Date.now()}`,
-      ...newPosition,
-      createdAt: new Date()
+    if (!user) {
+      alert("请先登录")
+      return
     }
 
-    // 添加到定位列表
-    const updatedPositions = [...positions, position]
-    setPositions(updatedPositions)
+    setIsSaving(true)
+    try {
+      // 转换为数据库格式
+      const dbData = convertUiToDb(newPosition)
+      
+      if (editingId) {
+        // 编辑模式 - 调用更新API
+        const response = await fetch(`/api/account-positioning/${editingId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // 包含Cookie
+          body: JSON.stringify(dbData)
+        })
 
-    // 自动选中新添加的定位
-    onSelectionChange(position.id)
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            // 转换返回的数据格式
+            const updatedPositionFromDb = convertDbToUi(result.data)
+            
+            // 更新定位列表中的对应项
+            const updatedPositions = positions.map(pos => 
+              pos.id === editingId ? updatedPositionFromDb : pos
+            )
+            setPositions(updatedPositions)
 
-    // 重置表单并关闭模态框
+            // 重置状态并关闭模态框
+            resetModalState()
+            
+            console.log('✅ 账号定位更新成功:', updatedPositionFromDb.name)
+          } else {
+            alert(result.error || '更新账号定位失败')
+          }
+        } else {
+          const result = await response.json()
+          alert(result.error || '更新账号定位失败')
+        }
+      } else {
+        // 新建模式 - 调用创建API
+        const response = await fetch('/api/account-positioning', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // 包含Cookie
+          body: JSON.stringify(dbData)
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            // 转换返回的数据格式
+            const newPositionFromDb = convertDbToUi(result.data)
+            
+            // 添加到定位列表
+            const updatedPositions = [...positions, newPositionFromDb]
+            setPositions(updatedPositions)
+
+            // 自动选中新添加的定位
+            onSelectionChange(newPositionFromDb.id)
+
+            // 重置状态并关闭模态框
+            resetModalState()
+            
+            console.log('✅ 账号定位创建成功:', newPositionFromDb.name)
+          } else {
+            alert(result.error || '创建账号定位失败')
+          }
+        } else {
+          const result = await response.json()
+          alert(result.error || '创建账号定位失败')
+        }
+      }
+    } catch (error) {
+      console.error('保存账号定位异常:', error)
+      alert('网络错误，请稍后重试')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // 重置模态框状态
+  const resetModalState = () => {
     setNewPosition({
       name: "",
       slogan: "",
@@ -149,6 +274,8 @@ export function AccountPositioning({
       coreStyle: ""
     })
     setShowAddModal(false)
+    setEditingId(null) // 重置编辑状态
+    setSelectedHistoryId("")
   }
 
   // 处理历史定位选择
@@ -265,7 +392,7 @@ export function AccountPositioning({
                   variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation()
-                    setShowAddModal(true)
+                    handleEditPosition(position) // 调用编辑函数
                   }}
                   className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
                 >
@@ -280,6 +407,7 @@ export function AccountPositioning({
                 size="sm"
                 variant="outline"
                 onClick={() => {
+                  setEditingId(null) // 设置为新建模式
                   setSelectedHistoryId("blank-position") // 默认选中空白定位
                   setNewPosition({
                     name: "",
@@ -312,10 +440,10 @@ export function AccountPositioning({
                 </div>
                 <div>
                   <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
-                    新增账号定位
+                    {editingId ? '编辑账号定位' : '新增账号定位'}
                   </DialogTitle>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-                    创建专属的账号定位，打造独特的内容风格
+                    {editingId ? '修改账号定位信息，完善内容风格' : '创建专属的账号定位，打造独特的内容风格'}
                   </p>
                 </div>
               </div>
@@ -484,16 +612,24 @@ export function AccountPositioning({
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-slate-700">
                 <Button 
                   variant="outline" 
-                  onClick={() => setShowAddModal(false)}
+                  onClick={resetModalState}
                   className="px-6 py-2 h-auto text-sm rounded-xl"
                 >
                   取消
                 </Button>
                 <Button
-                  onClick={handleAddPosition}
-                  className="px-8 py-2 h-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium rounded-xl"
+                  onClick={handleSavePosition}
+                  disabled={isSaving}
+                  className="px-8 py-2 h-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
                 >
-                  保存定位
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingId ? '更新中...' : '保存中...'}
+                    </>
+                  ) : (
+                    editingId ? '更新定位' : '保存定位'
+                  )}
                 </Button>
               </div>
             </div>

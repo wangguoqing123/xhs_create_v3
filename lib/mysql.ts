@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise'
-import type { Database, Profile, ProfileUpdate, UserCookie } from './types'
+import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams } from './types'
 import { sendVerificationEmail, isEmailConfigured } from './email'
+import crypto from 'crypto'
 
 // MySQL连接配置
 const mysqlConfig = {
@@ -1099,6 +1100,288 @@ export const getTaskNotesWithContents = async (taskId: string) => {
   }
 }
 
+// ==================== 账号定位相关函数 ====================
+
+// 创建账号定位
+export const createAccountPositioning = async (data: AccountPositioningInsert) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 生成UUID作为主键
+    const id = crypto.randomUUID()
+    
+    // 插入账号定位记录
+    await connection.execute(
+      `INSERT INTO account_positioning 
+       (id, user_id, name, one_line_description, core_value, target_audience, key_persona, core_style) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.user_id,
+        data.name,
+        data.one_line_description || null,
+        data.core_value || null,
+        data.target_audience || null,
+        data.key_persona || null,
+        data.core_style || null
+      ]
+    )
+    
+    // 查询创建的记录
+    const [rows] = await connection.execute(
+      'SELECT * FROM account_positioning WHERE id = ?',
+      [id]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      return { data: rows[0] as AccountPositioning, error: null }
+    }
+    
+    return { data: null, error: '创建账号定位失败' }
+  } catch (error) {
+    console.error('创建账号定位失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '创建失败' 
+    }
+  }
+}
+
+// 获取用户的账号定位列表
+export const getAccountPositioningList = async (params: AccountPositioningListParams) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: [], 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 设置默认值
+    const limit = params.limit || 20
+    const offset = params.offset || 0
+    
+    // 构建查询条件
+    let whereClause = 'WHERE user_id = ?'
+    const queryParams: any[] = [params.user_id]
+    
+    // 如果有搜索关键词，添加搜索条件
+    if (params.search && params.search.trim()) {
+      whereClause += ' AND name LIKE ?'
+      queryParams.push(`%${params.search.trim()}%`)
+    }
+    
+    // 执行查询，按创建时间倒序排列
+    const [rows] = await connection.execute(
+      `SELECT * FROM account_positioning ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      queryParams
+    ) as any[]
+    
+    // 查询总数
+    const [countRows] = await connection.execute(
+      `SELECT COUNT(*) as total FROM account_positioning ${whereClause}`,
+      queryParams
+    ) as any[]
+    
+    connection.release()
+    
+    const total = countRows[0]?.total || 0
+    
+    return { 
+      data: rows as AccountPositioning[], 
+      total,
+      error: null 
+    }
+  } catch (error) {
+    console.error('获取账号定位列表失败:', error)
+    return { 
+      data: [], 
+      total: 0,
+      error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
+// 根据ID获取单个账号定位
+export const getAccountPositioningById = async (id: string, userId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 查询指定ID和用户ID的账号定位（确保用户只能访问自己的数据）
+    const [rows] = await connection.execute(
+      'SELECT * FROM account_positioning WHERE id = ? AND user_id = ?',
+      [id, userId]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      return { data: rows[0] as AccountPositioning, error: null }
+    }
+    
+    return { data: null, error: '账号定位不存在或无权限访问' }
+  } catch (error) {
+    console.error('获取账号定位失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
+// 更新账号定位
+export const updateAccountPositioning = async (id: string, userId: string, updates: AccountPositioningUpdate) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 构建更新字段
+    const updateFields = []
+    const updateValues = []
+    
+    // 检查每个字段是否需要更新
+    if (updates.name !== undefined) {
+      updateFields.push('name = ?')
+      updateValues.push(updates.name)
+    }
+    
+    if (updates.one_line_description !== undefined) {
+      updateFields.push('one_line_description = ?')
+      updateValues.push(updates.one_line_description)
+    }
+    
+    if (updates.core_value !== undefined) {
+      updateFields.push('core_value = ?')
+      updateValues.push(updates.core_value)
+    }
+    
+    if (updates.target_audience !== undefined) {
+      updateFields.push('target_audience = ?')
+      updateValues.push(updates.target_audience)
+    }
+    
+    if (updates.key_persona !== undefined) {
+      updateFields.push('key_persona = ?')
+      updateValues.push(updates.key_persona)
+    }
+    
+    if (updates.core_style !== undefined) {
+      updateFields.push('core_style = ?')
+      updateValues.push(updates.core_style)
+    }
+    
+    // 如果没有要更新的字段，返回错误
+    if (updateFields.length === 0) {
+      connection.release()
+      return { data: null, error: '没有要更新的字段' }
+    }
+    
+    // 添加WHERE条件的参数
+    updateValues.push(id, userId)
+    
+    // 执行更新（确保用户只能更新自己的数据）
+    const [result] = await connection.execute(
+      `UPDATE account_positioning SET ${updateFields.join(', ')} WHERE id = ? AND user_id = ?`,
+      updateValues
+    ) as any[]
+    
+    // 检查是否有记录被更新
+    if (result.affectedRows === 0) {
+      connection.release()
+      return { data: null, error: '账号定位不存在或无权限修改' }
+    }
+    
+    // 查询更新后的记录
+    const [rows] = await connection.execute(
+      'SELECT * FROM account_positioning WHERE id = ? AND user_id = ?',
+      [id, userId]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      return { data: rows[0] as AccountPositioning, error: null }
+    }
+    
+    return { data: null, error: '更新后查询失败' }
+  } catch (error) {
+    console.error('更新账号定位失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '更新失败' 
+    }
+  }
+}
+
+// 删除账号定位
+export const deleteAccountPositioning = async (id: string, userId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 执行删除（确保用户只能删除自己的数据）
+    const [result] = await connection.execute(
+      'DELETE FROM account_positioning WHERE id = ? AND user_id = ?',
+      [id, userId]
+    ) as any[]
+    
+    connection.release()
+    
+    // 检查是否有记录被删除
+    if (result.affectedRows === 0) {
+      return { success: false, error: '账号定位不存在或无权限删除' }
+    }
+    
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('删除账号定位失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '删除失败' 
+    }
+  }
+}
+
 export default {
   testConnection,
   sendVerificationCode,
@@ -1119,5 +1402,11 @@ export default {
   updateTaskNoteStatus,
   createGeneratedContent,
   updateGeneratedContent,
-  getTaskNotesWithContents
+  getTaskNotesWithContents,
+  // 账号定位相关函数
+  createAccountPositioning,
+  getAccountPositioningList,
+  getAccountPositioningById,
+  updateAccountPositioning,
+  deleteAccountPositioning
 } 

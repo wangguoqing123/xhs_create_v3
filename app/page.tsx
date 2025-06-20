@@ -3,8 +3,6 @@
 import { SearchHero } from "@/components/search-hero"
 import { FeatureModules } from "@/components/feature-modules"
 import { Header } from "@/components/header"
-import { MySQLStatus } from "@/components/mysql-status"
-import { ProfileStatus } from "@/components/profile-status"
 import { useEffect } from "react"
 
 export default function HomePage() {
@@ -24,14 +22,6 @@ export default function HomePage() {
 
       {/* Feature Modules */}
       <FeatureModules />
-
-      {/* Development Status Cards */}
-      <section className="py-16 px-6">
-        <div className="container mx-auto flex justify-center gap-8 flex-wrap">
-          <MySQLStatus />
-          <ProfileStatus />
-        </div>
-      </section>
 
       {/* Background Effects */}
       <div className="fixed inset-0 -z-10 overflow-hidden">

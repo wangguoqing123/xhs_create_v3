@@ -42,7 +42,7 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userCookie: cookieValue.trim() || null
+          cookie: cookieValue.trim() || null
         }),
       })
 
