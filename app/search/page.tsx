@@ -7,6 +7,9 @@ import { SearchInterface } from "@/components/search-interface"
 import { NoteGrid } from "@/components/note-grid"
 import { BatchConfigModal } from "@/components/batch-config-modal"
 import { NoteDetailModal } from "@/components/note-detail-modal"
+import { SearchStatusPrompt } from "@/components/search-status-prompt"
+import { AuthModal } from "@/components/auth-modal"
+import { CookieSettingsModal } from "@/components/cookie-settings-modal"
 import { useSearch } from "@/lib/hooks/use-search"
 import { useNoteDetail } from "@/lib/hooks/use-note-detail"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
@@ -19,9 +22,12 @@ function SearchPageContent() {
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
   const [selectedNoteForDetail, setSelectedNoteForDetail] = useState<Note | null>(null)
   const [showBatchModal, setShowBatchModal] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false) // 登录弹框状态
+  const [showCookieModal, setShowCookieModal] = useState(false) // Cookie配置弹框状态
+  const [hasSearched, setHasSearched] = useState(false) // 是否已经执行过搜索
   
   // 使用认证Hook获取用户信息
-  const { profile } = useMySQLAuth()
+  const { user, profile, loading: authLoading } = useMySQLAuth()
   
   // 使用搜索Hook
   const { searchResults, isLoading, error, searchNotes, clearError } = useSearch()
@@ -47,12 +53,28 @@ function SearchPageContent() {
   useEffect(() => {
     const query = searchParams?.get("q")
     if (query && query.trim()) {
-      console.log('🔍 [搜索页面] 检测到URL查询参数，开始搜索:', query)
+      console.log('🔍 [搜索页面] 检测到URL查询参数，设置搜索词:', query)
       setSearchQuery(query)
       
-      // 执行搜索，使用默认配置
+      // 标记已经尝试过搜索（用于显示状态提示）
+      setHasSearched(true)
+      
+      // 执行搜索，使用默认配置（需要检查登录状态）
       const performInitialSearch = async () => {
         try {
+          // 检查用户登录状态
+          if (!user) {
+            console.log('🔐 [搜索页面] 初始搜索：用户未登录，显示登录提示')
+            return
+          }
+          
+          // 检查Cookie配置
+          if (!profile?.user_cookie) {
+            console.log('🍪 [搜索页面] 初始搜索：Cookie未配置，显示配置提示')
+            return
+          }
+          
+          // 执行搜索
           await searchNotes(query.trim(), {
             noteType: 0, // 默认全部类型
             sort: 0, // 默认综合排序
@@ -64,11 +86,11 @@ function SearchPageContent() {
         }
       }
       
-      // 延迟执行搜索，确保组件完全初始化
-      const timer = setTimeout(performInitialSearch, 100)
+      // 延迟执行搜索，确保组件完全初始化和认证状态加载完成
+      const timer = setTimeout(performInitialSearch, 200)
       return () => clearTimeout(timer)
     }
-  }, [searchParams?.get("q")]) // 只依赖查询参数值，避免函数依赖导致的无限循环
+  }, [searchParams?.get("q"), user, profile?.user_cookie]) // 添加用户和Cookie依赖
 
   useEffect(() => {
     console.log(`📄 [页面] 搜索页面组件已挂载`)
@@ -80,20 +102,36 @@ function SearchPageContent() {
   // 处理搜索请求
   const handleSearch = useCallback(async (query: string) => {
     if (query.trim()) {
+      // 标记已经执行过搜索
+      setHasSearched(true)
+      
+      // 检查用户登录状态
+      if (!user) {
+        console.log('🔐 [搜索] 用户未登录，显示登录提示')
+        return
+      }
+      
+      // 检查Cookie配置
+      if (!profile?.user_cookie) {
+        console.log('🍪 [搜索] Cookie未配置，显示配置提示')
+        return
+      }
+      
+      // 执行搜索
       clearError()
       await searchNotes(query.trim(), searchConfig)
     }
-  }, [searchConfig, clearError, searchNotes])
+  }, [searchConfig, clearError, searchNotes, user, profile])
 
   // 处理配置变化
   const handleConfigChange = useCallback((newConfig: SearchConfig) => {
     setSearchConfig(newConfig)
     
-    // 如果有搜索词，重新搜索
-    if (searchQuery.trim()) {
+    // 如果有搜索词且用户已登录且已配置Cookie，重新搜索
+    if (searchQuery.trim() && user && profile?.user_cookie) {
       searchNotes(searchQuery.trim(), newConfig)
     }
-  }, [searchQuery, searchNotes])
+  }, [searchQuery, searchNotes, user, profile])
 
   // 获取要显示的笔记列表（优先显示搜索结果）
   const displayNotes = useMemo(() => {
@@ -148,6 +186,28 @@ function SearchPageContent() {
     setShowBatchModal(false)
   }, [])
 
+  // 处理登录弹框
+  const handleOpenAuthModal = useCallback(() => {
+    console.log('🔐 [搜索] 打开登录弹框')
+    setShowAuthModal(true)
+  }, [])
+
+  const handleCloseAuthModal = useCallback(() => {
+    console.log('🔐 [搜索] 关闭登录弹框')
+    setShowAuthModal(false)
+  }, [])
+
+  // 处理Cookie配置弹框
+  const handleOpenCookieModal = useCallback(() => {
+    console.log('🍪 [搜索] 打开Cookie配置弹框')
+    setShowCookieModal(true)
+  }, [])
+
+  const handleCloseCookieModal = useCallback(() => {
+    console.log('🍪 [搜索] 关闭Cookie配置弹框')
+    setShowCookieModal(false)
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900 transition-colors duration-300">
       <Header />
@@ -165,17 +225,42 @@ function SearchPageContent() {
           error={error}
         />
 
-        {/* 笔记网格 */}
-        <div className="relative">
-          <NoteGrid
-            notes={displayNotes}
-            selectedNotes={selectedNotes}
-            onNoteSelect={handleNoteSelect}
-            onNoteView={handleNoteView}
-            isLoading={isLoading}
-            error={error}
-          />
-        </div>
+        {/* 状态提示区域 - 在搜索后显示 */}
+        {hasSearched && !authLoading && (
+          <>
+            {/* 未登录提示 */}
+            {!user && (
+              <SearchStatusPrompt
+                type="login"
+                onLoginClick={handleOpenAuthModal}
+                onCookieClick={handleOpenCookieModal}
+              />
+            )}
+            
+            {/* 未配置Cookie提示 */}
+            {user && !profile?.user_cookie && (
+              <SearchStatusPrompt
+                type="cookie"
+                onLoginClick={handleOpenCookieModal}
+                onCookieClick={handleOpenCookieModal}
+              />
+            )}
+          </>
+        )}
+
+        {/* 笔记网格 - 只在用户已登录且已配置Cookie时显示 */}
+        {user && profile?.user_cookie && (
+          <div className="relative">
+            <NoteGrid
+              notes={displayNotes}
+              selectedNotes={selectedNotes}
+              onNoteSelect={handleNoteSelect}
+              onNoteView={handleNoteView}
+              isLoading={isLoading}
+              error={error}
+            />
+          </div>
+        )}
 
         {/* 批量配置模态框 */}
         <BatchConfigModal
@@ -228,6 +313,18 @@ function SearchPageContent() {
             </div>
           </div>
         )}
+
+        {/* 登录弹框 */}
+        <AuthModal
+          open={showAuthModal}
+          onClose={handleCloseAuthModal}
+        />
+
+        {/* Cookie配置弹框 */}
+        <CookieSettingsModal
+          open={showCookieModal}
+          onClose={handleCloseCookieModal}
+        />
       </div>
     </div>
   )

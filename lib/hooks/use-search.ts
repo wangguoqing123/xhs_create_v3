@@ -32,21 +32,25 @@ export function useSearch(): UseSearchReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 获取用户Cookie
+  // 获取用户Cookie（不抛出错误，由上层组件处理状态检查）
   const getUserCookie = useCallback(async (): Promise<string | null> => {
     try {
+      // 如果用户未登录，返回null（不抛出错误）
       if (!user) {
-        throw new Error('用户未登录，请先登录后再搜索')
+        console.log('🔐 [use-search] 用户未登录')
+        return null
       }
 
+      // 如果Cookie未配置，返回null（不抛出错误）
       if (!profile?.user_cookie) {
-        throw new Error('请先在设置中配置小红书Cookie')
+        console.log('🍪 [use-search] Cookie未配置')
+        return null
       }
 
       return profile.user_cookie
 
     } catch (err) {
-      console.error('获取用户Cookie失败:', err)
+      console.error('❌ [use-search] 获取用户Cookie失败:', err)
       return null
     }
   }, [user?.id, profile?.user_cookie])
@@ -69,7 +73,10 @@ export function useSearch(): UseSearchReturn {
       // 获取用户Cookie
       const cookieStr = await getUserCookie()
       if (!cookieStr) {
-        throw new Error('请先在设置中配置小红书Cookie')
+        // Cookie为空时，不抛出错误，直接返回（由上层组件处理状态检查）
+        console.log('🔍 [use-search] Cookie为空，停止搜索')
+        setIsLoading(false)
+        return
       }
 
       // 构建搜索配置
