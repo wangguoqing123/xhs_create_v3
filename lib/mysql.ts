@@ -1858,6 +1858,390 @@ export const getRewriteRecordList = async (params: RewriteRecordListParams) => {
   }
 }
 
+// ============================================
+// 会员管理相关函数
+// ============================================
+
+// 管理员认证
+export const authenticateAdmin = async (username: string, password: string) => {
+  // 简单的硬编码认证
+  if (username === 'admin' && password === '520120') {
+    return { success: true, error: null }
+  }
+  return { success: false, error: '用户名或密码错误' }
+}
+
+// 搜索用户（管理后台使用）
+export const searchUsers = async (searchTerm: string, limit: number = 20) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: [], 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 查询用户基本信息和积分
+    const query = `
+      SELECT 
+        u.id,
+        u.email,
+        COALESCE(p.display_name, '') as display_name,
+        COALESCE(p.credits, 0) as credits,
+        u.created_at,
+        NULL as membership_type,
+        NULL as membership_status,
+        NULL as membership_end,
+        FALSE as is_active_member
+      FROM users u
+      LEFT JOIN profiles p ON u.id = p.id
+      WHERE u.email LIKE ? OR (p.display_name IS NOT NULL AND p.display_name LIKE ?)
+      ORDER BY u.created_at DESC
+      LIMIT ${limit}
+    `
+    
+    const searchPattern = `%${searchTerm}%`
+    console.log('🔍 [搜索用户] 查询参数:', { searchPattern, limit })
+    
+    // 搜索用户
+    const [rows] = await connection.execute(query, [searchPattern, searchPattern])
+    
+    connection.release()
+    
+    console.log('✅ [搜索用户] 搜索成功:', (rows as any[]).length, '条记录')
+    return { data: rows as any[], error: null }
+  } catch (error) {
+    console.error('❌ [搜索用户] 搜索失败:', error)
+    return { 
+      data: [], 
+      error: error instanceof Error ? error.message : '搜索失败' 
+    }
+  }
+}
+
+// 获取用户会员状态
+export const getUserMembershipStatus = async (userId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 使用视图查询用户会员状态
+    const [rows] = await connection.execute(
+      'SELECT * FROM user_membership_status WHERE user_id = ?',
+      [userId]
+    )
+    
+    connection.release()
+    
+    if ((rows as any[]).length > 0) {
+      return { data: (rows as any[])[0], error: null }
+    }
+    
+    return { data: null, error: '用户不存在' }
+  } catch (error) {
+    console.error('❌ [获取用户会员状态] 获取失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
+// 管理员直接赠送积分
+export const adminGrantCredits = async (
+  userId: string, 
+  creditsAmount: number, 
+  adminUser: string, 
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用存储过程
+    const [result] = await connection.execute(
+      'CALL GrantCredits(?, ?, ?, ?)',
+      [userId, creditsAmount, adminUser, reason || '管理员直接赠送积分']
+    )
+    
+    connection.release()
+    
+    console.log('✅ [管理员赠送积分] 操作成功:', { userId, creditsAmount, adminUser })
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('❌ [管理员赠送积分] 操作失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '操作失败' 
+    }
+  }
+}
+
+// 管理员设置用户为月会员
+export const adminSetMonthlyMembership = async (
+  userId: string, 
+  adminUser: string, 
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用存储过程
+    const [result] = await connection.execute(
+      'CALL SetMonthlyMembership(?, ?, ?)',
+      [userId, adminUser, reason || '管理员设置月会员']
+    )
+    
+    connection.release()
+    
+    console.log('✅ [管理员设置月会员] 操作成功:', { userId, adminUser })
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('❌ [管理员设置月会员] 操作失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '操作失败' 
+    }
+  }
+}
+
+// 管理员设置用户为年会员
+export const adminSetYearlyMembership = async (
+  userId: string, 
+  adminUser: string, 
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用存储过程
+    const [result] = await connection.execute(
+      'CALL SetYearlyMembership(?, ?, ?)',
+      [userId, adminUser, reason || '管理员设置年会员']
+    )
+    
+    connection.release()
+    
+    console.log('✅ [管理员设置年会员] 操作成功:', { userId, adminUser })
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('❌ [管理员设置年会员] 操作失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '操作失败' 
+    }
+  }
+}
+
+// 管理员赠送积分包
+export const adminGrantCreditPackage = async (
+  userId: string, 
+  creditsAmount: number, 
+  adminUser: string, 
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用存储过程
+    const [result] = await connection.execute(
+      'CALL GrantCreditPackage(?, ?, ?, ?)',
+      [userId, creditsAmount, adminUser, reason || '管理员赠送积分包']
+    )
+    
+    connection.release()
+    
+    console.log('✅ [管理员赠送积分包] 操作成功:', { userId, creditsAmount, adminUser })
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('❌ [管理员赠送积分包] 操作失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '操作失败' 
+    }
+  }
+}
+
+// 获取管理员操作日志
+export const getAdminOperationLogs = async (limit: number = 50, offset: number = 0) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: [], 
+      total: 0,
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 获取总数
+    const [countRows] = await connection.execute(
+      'SELECT COUNT(*) as total FROM admin_operation_logs'
+    ) as any[]
+    
+    const total = countRows[0].total
+    
+    // 获取日志列表
+    const [rows] = await connection.execute(`
+      SELECT 
+        aol.*,
+        u.email as target_user_email_current
+      FROM admin_operation_logs aol
+      LEFT JOIN users u ON aol.target_user_id = u.id
+      ORDER BY aol.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [limit, offset])
+    
+    connection.release()
+    
+    // 解析JSON字段
+    const logs = (rows as any[]).map(log => {
+      try {
+        log.operation_details = typeof log.operation_details === 'string' 
+          ? JSON.parse(log.operation_details || '{}')
+          : log.operation_details || {}
+      } catch (parseError) {
+        console.error('❌ [获取管理员操作日志] JSON解析失败:', parseError)
+        log.operation_details = {}
+      }
+      return log
+    })
+    
+    console.log('✅ [获取管理员操作日志] 查询成功:', logs.length, '条记录')
+    return { data: logs, total, error: null }
+  } catch (error) {
+    console.error('❌ [获取管理员操作日志] 获取失败:', error)
+    return { 
+      data: [], 
+      total: 0,
+      error: error instanceof Error ? error.message : '获取失败' 
+    }
+  }
+}
+
+// 执行年会员每月积分发放（定时任务使用）
+export const grantYearlyMemberMonthlyCredits = async () => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用存储过程
+    const [result] = await connection.execute('CALL GrantYearlyMemberMonthlyCredits()')
+    
+    connection.release()
+    
+    console.log('✅ [年会员每月积分发放] 执行成功:', result)
+    return { success: true, error: null, result }
+  } catch (error) {
+    console.error('❌ [年会员每月积分发放] 执行失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '执行失败' 
+    }
+  }
+}
+
+// 检查用户是否为会员（用于积分包购买限制）
+export const checkUserMembership = async (userId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      isMember: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 检查用户是否有活跃的会员身份
+    const [rows] = await connection.execute(`
+      SELECT COUNT(*) as count
+      FROM memberships 
+      WHERE user_id = ? AND status = 'active' AND end_date > CURRENT_TIMESTAMP
+    `, [userId])
+    
+    connection.release()
+    
+    const isMember = (rows as any[])[0].count > 0
+    
+    return { isMember, error: null }
+  } catch (error) {
+    console.error('❌ [检查用户会员身份] 检查失败:', error)
+    return { 
+      isMember: false, 
+      error: error instanceof Error ? error.message : '检查失败' 
+    }
+  }
+}
+
 export default {
   testConnection,
   sendVerificationCode,
@@ -1889,5 +2273,16 @@ export default {
   createRewriteRecord,
   updateRewriteRecord,
   getRewriteRecordById,
-  getRewriteRecordList
+  getRewriteRecordList,
+  // 会员管理相关函数
+  authenticateAdmin,
+  searchUsers,
+  getUserMembershipStatus,
+  adminGrantCredits,
+  adminSetMonthlyMembership,
+  adminSetYearlyMembership,
+  adminGrantCreditPackage,
+  getAdminOperationLogs,
+  grantYearlyMemberMonthlyCredits,
+  checkUserMembership
 } 

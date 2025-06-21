@@ -588,3 +588,151 @@ export interface RewriteRecordListParams {
   start_date?: string // 开始日期筛选
   end_date?: string // 结束日期筛选
 }
+
+// ============================================
+// 会员系统相关类型定义
+// ============================================
+
+// 会员类型
+export type MembershipType = 'monthly' | 'yearly'
+export type MembershipStatus = 'active' | 'expired' | 'cancelled'
+
+// 会员信息
+export interface Membership {
+  id: string
+  user_id: string
+  membership_type: MembershipType
+  status: MembershipStatus
+  start_date: string
+  end_date: string
+  auto_renew: boolean
+  created_at: string
+  updated_at: string
+}
+
+// 会员信息插入类型
+export interface MembershipInsert {
+  user_id: string
+  membership_type: MembershipType
+  status?: MembershipStatus
+  start_date: string
+  end_date: string
+  auto_renew?: boolean
+}
+
+// 积分包记录
+export interface CreditPackage {
+  id: string
+  user_id: string
+  package_type: 'purchase' | 'gift'
+  credits_amount: number
+  granted_by: string | null
+  reason: string | null
+  created_at: string
+}
+
+// 积分包记录插入类型
+export interface CreditPackageInsert {
+  user_id: string
+  package_type: 'purchase' | 'gift'
+  credits_amount: number
+  granted_by?: string | null
+  reason?: string | null
+}
+
+// 年会员积分发放记录
+export interface YearlyMemberCredit {
+  id: string
+  user_id: string
+  membership_id: string
+  credits_amount: number
+  grant_month: string
+  granted_at: string
+}
+
+// 管理员操作类型
+export type AdminOperationType = 'grant_credits' | 'set_membership' | 'gift_credit_package'
+
+// 管理员操作日志
+export interface AdminOperationLog {
+  id: string
+  admin_user: string
+  operation_type: AdminOperationType
+  target_user_id: string
+  target_user_email: string
+  operation_details: any
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
+// 管理员操作日志插入类型
+export interface AdminOperationLogInsert {
+  admin_user: string
+  operation_type: AdminOperationType
+  target_user_id: string
+  target_user_email: string
+  operation_details: any
+  ip_address?: string | null
+  user_agent?: string | null
+}
+
+// 用户会员状态视图
+export interface UserMembershipStatus {
+  user_id: string
+  email: string
+  display_name: string | null
+  credits: number
+  membership_type: MembershipType | null
+  membership_status: MembershipStatus | null
+  membership_start: string | null
+  membership_end: string | null
+  is_active_member: boolean
+  is_yearly_member: boolean
+  is_monthly_member: boolean
+}
+
+// 管理后台相关类型
+export interface AdminUser {
+  username: string
+  authenticated: boolean
+}
+
+// 管理后台操作请求类型
+export interface AdminGrantCreditsRequest {
+  user_id: string
+  credits_amount: number
+  reason?: string
+}
+
+export interface AdminSetMembershipRequest {
+  user_id: string
+  membership_type: MembershipType
+  reason?: string
+}
+
+export interface AdminGiftCreditPackageRequest {
+  user_id: string
+  credits_amount: number
+  reason?: string
+}
+
+// 管理后台响应类型
+export interface AdminResponse {
+  success: boolean
+  message: string
+  data?: any
+  error?: string
+}
+
+// 用户搜索结果类型
+export interface UserSearchResult {
+  id: string
+  email: string
+  display_name: string | null
+  credits: number
+  is_active_member: boolean
+  membership_type: MembershipType | null
+  membership_end: string | null
+  created_at: string
+}

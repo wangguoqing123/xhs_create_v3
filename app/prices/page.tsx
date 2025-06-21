@@ -10,9 +10,12 @@ import { cn } from "@/lib/utils"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { AuthModal } from "@/components/auth-modal"
 import { useCreditsContext } from "@/components/credits-context"
+import { WeChatContactModal } from "@/components/wechat-contact-modal"
 
 export default function PricingPage() {
-  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null)
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null) // 鼠标悬停的方案
+  const [showWeChatModal, setShowWeChatModal] = useState(false) // 微信弹框显示状态
+  const [selectedPlanType, setSelectedPlanType] = useState<'membership' | 'credits' | 'other'>('other') // 选中的方案类型
 
   useEffect(() => {
     console.log(`📄 [页面] 价格页面组件已挂载`)
@@ -20,6 +23,29 @@ export default function PricingPage() {
   }, [])
 
   console.log(`🎨 [渲染] 价格页面组件正在渲染...`)
+
+  // 处理方案选择按钮点击
+  const handlePlanSelect = (planId: string) => {
+    console.log(`🎯 [点击] 用户选择了方案: ${planId}`)
+    
+    // 根据方案类型设置对应的触发类型
+    if (planId === 'monthly' || planId === 'yearly') {
+      setSelectedPlanType('membership') // 会员方案
+    } else if (planId === 'credits') {
+      setSelectedPlanType('credits') // 积分包方案
+    } else {
+      setSelectedPlanType('other') // 其他方案
+    }
+    
+    // 显示微信联系弹框
+    setShowWeChatModal(true)
+  }
+
+  // 关闭微信弹框
+  const handleCloseWeChatModal = () => {
+    console.log(`🔒 [关闭] 微信联系弹框已关闭`)
+    setShowWeChatModal(false)
+  }
 
   const plans = [
     {
@@ -274,6 +300,7 @@ export default function PricingPage() {
                             )
                       )}
                       disabled={plan.disabled}
+                      onClick={() => handlePlanSelect(plan.id)}
                     >
                       <span className="relative z-10 flex items-center justify-center space-x-2">
                         <span>{plan.buttonText}</span>
@@ -343,6 +370,13 @@ export default function PricingPage() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-400/5 dark:bg-blue-500/3 rounded-full blur-3xl" />
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-indigo-300/3 to-blue-300/3 dark:from-indigo-500/2 dark:to-blue-500/2 rounded-full blur-3xl" />
       </div>
+
+      {/* 微信联系弹框 */}
+      <WeChatContactModal
+        isOpen={showWeChatModal}
+        onClose={handleCloseWeChatModal}
+        trigger={selectedPlanType}
+      />
     </div>
   )
 }

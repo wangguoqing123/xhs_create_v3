@@ -455,7 +455,7 @@ export function RewriteInterface() {
                 </Label>
                 <textarea
                   id="original-text"
-                  placeholder="直接输入或粘贴原文内容..."
+                  placeholder="粘贴原文内容或通过链接解析..."
                   value={originalText}
                   onChange={(e) => {
                     setOriginalText(e.target.value)
