@@ -210,7 +210,7 @@ function ResultsPageContent() {
       return {
         id: note.id,
         noteTitle: note.noteData?.title || `笔记 ${index + 1}`,
-        noteCover: note.noteData?.cover || "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=300&h=400&fit=crop&crop=center",
+        noteCover: note.noteData?.cover || "/placeholder.svg", // 使用本地占位符图片
         status: note.status === 'completed' ? 'completed' : note.status === 'failed' ? 'failed' : 'generating' as const,
         results
       }

@@ -11,7 +11,7 @@ import {
   getProfile
 } from '@/lib/mysql'
 import type { BatchConfig, TaskNote } from '@/lib/types'
-import { generateRewriteContent, parseThreeVersions } from '@/lib/ark-api'
+import { generateBatchRewriteContent, parseThreeVersions } from '@/lib/ark-api'
 
 /**
  * 处理单个笔记的改写任务
@@ -65,9 +65,9 @@ async function processNoteRewrite(
     let fullContent = ''
     let chunkCount = 0
 
-    // 调用ARK API生成内容（一次调用）
+    // 调用ARK API生成内容
     console.log(`🔄 [后端] 笔记 ${taskNoteId} 开始调用ARK API生成内容`)
-    await generateRewriteContent(
+    await generateBatchRewriteContent(
       originalContent,
       config,
       // onChunk - 流式内容回调

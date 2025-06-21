@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, ImageIcon, TrendingUp, ArrowRight } from "lucide-react"
 import Image from "next/image"
+import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
 
 const features = [
   {
@@ -56,11 +57,12 @@ export function FeatureModules() {
               <div className="flex-1 relative group">
                 <div className="relative overflow-hidden rounded-3xl shadow-2xl">
                   <Image
-                    src={feature.image || "/placeholder.svg"}
+                    src={getProxiedImageUrl(feature.image || "/placeholder.svg")} // 使用代理URL
                     alt={feature.title}
                     width={600}
                     height={400}
                     className="w-full h-[400px] object-cover group-hover:scale-110 transition-transform duration-700"
+                    onError={createImageErrorHandler(feature.image, "/placeholder.svg")} // 添加错误处理
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                 </div>

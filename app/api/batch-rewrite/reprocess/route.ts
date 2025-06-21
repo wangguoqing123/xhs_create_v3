@@ -9,7 +9,7 @@ import {
   getProfile
 } from '@/lib/mysql'
 import type { BatchConfig, TaskNote } from '@/lib/types'
-import { generateRewriteContent, parseThreeVersions } from '@/lib/ark-api'
+import { generateBatchRewriteContent, parseThreeVersions } from '@/lib/ark-api'
 
 /**
  * 重新处理单个笔记的改写任务（用于调试）
@@ -36,7 +36,7 @@ async function reprocessNoteRewrite(
 
     // 调用ARK API生成内容
     console.log(`🔄 [重新处理] 笔记 ${taskNoteId} 开始调用ARK API生成内容`)
-    await generateRewriteContent(
+    await generateBatchRewriteContent(
       originalContent,
       config,
       // onChunk - 流式内容回调

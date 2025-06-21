@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Copy, CheckCircle } from "lucide-react"
 import Image from "next/image"
+import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
 
 interface GeneratedContent {
   id: string
@@ -51,7 +52,7 @@ export function ResultDisplay({ task }: ResultDisplayProps) {
         <CardContent className="pt-0">
           <div className="flex items-center gap-4">
             <Image
-              src="/placeholder.svg?height=60&width=80"
+              src="/placeholder.svg" // 本地图片不需要代理
               alt="源笔记"
               width={80}
               height={60}

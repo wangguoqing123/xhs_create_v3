@@ -7,6 +7,7 @@ import { Heart, X, ChevronLeft, ChevronRight, User, Calendar, MessageCircle, Sha
 import Image from "next/image"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect } from "react"
+import { getProxiedImageUrl, createImageErrorHandler, getProxiedImageUrls } from "@/lib/image-utils"
 import { NoteDetail } from "@/lib/types"
 
 interface NoteDetailModalProps {
@@ -21,9 +22,9 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
   // 当前显示的图片索引
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
-  // 获取图片列表，过滤掉空的图片URL
+  // 获取图片列表，过滤掉空的图片URL并应用代理
   const images = note?.images && note.images.length > 0 
-    ? note.images.filter(img => img && img.trim() !== '' && img !== 'undefined' && img !== 'null') 
+    ? getProxiedImageUrls(note.images.filter(img => img && img.trim() !== '' && img !== 'undefined' && img !== 'null'))
     : []
   const hasMultipleImages = images.length > 1
 
@@ -106,12 +107,31 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
                       priority={currentImageIndex === 0}
                       onError={(e) => {
                         console.error('图片加载失败:', images[currentImageIndex])
-                        // 如果当前图片加载失败，尝试显示下一张有效图片
+                        const img = e.currentTarget
+                        
+                        // 如果当前显示的是代理URL且失败了，尝试直接访问原图
+                        if (img.src.includes('/api/image-proxy') && note?.images?.[currentImageIndex]) {
+                          const originalUrl = note.images[currentImageIndex]
+                          if (!originalUrl.includes('/api/image-proxy')) {
+                            console.log('🔄 [图片加载] 代理失败，尝试直接访问:', originalUrl)
+                            img.src = originalUrl
+                            return
+                          }
+                        }
+                        
+                        // 尝试显示下一张有效图片
                         const nextValidIndex = images.findIndex((img, index) => 
                           index > currentImageIndex && img && img.trim() !== ''
                         )
                         if (nextValidIndex !== -1) {
                           setCurrentImageIndex(nextValidIndex)
+                          return
+                        }
+                        
+                        // 最终降级到占位符图片
+                        if (img.src !== '/placeholder.svg') {
+                          console.log('🔄 [图片加载] 使用占位符图片')
+                          img.src = '/placeholder.svg'
                         }
                       }}
                       onLoad={() => {
@@ -188,14 +208,12 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
                 <div className="relative flex-shrink-0" style={{ width: '40px', height: '40px' }}>
                   {note.authorAvatar && note.authorAvatar.trim() !== '' ? (
                     <Image
-                      src={note.authorAvatar}
+                      src={getProxiedImageUrl(note.authorAvatar)} // 使用代理URL
                       alt={note.author}
                       fill
                       className="object-cover rounded-full"
                       sizes="40px"
-                      onError={(e) => {
-                        console.error('作者头像加载失败:', note.authorAvatar)
-                      }}
+                      onError={createImageErrorHandler(note.authorAvatar, "/placeholder-user.jpg")} // 添加错误处理
                     />
                   ) : (
                     <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Clock, XCircle, Sparkles, Download, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
 import * as XLSX from 'xlsx'
 
 interface GeneratedContent {
@@ -325,11 +326,12 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
                   <div className="flex gap-2">
                     <div className="w-10 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
                       <Image
-                        src={task.noteCover || "/placeholder.svg"}
+                        src={getProxiedImageUrl(task.noteCover || "/placeholder.svg")} // 使用代理URL
                         alt="笔记封面"
                         width={40}
                         height={48}
                         className="w-full h-full object-cover"
+                        onError={createImageErrorHandler(task.noteCover, "/placeholder.svg")} // 添加错误处理
                       />
                     </div>
                     <div className="flex-1 min-w-0">

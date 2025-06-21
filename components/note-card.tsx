@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Heart, Eye } from "lucide-react"
 import Image from "next/image"
+import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
 
 interface Note {
   id: string
@@ -38,11 +39,12 @@ export function NoteCard({ note, selected, onSelect, onView }: NoteCardProps) {
         </div>
         <div onClick={() => onView(note)}>
           <Image
-            src={note.cover || "/placeholder.svg"}
+            src={getProxiedImageUrl(note.cover || "/placeholder.svg")} // 使用代理URL
             alt={note.title}
             width={300}
             height={200}
             className="w-full h-48 object-cover"
+            onError={createImageErrorHandler(note.cover, "/placeholder.svg")} // 添加错误处理
           />
         </div>
       </div>

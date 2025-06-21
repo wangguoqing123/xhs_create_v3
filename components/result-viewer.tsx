@@ -8,6 +8,7 @@ import { Copy, CheckCircle, XCircle, Clock, Download, FileText, AlertCircle, Fil
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import * as XLSX from 'xlsx'
+import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
 
 interface GeneratedContent {
   id: string
@@ -405,11 +406,12 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
             {/* Cover with 3:4 ratio */}
             <div className="w-16 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 shadow-lg">
               <Image
-                src={task.noteCover || "/placeholder.svg"}
+                src={getProxiedImageUrl(task.noteCover || "/placeholder.svg")} // 使用代理URL
                 alt="源笔记"
                 width={64}
                 height={80}
                 className="w-full h-full object-cover"
+                onError={createImageErrorHandler(task.noteCover, "/placeholder.svg")} // 添加错误处理
               />
             </div>
 
