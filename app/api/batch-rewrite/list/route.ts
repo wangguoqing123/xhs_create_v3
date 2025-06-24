@@ -1,7 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
-import { getBatchTasks } from '@/lib/mysql'
+import { getBatchTasks, getPool } from '@/lib/mysql'
 import type { BatchTask } from '@/lib/types'
+
+// 获取任务的统计信息（笔记数和内容数）
+async function getTaskStats(taskId: string) {
+  try {
+    const connection = await getPool().getConnection()
+    
+    // 获取任务的笔记数量
+    const [noteCountResult] = await connection.execute(
+      'SELECT COUNT(*) as total FROM task_notes WHERE task_id = ?',
+      [taskId]
+    ) as any[]
+    
+    const noteCount = noteCountResult[0]?.total || 0
+    
+    // 获取已完成的内容数量
+    const [completedContentResult] = await connection.execute(
+      `SELECT COUNT(*) as completed 
+       FROM generated_contents gc 
+       JOIN task_notes tn ON gc.task_note_id = tn.id 
+       WHERE tn.task_id = ? AND gc.status = 'completed'`,
+      [taskId]
+    ) as any[]
+    
+    const completedContentCount = completedContentResult[0]?.completed || 0
+    
+    connection.release()
+    
+    return {
+      progress: {
+        total: noteCount
+      },
+      contentStats: {
+        completed: completedContentCount
+      }
+    }
+  } catch (error) {
+    console.error('获取任务统计失败:', error)
+    return {
+      progress: {
+        total: 0
+      },
+      contentStats: {
+        completed: 0
+      }
+    }
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,18 +96,27 @@ export async function GET(request: NextRequest) {
       filteredTasks = filteredTasks.filter((task: BatchTask) => task.status === status)
     }
 
-    // 格式化任务数据
-    const formattedTasks = filteredTasks.map((task: BatchTask) => ({
-      id: task.id,
-      taskName: task.task_name,
-      status: task.status,
-      config: task.config,
-      searchKeywords: task.search_keywords,
-      errorMessage: task.error_message,
-      createdAt: task.created_at,
-      updatedAt: task.updated_at,
-      completedAt: task.completed_at
-    }))
+    // 为每个任务获取统计信息并格式化数据
+    const formattedTasks = await Promise.all(
+      filteredTasks.map(async (task: BatchTask) => {
+        const stats = await getTaskStats(task.id)
+        
+        return {
+          id: task.id,
+          taskName: task.task_name,
+          status: task.status,
+          config: task.config,
+          searchKeywords: task.search_keywords,
+          errorMessage: task.error_message,
+          createdAt: task.created_at,
+          updatedAt: task.updated_at,
+          completedAt: task.completed_at,
+          // 添加统计信息
+          progress: stats.progress,
+          contentStats: stats.contentStats
+        }
+      })
+    )
 
     return NextResponse.json({
       tasks: formattedTasks,

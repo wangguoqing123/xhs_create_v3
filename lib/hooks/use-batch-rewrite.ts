@@ -60,7 +60,7 @@ export function useBatchRewrite() {
   })
 
   // 获取积分Context
-  const { updateBalance, refreshBalance } = useCreditsContext()
+  const { balance, updateBalance, refreshBalance } = useCreditsContext()
   
   // 获取认证上下文
   const { user } = useMySQLAuth()
@@ -144,7 +144,11 @@ export function useBatchRewrite() {
 
       // 乐观更新积分（预扣积分）
       const totalCost = selectedNotes.length * 1 // 每个笔记1积分（与API一致）
-      updateBalance({ current: (result.task?.creditsConsumed ? -result.task.creditsConsumed : -totalCost) })
+      const consumedCredits = result.task?.creditsConsumed || totalCost
+      // 从当前积分中减去消耗的积分，但确保不会变为负数
+      const currentCredits = balance?.current || 0
+      const newCredits = Math.max(0, currentCredits - consumedCredits)
+      updateBalance({ current: newCredits })
 
       console.log('✅ [前端] 批量改写任务创建成功:', result.task?.id)
       return result.task?.id || null

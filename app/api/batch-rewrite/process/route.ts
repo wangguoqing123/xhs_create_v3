@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
           if (failedCount > 0) {
             // 返还失败笔记的积分
             try {
-              const refundAmount = failedCount * 10 // 每个笔记10积分
+              const refundAmount = failedCount * 1 // 每个笔记1积分
               await refundCredits(
                 userId,
                 refundAmount,

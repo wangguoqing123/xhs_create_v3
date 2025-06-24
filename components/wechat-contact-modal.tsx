@@ -20,7 +20,7 @@ export function WeChatContactModal({ isOpen, onClose, trigger = 'other' }: WeCha
   const [copied, setCopied] = useState(false) // 复制状态
 
   // 微信号
-  const wechatId = "your_wechat_id"
+  const wechatId = "qitianjia2023"
 
   // 复制微信号到剪贴板
   const copyWeChatId = async () => {
