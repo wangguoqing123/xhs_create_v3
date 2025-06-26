@@ -1,11 +1,14 @@
 import { 
   CozeSearchParams, 
   CozeNoteDetailParams,
+  CozeAuthorNotesParams,
   CozeApiResponse, 
   CozeDataResponse, 
   CozeNoteDetailResponse,
+  CozeAuthorNotesResponse,
   XiaohongshuNote, 
   XiaohongshuNoteDetail,
+  AuthorNotesResult,
   Note, 
   NoteDetail,
   SearchConfig 
@@ -18,6 +21,8 @@ const COZE_API_TOKEN = process.env.COZE_API_TOKEN || ''
 const COZE_SEARCH_WORKFLOW_ID = process.env.COZE_SEARCH_WORKFLOW_ID || '7511639630044119067'
 // 笔记详情接口的工作流ID
 const COZE_DETAIL_WORKFLOW_ID = process.env.COZE_DETAIL_WORKFLOW_ID || '7511959723135762472'
+// 作者笔记获取接口的工作流ID
+const COZE_AUTHOR_NOTES_WORKFLOW_ID = '7519557885735469106'
 
 /**
  * 调用Coze API获取小红书笔记数据
@@ -472,4 +477,209 @@ export function getSortLabel(sort: 0 | 1 | 2): string {
     2: '最热'
   }
   return labels[sort]
+}
+
+/**
+ * 调用Coze API获取作者笔记数据
+ * @param userProfileUrl 作者主页链接
+ * @param cookieStr 用户cookie字符串
+ * @returns Promise<AuthorNotesResult> 作者信息和笔记列表
+ */
+export async function fetchAuthorNotes(
+  userProfileUrl: string,
+  cookieStr: string
+): Promise<AuthorNotesResult> {
+  try {
+    // 检查环境变量配置
+    if (!COZE_API_TOKEN) {
+      throw new Error('Coze API Token 未配置，请在项目根目录创建 .env.local 文件并设置 COZE_API_TOKEN')
+    }
+
+    // 构建请求参数
+    // 清理用户链接，移除可能的查询参数
+    let cleanUserProfileUrl = userProfileUrl
+    try {
+      const url = new URL(userProfileUrl)
+      // 只保留基本路径，移除查询参数
+      cleanUserProfileUrl = `${url.origin}${url.pathname}`
+      console.log('🔧 [作者笔记API] 清理后的URL:', {
+        原始URL: userProfileUrl,
+        清理后URL: cleanUserProfileUrl
+      })
+    } catch (urlError) {
+      console.warn('⚠️ [作者笔记API] URL解析失败，使用原始URL:', urlError)
+    }
+
+    const requestParams: CozeAuthorNotesParams = {
+      cookieStr,
+      userProfileUrl: cleanUserProfileUrl
+    }
+
+    console.log('发送Coze作者笔记API请求:', {
+      url: COZE_API_URL,
+      workflow_id: COZE_AUTHOR_NOTES_WORKFLOW_ID,
+      hasToken: !!COZE_API_TOKEN,
+      tokenLength: COZE_API_TOKEN.length,
+      userProfileUrl
+    })
+
+    // 发送API请求
+    const response = await fetch(COZE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${COZE_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        parameters: requestParams,
+        workflow_id: COZE_AUTHOR_NOTES_WORKFLOW_ID
+      })
+    })
+
+    // 检查HTTP响应状态
+    if (!response.ok) {
+      // 尝试获取详细错误信息
+      let errorMessage = `HTTP错误: ${response.status} ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        if (errorData.message) {
+          errorMessage += ` - ${errorData.message}`
+        }
+        console.error('Coze作者笔记API错误详情:', errorData)
+      } catch (e) {
+        console.error('无法解析错误响应:', e)
+      }
+      
+      // 针对401错误提供特定提示
+      if (response.status === 401) {
+        errorMessage = 'Coze API认证失败，请检查Token配置'
+      }
+      
+      throw new Error(errorMessage)
+    }
+
+    // 解析响应数据
+    const apiResponse: CozeApiResponse = await response.json()
+    console.log('🔍 [作者笔记API] 外层API响应:', {
+      code: apiResponse.code,
+      msg: apiResponse.msg,
+      hasData: !!apiResponse.data,
+      dataLength: apiResponse.data?.length
+    })
+
+    // 检查API响应状态
+    if (apiResponse.code !== 0) {
+      throw new Error(`作者笔记获取API错误: ${apiResponse.msg}`)
+    }
+
+    // 尝试解析data字段
+    let dataResponse: any
+    try {
+      // 首先尝试按照标准格式解析
+      dataResponse = JSON.parse(apiResponse.data)
+      console.log('🔍 [作者笔记API] 解析后的数据结构:', {
+        type: typeof dataResponse,
+        keys: Object.keys(dataResponse),
+        hasCode: 'code' in dataResponse,
+        hasData: 'data' in dataResponse,
+        hasOutput: 'output' in dataResponse,
+        hasAutherInfo: dataResponse.auther_info !== undefined,
+        hasNotes: dataResponse.notes !== undefined
+      })
+      
+      // 打印完整的数据结构以便调试
+      console.log('🔍 [作者笔记API] 完整响应数据:', JSON.stringify(dataResponse, null, 2))
+      
+    } catch (parseError) {
+      console.error('❌ [作者笔记API] 无法解析内层数据:', parseError)
+      console.error('❌ [作者笔记API] 原始数据:', apiResponse.data)
+      throw new Error('API返回数据格式错误，无法解析')
+    }
+
+    // 检查是否是output包装格式 - {output: {auther_info: {...}, notes: [...]}}
+    if (dataResponse.output) {
+      console.log('✅ [作者笔记API] 检测到output包装格式')
+      const outputData = dataResponse.output
+      
+      console.log('🔍 [作者笔记API] output数据详情:', {
+        hasAutherInfo: !!outputData.auther_info,
+        authorInfoKeys: outputData.auther_info ? Object.keys(outputData.auther_info) : [],
+        authorName: outputData.auther_info?.nick_name,
+        hasNotes: !!outputData.notes,
+        notesCount: outputData.notes?.length || 0,
+        cursor: outputData.cursor,
+        hasMore: outputData.has_more
+      })
+      
+      // 检查作者信息是否有效
+      if (!outputData.auther_info || outputData.auther_info.nick_name === null) {
+        console.warn('⚠️ [作者笔记API] 作者信息为空或无效，可能是：')
+        console.warn('  1. 作者链接无效')
+        console.warn('  2. Cookie已过期')
+        console.warn('  3. 访问权限不足')
+        console.warn('  4. 网络请求失败')
+        
+        // 如果作者信息无效，但我们仍然有数据结构，尝试返回
+        if (outputData.auther_info) {
+          return {
+            auther_info: outputData.auther_info,
+            notes: outputData.notes || []
+          }
+        } else {
+          throw new Error('无法获取作者信息，请检查链接是否正确或稍后重试')
+        }
+      }
+      
+      return {
+        auther_info: outputData.auther_info,
+        notes: outputData.notes || []
+      }
+    }
+
+    // 检查数据格式 - 可能是直接返回的格式
+    if (dataResponse.auther_info && dataResponse.notes) {
+      // 直接格式：{auther_info: {...}, notes: [...]}
+      console.log('✅ [作者笔记API] 检测到直接格式数据')
+      return {
+        auther_info: dataResponse.auther_info,
+        notes: dataResponse.notes || []
+      }
+    }
+    
+    // 检查是否是包装格式 - {code: 0, data: {auther_info: {...}, notes: [...]}}
+    if (dataResponse.code !== undefined) {
+      console.log('🔍 [作者笔记API] 检测到包装格式数据:', {
+        code: dataResponse.code,
+        msg: dataResponse.msg,
+        hasData: !!dataResponse.data,
+        hasAuthorInfo: !!dataResponse.data?.auther_info,
+        notesCount: dataResponse.data?.notes?.length
+      })
+      
+      // 检查内部数据状态
+      if (dataResponse.code !== 0) {
+        const errorMsg = dataResponse.msg || '未知的内部错误'
+        throw new Error(`作者笔记数据错误: ${errorMsg}`)
+      }
+
+      // 检查是否有数据
+      if (!dataResponse.data) {
+        throw new Error('API返回数据为空')
+      }
+
+      // 返回作者信息和笔记列表
+      return {
+        auther_info: dataResponse.data.auther_info,
+        notes: dataResponse.data.notes || []
+      }
+    }
+
+    // 未知格式
+    console.error('❌ [作者笔记API] 未知的数据格式:', dataResponse)
+    throw new Error('API返回数据格式不正确')
+
+  } catch (error) {
+    console.error('获取作者笔记失败:', error)
+    throw new Error(error instanceof Error ? error.message : '未知错误')
+  }
 } 

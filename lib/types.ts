@@ -736,3 +736,43 @@ export interface UserSearchResult {
   membership_end: string | null
   created_at: string
 }
+
+// 作者信息类型定义
+export interface AuthorInfo {
+  avatar: string // 作者头像URL
+  desc: string // 作者描述
+  fans: string // 粉丝数
+  follows: string // 关注数
+  gender: string // 性别
+  interaction: string // 互动数
+  ip_location: string // IP位置
+  nick_name: string // 昵称
+  red_id: string // 小红书ID
+  tags: string[] // 标签列表
+  user_id: string // 用户ID
+  user_link_url: string // 用户链接URL
+}
+
+// 作者笔记获取请求参数
+export interface CozeAuthorNotesParams {
+  cookieStr: string // 小红书cookie字符串
+  userProfileUrl: string // 作者主页链接
+}
+
+// 作者笔记获取响应
+export interface CozeAuthorNotesResponse {
+  code: number // 内部状态码
+  data: {
+    auther_info: AuthorInfo // 作者信息（保持原始字段名）
+    cursor: string // 游标
+    has_more: boolean // 是否有更多
+    notes: XiaohongshuNote[] // 笔记列表
+  }
+  msg: string // 内部消息
+}
+
+// 作者笔记获取结果
+export interface AuthorNotesResult {
+  auther_info: AuthorInfo
+  notes: XiaohongshuNote[]
+}
