@@ -5,10 +5,13 @@ import {
   CozeApiResponse, 
   CozeDataResponse, 
   CozeNoteDetailResponse,
-  CozeAuthorNotesResponse,
+  NewFormatAuthorNotesResponse,
+  NewFormatNote,
+  NewFormatUserInfo,
   XiaohongshuNote, 
   XiaohongshuNoteDetail,
   AuthorNotesResult,
+  AuthorInfo,
   Note, 
   NoteDetail,
   SearchConfig 
@@ -480,6 +483,55 @@ export function getSortLabel(sort: 0 | 1 | 2): string {
 }
 
 /**
+ * 将新格式的笔记转换为XiaohongshuNote格式
+ */
+function convertNewFormatToXiaohongshuNote(newNote: NewFormatNote): XiaohongshuNote {
+  return {
+    auther_avatar: newNote.noteCard.user.avatar,
+    auther_home_page_url: `https://www.xiaohongshu.com/user/profile/${newNote.noteCard.user.userId}`,
+    auther_nick_name: newNote.noteCard.user.nickName,
+    auther_user_id: newNote.noteCard.user.userId,
+    note_card_type: newNote.noteCard.type === 'video' ? 'video' : 'normal',
+    note_cover_height: newNote.noteCard.cover.height.toString(),
+    note_cover_url_default: newNote.noteCard.cover.urlDefault,
+    note_cover_url_pre: newNote.noteCard.cover.urlPre,
+    note_cover_width: newNote.noteCard.cover.width.toString(),
+    note_display_title: newNote.noteCard.displayTitle,
+    note_id: newNote.noteCard.noteId,
+    note_liked: newNote.noteCard.interactInfo.liked,
+    note_liked_count: newNote.noteCard.interactInfo.likedCount,
+    note_model_type: 'note',
+    note_url: `https://www.xiaohongshu.com/explore/${newNote.noteCard.noteId}?xsec_token=${newNote.noteCard.xsecToken}`,
+    note_xsec_token: newNote.noteCard.xsecToken
+  }
+}
+
+/**
+ * 将新格式的用户信息转换为AuthorInfo格式
+ */
+function convertNewFormatToAuthorInfo(newUser: NewFormatUserInfo): AuthorInfo {
+  // 从interactions数组中提取数据
+  const fansInfo = newUser.interactions.find(i => i.type === 'fans')
+  const followsInfo = newUser.interactions.find(i => i.type === 'follows')
+  const interactionInfo = newUser.interactions.find(i => i.type === 'interaction')
+  
+  return {
+    avatar: newUser.basicInfo.images,
+    desc: newUser.basicInfo.desc || '',
+    fans: fansInfo?.count || '0',
+    follows: followsInfo?.count || '0',
+    gender: newUser.basicInfo.gender === 1 ? '男' : newUser.basicInfo.gender === 2 ? '女' : '未知',
+    interaction: interactionInfo?.count || '0',
+    ip_location: newUser.basicInfo.ipLocation || '',
+    nick_name: newUser.basicInfo.nickname,
+    red_id: newUser.basicInfo.redId,
+    tags: newUser.tags || [],
+    user_id: '', // 新格式中没有这个字段，留空
+    user_link_url: '' // 新格式中没有这个字段，留空
+  }
+}
+
+/**
  * 调用Coze API获取作者笔记数据
  * @param userProfileUrl 作者主页链接
  * @param cookieStr 用户cookie字符串
@@ -520,7 +572,7 @@ export async function fetchAuthorNotes(
       workflow_id: COZE_AUTHOR_NOTES_WORKFLOW_ID,
       hasToken: !!COZE_API_TOKEN,
       tokenLength: COZE_API_TOKEN.length,
-      userProfileUrl
+      userProfileUrl: cleanUserProfileUrl
     })
 
     // 发送API请求
@@ -575,20 +627,15 @@ export async function fetchAuthorNotes(
     // 尝试解析data字段
     let dataResponse: any
     try {
-      // 首先尝试按照标准格式解析
       dataResponse = JSON.parse(apiResponse.data)
       console.log('🔍 [作者笔记API] 解析后的数据结构:', {
         type: typeof dataResponse,
         keys: Object.keys(dataResponse),
-        hasCode: 'code' in dataResponse,
-        hasData: 'data' in dataResponse,
+        hasNotes: 'notes' in dataResponse,
+        hasUser: 'user' in dataResponse,
         hasOutput: 'output' in dataResponse,
-        hasAutherInfo: dataResponse.auther_info !== undefined,
-        hasNotes: dataResponse.notes !== undefined
+        notesCount: dataResponse.notes?.length || dataResponse.output?.notes?.length || 0
       })
-      
-      // 打印完整的数据结构以便调试
-      console.log('🔍 [作者笔记API] 完整响应数据:', JSON.stringify(dataResponse, null, 2))
       
     } catch (parseError) {
       console.error('❌ [作者笔记API] 无法解析内层数据:', parseError)
@@ -596,81 +643,57 @@ export async function fetchAuthorNotes(
       throw new Error('API返回数据格式错误，无法解析')
     }
 
-    // 检查是否是output包装格式 - {output: {auther_info: {...}, notes: [...]}}
-    if (dataResponse.output) {
-      console.log('✅ [作者笔记API] 检测到output包装格式')
-      const outputData = dataResponse.output
+    // 检查新格式 - {notes: [...], user: {...}}
+    if (dataResponse.notes && dataResponse.user) {
+      console.log('✅ [作者笔记API] 检测到新格式数据')
+      const newFormatData = dataResponse as NewFormatAuthorNotesResponse
       
-      console.log('🔍 [作者笔记API] output数据详情:', {
-        hasAutherInfo: !!outputData.auther_info,
-        authorInfoKeys: outputData.auther_info ? Object.keys(outputData.auther_info) : [],
-        authorName: outputData.auther_info?.nick_name,
-        hasNotes: !!outputData.notes,
-        notesCount: outputData.notes?.length || 0,
-        cursor: outputData.cursor,
-        hasMore: outputData.has_more
+      console.log('🔍 [作者笔记API] 新格式数据详情:', {
+        notesCount: newFormatData.notes.length,
+        userName: newFormatData.user.basicInfo.nickname,
+        userFans: newFormatData.user.interactions.find(i => i.type === 'fans')?.count,
+        hasUserInfo: !!newFormatData.user.basicInfo
       })
+      
+      // 转换为标准格式
+      const convertedNotes = newFormatData.notes.map(convertNewFormatToXiaohongshuNote)
+      const convertedAuthorInfo = convertNewFormatToAuthorInfo(newFormatData.user)
+      
+      return {
+        auther_info: convertedAuthorInfo,
+        notes: convertedNotes
+      }
+    }
+
+    // 检查是否是output包装格式 - {output: {notes: [...], user: {...}}}
+    if (dataResponse.output && dataResponse.output.notes && dataResponse.output.user) {
+      console.log('✅ [作者笔记API] 检测到output包装的新格式数据')
+      const outputData = dataResponse.output as NewFormatAuthorNotesResponse
+      
+      // 转换为标准格式
+      const convertedNotes = outputData.notes.map(convertNewFormatToXiaohongshuNote)
+      const convertedAuthorInfo = convertNewFormatToAuthorInfo(outputData.user)
+      
+      return {
+        auther_info: convertedAuthorInfo,
+        notes: convertedNotes
+      }
+    }
+
+    // 检查旧的output包装格式 - {output: {auther_info: {...}, notes: [...]}}
+    if (dataResponse.output && dataResponse.output.auther_info) {
+      console.log('✅ [作者笔记API] 检测到旧的output包装格式')
+      const outputData = dataResponse.output
       
       // 检查作者信息是否有效
       if (!outputData.auther_info || outputData.auther_info.nick_name === null) {
-        console.warn('⚠️ [作者笔记API] 作者信息为空或无效，可能是：')
-        console.warn('  1. 作者链接无效')
-        console.warn('  2. Cookie已过期')
-        console.warn('  3. 访问权限不足')
-        console.warn('  4. 网络请求失败')
-        
-        // 如果作者信息无效，但我们仍然有数据结构，尝试返回
-        if (outputData.auther_info) {
-          return {
-            auther_info: outputData.auther_info,
-            notes: outputData.notes || []
-          }
-        } else {
-          throw new Error('无法获取作者信息，请检查链接是否正确或稍后重试')
-        }
+        console.warn('⚠️ [作者笔记API] 作者信息为空或无效')
+        throw new Error('无法获取作者信息，请检查链接是否正确或稍后重试')
       }
       
       return {
         auther_info: outputData.auther_info,
         notes: outputData.notes || []
-      }
-    }
-
-    // 检查数据格式 - 可能是直接返回的格式
-    if (dataResponse.auther_info && dataResponse.notes) {
-      // 直接格式：{auther_info: {...}, notes: [...]}
-      console.log('✅ [作者笔记API] 检测到直接格式数据')
-      return {
-        auther_info: dataResponse.auther_info,
-        notes: dataResponse.notes || []
-      }
-    }
-    
-    // 检查是否是包装格式 - {code: 0, data: {auther_info: {...}, notes: [...]}}
-    if (dataResponse.code !== undefined) {
-      console.log('🔍 [作者笔记API] 检测到包装格式数据:', {
-        code: dataResponse.code,
-        msg: dataResponse.msg,
-        hasData: !!dataResponse.data,
-        hasAuthorInfo: !!dataResponse.data?.auther_info,
-        notesCount: dataResponse.data?.notes?.length
-      })
-      
-      // 检查内部数据状态
-      if (dataResponse.code !== 0) {
-        const errorMsg = dataResponse.msg || '未知的内部错误'
-        throw new Error(`作者笔记数据错误: ${errorMsg}`)
-      }
-
-      // 检查是否有数据
-      if (!dataResponse.data) {
-        throw new Error('API返回数据为空')
-      }
-
-      // 返回作者信息和笔记列表
-      return {
-        auther_info: dataResponse.data.auther_info,
-        notes: dataResponse.data.notes || []
       }
     }
 

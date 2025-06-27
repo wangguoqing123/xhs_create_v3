@@ -226,6 +226,10 @@ export const Header = memo(function Header() {
               <span>批量生成</span>
             </NavLink>
             
+            <NavLink href="/author-copy">
+              <span>作者复刻</span>
+            </NavLink>
+            
             <NavLink href="/prices">
               <span>定价方案</span>
             </NavLink>
@@ -264,6 +268,10 @@ export const Header = memo(function Header() {
             
             <MobileNavLink href="/search" onClick={handleMobileMenuClose}>
               批量生成
+            </MobileNavLink>
+            
+            <MobileNavLink href="/author-copy" onClick={handleMobileMenuClose}>
+              作者复刻
             </MobileNavLink>
             
             <MobileNavLink href="/prices" onClick={handleMobileMenuClose}>

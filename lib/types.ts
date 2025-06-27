@@ -759,16 +759,90 @@ export interface CozeAuthorNotesParams {
   userProfileUrl: string // 作者主页链接
 }
 
-// 作者笔记获取响应
-export interface CozeAuthorNotesResponse {
-  code: number // 内部状态码
-  data: {
-    auther_info: AuthorInfo // 作者信息（保持原始字段名）
-    cursor: string // 游标
-    has_more: boolean // 是否有更多
-    notes: XiaohongshuNote[] // 笔记列表
+// 新的笔记格式类型定义
+export interface NewFormatNote {
+  exposed: boolean
+  id: string
+  index: number
+  noteCard: {
+    cover: {
+      fileId: string
+      height: number
+      infoList: Array<{
+        imageScene: string
+        url: string
+      }>
+      traceId: string
+      url: string
+      urlDefault: string
+      urlPre: string
+      width: number
+    }
+    displayTitle: string
+    interactInfo: {
+      liked: boolean
+      likedCount: string
+      sticky: boolean
+    }
+    noteId: string
+    type: string
+    user: {
+      avatar: string
+      nickName: string
+      nickname: string
+      userId: string
+    }
+    xsecToken: string
   }
-  msg: string // 内部消息
+  ssrRendered: boolean
+  xsecToken: string
+}
+
+// 新的用户信息格式
+export interface NewFormatUserInfo {
+  basicInfo: {
+    desc: string
+    gender: number
+    imageb: string
+    images: string
+    ipLocation: string
+    nickname: string
+    redId: string
+  }
+  extraInfo: {
+    blockType: string
+    fstatus: string
+  }
+  interactions: Array<{
+    count: string
+    name: string
+    type: string
+  }>
+  result: {
+    code: number
+    message: string
+    success: boolean
+  }
+  tabPublic: {
+    collection: boolean
+    collectionBoard: {
+      count: number
+      display: boolean
+      lock: boolean
+    }
+    collectionNote: {
+      count: number
+      display: boolean
+      lock: boolean
+    }
+  }
+  tags: any[]
+}
+
+// 新格式的作者笔记获取响应
+export interface NewFormatAuthorNotesResponse {
+  notes: NewFormatNote[]
+  user: NewFormatUserInfo
 }
 
 // 作者笔记获取结果

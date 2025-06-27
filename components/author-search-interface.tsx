@@ -70,56 +70,71 @@ export function AuthorSearchInterface({
   }
 
   return (
-    <div className="sticky top-20 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 transition-colors duration-300">
-      <div className="container mx-auto px-6 py-6">
-        <div className="flex items-center gap-6 max-w-4xl mx-auto">
-          {/* 作者链接输入框 */}
-          <div className="flex-1 relative">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl blur-lg group-hover:blur-xl transition-all duration-300" />
-              <div className="relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-600/50 shadow-lg">
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
-                <Input
-                  type="text"
-                  placeholder="输入小红书作者主页链接（如：https://www.xiaohongshu.com/user/profile/xxx）"
-                  value={userProfileUrl}
-                  onChange={(e) => setUserProfileUrl(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSearch()}
-                  disabled={isLoading}
-                  className="h-12 pl-12 pr-4 text-base border-none bg-transparent text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-0 focus:outline-none disabled:opacity-50"
-                />
+    <>
+      {/* 固定在顶部的输入框部分 */}
+      <div className="sticky top-20 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 transition-colors duration-300">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center gap-6 max-w-4xl mx-auto">
+            {/* 作者链接输入框 */}
+            <div className="flex-1 relative">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl blur-lg group-hover:blur-xl transition-all duration-300" />
+                <div className="relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-600/50 shadow-lg">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <Input
+                    type="text"
+                    placeholder="输入小红书作者主页链接（如：https://www.xiaohongshu.com/user/profile/xxx）"
+                    value={userProfileUrl}
+                    onChange={(e) => setUserProfileUrl(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSearch()}
+                    disabled={isLoading}
+                    className="h-12 pl-12 pr-4 text-base border-none bg-transparent text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-0 focus:outline-none disabled:opacity-50"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 搜索按钮 */}
-          <Button
-            onClick={handleSearch}
-            disabled={!userProfileUrl.trim() || isLoading}
-            className="h-12 px-6 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            <Search className="h-4 w-4 mr-2" />
-            {isLoading ? '获取中...' : '获取笔记'}
-          </Button>
+            {/* 搜索按钮 */}
+            <Button
+              onClick={handleSearch}
+              disabled={!userProfileUrl.trim() || isLoading}
+              className="h-12 px-6 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              {isLoading ? '获取中...' : '获取笔记'}
+            </Button>
 
-          {/* 批量生成按钮 */}
-          {selectedCount > 0 && (
+            {/* 批量生成按钮 */}
             <Button
               onClick={onBatchGenerate}
-              className="h-12 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 relative"
+              disabled={selectedCount === 0}
+              className="h-12 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 relative"
             >
               <Sparkles className="h-4 w-4 mr-2" />
               仿写选中笔记
-              <Badge className="ml-2 bg-white/20 text-white hover:bg-white/30 border-0">
-                {selectedCount}
-              </Badge>
+              {selectedCount > 0 && (
+                <Badge className="ml-2 bg-white/20 text-white hover:bg-white/30 border-0">
+                  {selectedCount}
+                </Badge>
+              )}
             </Button>
+          </div>
+
+          {/* 错误提示 */}
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg max-w-4xl mx-auto">
+              <p className="text-red-600 dark:text-red-400 text-sm">
+                {error}
+              </p>
+            </div>
           )}
         </div>
+      </div>
 
-        {/* 作者信息展示 */}
-        {authorInfo && (
-          <div className="mt-6 p-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-600/50 shadow-lg max-w-4xl mx-auto">
+      {/* 作者信息展示 - 非固定，可滚动 */}
+      {authorInfo && (
+        <div className="container mx-auto px-6 py-6">
+          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-600/50 shadow-lg max-w-4xl mx-auto">
             <div className="flex items-start gap-4">
               {/* 作者头像 */}
               <div className="relative">
@@ -201,17 +216,8 @@ export function AuthorSearchInterface({
               </div>
             </div>
           </div>
-        )}
-
-        {/* 错误提示 */}
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg max-w-4xl mx-auto">
-            <p className="text-red-600 dark:text-red-400 text-sm">
-              {error}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   )
 } 
