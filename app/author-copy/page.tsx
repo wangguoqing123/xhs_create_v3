@@ -243,6 +243,7 @@ function AuthorCopyPageContent() {
               onNoteView={handleNoteView}
               isLoading={isLoading}
               error={error}
+              context="author-copy"
             />
           </div>
         )}

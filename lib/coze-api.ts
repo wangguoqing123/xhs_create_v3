@@ -515,6 +515,26 @@ function convertNewFormatToAuthorInfo(newUser: NewFormatUserInfo): AuthorInfo {
   const followsInfo = newUser.interactions.find(i => i.type === 'follows')
   const interactionInfo = newUser.interactions.find(i => i.type === 'interaction')
   
+  // 安全地处理tags字段，确保它是字符串数组
+  const safeTags: string[] = []
+  if (Array.isArray(newUser.tags)) {
+    for (const tag of newUser.tags) {
+      if (typeof tag === 'string') {
+        // 如果是字符串，直接添加
+        safeTags.push(tag)
+      } else if (tag && typeof tag === 'object') {
+        // 如果是对象，尝试提取有用的字符串属性
+        if (tag.name && typeof tag.name === 'string') {
+          safeTags.push(tag.name)
+        } else if (tag.text && typeof tag.text === 'string') {
+          safeTags.push(tag.text)
+        } else if (tag.title && typeof tag.title === 'string') {
+          safeTags.push(tag.title)
+        }
+      }
+    }
+  }
+  
   return {
     avatar: newUser.basicInfo.images,
     desc: newUser.basicInfo.desc || '',
@@ -525,7 +545,7 @@ function convertNewFormatToAuthorInfo(newUser: NewFormatUserInfo): AuthorInfo {
     ip_location: newUser.basicInfo.ipLocation || '',
     nick_name: newUser.basicInfo.nickname,
     red_id: newUser.basicInfo.redId,
-    tags: newUser.tags || [],
+    tags: safeTags, // 使用安全处理后的标签数组
     user_id: '', // 新格式中没有这个字段，留空
     user_link_url: '' // 新格式中没有这个字段，留空
   }

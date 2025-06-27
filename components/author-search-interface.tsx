@@ -200,17 +200,31 @@ export function AuthorSearchInterface({
                 </div>
 
                 {/* 标签 */}
-                {authorInfo.tags && authorInfo.tags.length > 0 && (
+                {authorInfo.tags && Array.isArray(authorInfo.tags) && authorInfo.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {authorInfo.tags.slice(0, 5).map((tag, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
+                    {authorInfo.tags.slice(0, 5).map((tag, index) => {
+                      // 确保tag是字符串类型，防止渲染对象导致错误
+                      let tagText: string
+                      if (typeof tag === 'string') {
+                        tagText = tag
+                      } else if (tag && typeof tag === 'object') {
+                        // 如果是对象，尝试提取字符串属性
+                        const tagObj = tag as any
+                        tagText = tagObj.name || tagObj.text || tagObj.title || String(tag)
+                      } else {
+                        tagText = String(tag)
+                      }
+                      
+                      return (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                        >
+                          {tagText}
+                        </Badge>
+                      )
+                    })}
                   </div>
                 )}
               </div>
