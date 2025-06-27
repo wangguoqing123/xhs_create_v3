@@ -73,11 +73,14 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
         
         {/* 关闭按钮和多选框 */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-          <div className="w-8 h-8 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+          <div 
+            className="w-12 h-12 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg cursor-pointer hover:bg-white dark:hover:bg-slate-700 hover:scale-105 transition-all duration-200" 
+            onClick={() => handleCheckboxChange(!isSelected)}
+          >
             <Checkbox 
-              className="w-5 h-5 border-gray-300 dark:border-gray-600" 
+              className="w-5 h-5 border-gray-300 dark:border-gray-600 pointer-events-none" 
               checked={isSelected} 
-              onCheckedChange={handleCheckboxChange}
+              onCheckedChange={() => {}} // 空函数，因为点击由父级处理
             />
           </div>
           <Button

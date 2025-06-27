@@ -380,13 +380,19 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
             className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-0 bg-white dark:bg-slate-800 rounded-2xl shadow-md"
           >
             <div className="relative">
-              {/* Selection Checkbox */}
-              <div className="absolute top-3 left-3 z-10" onClick={(e) => e.stopPropagation()}>
-                <div className="w-7 h-7 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-md">
+              {/* Selection Checkbox - 扩大点击区域 */}
+              <div 
+                className="absolute top-1 left-1 z-10 w-16 h-16 flex items-center justify-center cursor-pointer" 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onNoteSelect(note.id, !selectedNotes.includes(note.id))
+                }}
+              >
+                <div className="w-8 h-8 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg hover:bg-white dark:hover:bg-slate-700 hover:scale-110 transition-all duration-200">
                   <Checkbox
                     checked={selectedNotes.includes(note.id)}
-                    onCheckedChange={(checked) => onNoteSelect(note.id, !!checked)}
-                    className="w-4 h-4 border-gray-300 dark:border-gray-600"
+                    onCheckedChange={() => {}} // 空函数，因为点击由父级处理
+                    className="w-4 h-4 border-gray-300 dark:border-gray-600 pointer-events-none"
                   />
                 </div>
               </div>
