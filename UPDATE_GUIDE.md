@@ -15,9 +15,23 @@ ssh -o PreferredAuthentications=password root@101.37.182.39 "chmod +x /tmp/quick
 ```
 进入项目目录并更新代码
    cd /var/www/xhs_create_v3
-   git fetch origin
-   git reset --hard origin/main
-   pm2 restart xhs-create-v3
+   git pull origin main
+   # 2. 停止服务
+pm2 stop all  # 或其他停止方式
+
+# 3. 清理缓存
+rm -rf .next
+
+# 4. 重新构建
+npm run build
+
+# 5. 重新启动
+pm2 start all  # 或其他启动方式
+
+# 6. 查看状态
+pm2 status
+pm2 logs
+
 
    检查更新结果
    pm2 status
