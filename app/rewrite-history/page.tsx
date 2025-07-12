@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Link, FileText, Copy, ExternalLink, Clock, Loader2, AlertCircle, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
-import { Header } from "@/components/header"
 import type { RewriteRecord } from "@/lib/types"
 
 export default function RewriteHistoryPage() {
@@ -119,7 +118,6 @@ export default function RewriteHistoryPage() {
   if (!user) {
     return (
       <>
-        <Header />
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center pt-20">
           <Card className="w-96 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-0 shadow-xl">
             <CardContent className="p-8 text-center">
@@ -140,9 +138,8 @@ export default function RewriteHistoryPage() {
 
   return (
     <>
-      <Header />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 pt-20">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 pt-8">
+        <div className="px-4 py-8">
           {/* 页面标题 */}
           {/* <div className="mb-8">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">

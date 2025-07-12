@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { Header } from "@/components/header"
 import { TaskSidebar } from "@/components/task-sidebar"
 import { ResultViewer } from "@/components/result-viewer"
 import { useBatchRewrite } from "@/lib/hooks/use-batch-rewrite"
@@ -235,70 +234,67 @@ function ResultsPageContent() {
   }, [selectedTaskId, convertedTasks]) // 依赖selectedTaskId，确保任务切换时重新选择笔记
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900 transition-colors duration-300">
-      <Header />
-      <div className="pt-20 h-screen flex">
-        {/* Left Sidebar */}
-        <TaskSidebar 
-          tasks={convertedTasks} 
-          selectedTaskId={selectedTaskId} 
-          onTaskSelect={setSelectedTaskId}
-          selectedNoteId={selectedNoteId}
-          onNoteSelect={setSelectedNoteId}
-          taskName={selectedTask?.taskName || '批量改写任务'}
-          taskList={taskList}
-        />
+    <div className="h-screen flex">
+      {/* Left Sidebar */}
+      <TaskSidebar 
+        tasks={convertedTasks} 
+        selectedTaskId={selectedTaskId} 
+        onTaskSelect={setSelectedTaskId}
+        selectedNoteId={selectedNoteId}
+        onNoteSelect={setSelectedNoteId}
+        taskName={selectedTask?.taskName || '批量改写任务'}
+        taskList={taskList}
+      />
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-700 dark:text-gray-300">正在加载任务数据...</p>
-              </div>
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-700 dark:text-gray-300">正在加载任务数据...</p>
             </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-red-500 text-6xl mb-4">⚠️</div>
-                <h3 className="text-xl font-semibold text-red-600 mb-2">加载失败</h3>
-                <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  重新加载
-                </button>
-              </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h3 className="text-xl font-semibold text-red-600 mb-2">加载失败</h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                重新加载
+              </button>
             </div>
-          ) : selectedTask && convertedTasks.length > 0 ? (
-            <ResultViewer 
-              task={convertedTasks.find(t => t.id === selectedNoteId) || convertedTasks[0]} 
-              taskName={selectedTask?.taskName}
-              allTasks={convertedTasks}
-            />
-          ) : selectedTask ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-gray-400 text-6xl mb-4">📝</div>
-                <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                  {selectedTask.taskName}
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  任务状态：{selectedTask.status === 'completed' ? '已完成' : selectedTask.status === 'processing' ? '处理中' : '待处理'}
-                </p>
-                <p className="text-gray-500 dark:text-gray-400">
-                  包含 {selectedTask.progress?.total || 0} 个笔记，生成了 {selectedTask.contentStats?.completed || 0} 个内容
-                </p>
-              </div>
+          </div>
+        ) : selectedTask && convertedTasks.length > 0 ? (
+          <ResultViewer 
+            task={convertedTasks.find(t => t.id === selectedNoteId) || convertedTasks[0]} 
+            taskName={selectedTask?.taskName}
+            allTasks={convertedTasks}
+          />
+        ) : selectedTask ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="text-gray-400 text-6xl mb-4">📝</div>
+              <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">
+                {selectedTask.taskName}
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                任务状态：{selectedTask.status === 'completed' ? '已完成' : selectedTask.status === 'processing' ? '处理中' : '待处理'}
+              </p>
+              <p className="text-gray-500 dark:text-gray-400">
+                包含 {selectedTask.progress?.total || 0} 个笔记，生成了 {selectedTask.contentStats?.completed || 0} 个内容
+              </p>
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 text-xl">
-              请选择一个任务查看结果
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 text-xl">
+            请选择一个任务查看结果
+          </div>
+        )}
       </div>
     </div>
   )

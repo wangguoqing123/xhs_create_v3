@@ -21,6 +21,7 @@ import { CookieSettingsModal } from '@/components/cookie-settings-modal'
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal'
 import { useRouter } from 'next/navigation'
 
+
 export const UserDropdown = memo(function UserDropdown() {
   const { user, profile, signOut } = useMySQLAuth()
   const [isOpen, setIsOpen] = useState(false)
@@ -100,6 +101,8 @@ export const UserDropdown = memo(function UserDropdown() {
     }
   }
 
+
+
   return (
     <>
       <div 
@@ -107,36 +110,40 @@ export const UserDropdown = memo(function UserDropdown() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* 用户信息按钮 */}
+        {/* 用户信息按钮 - 简洁样式 */}
         <Button
           variant="ghost"
-          className="flex items-center space-x-2 px-3 py-2 h-auto hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="w-full flex items-center justify-between p-2 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 group"
         >
           <div className="flex items-center space-x-2">
-            <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            <span className="text-sm text-gray-700 dark:text-gray-300 max-w-32 truncate">
-              {profile.display_name || user.email}
-            </span>
+            <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+              <User className="h-3 w-3 text-white" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {profile?.display_name || '用户名'}
+              </div>
+            </div>
           </div>
-          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </Button>
 
-        {/* 下拉菜单 */}
+        {/* 向上展示的下拉菜单 */}
         {isOpen && (
           <div 
-            className="absolute right-0 top-full mt-2 w-56 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-gray-200/50 dark:border-slate-600/50 rounded-2xl shadow-2xl z-50 py-2"
+            className="absolute right-0 bottom-full mb-2 w-56 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg shadow-xl z-50 py-2"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
             {/* 用户信息头部 */}
-            <div className="px-4 py-3 border-b border-gray-200/50 dark:border-slate-600/50">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-600">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <User className="h-5 w-5 text-white" />
+                <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                    {profile.display_name || '用户'}
+                    {profile?.display_name || '用户'}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {user.email}
@@ -154,11 +161,6 @@ export const UserDropdown = memo(function UserDropdown() {
               >
                 <List className="h-4 w-4 mr-3" />
                 <span className="flex-1 text-left">任务列表</span>
-                {profile.task_indices && profile.task_indices.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {profile.task_indices.length}
-                  </Badge>
-                )}
               </button>
 
               {/* 改写记录 */}
@@ -177,9 +179,6 @@ export const UserDropdown = memo(function UserDropdown() {
               >
                 <Coins className="h-4 w-4 mr-3" />
                 <span className="flex-1 text-left">积分账单</span>
-                {/* <Badge variant="outline" className="text-xs">
-                  {profile.credits || 0}
-                </Badge> */}
               </button>
 
               {/* Cookie设置 */}
@@ -198,7 +197,7 @@ export const UserDropdown = memo(function UserDropdown() {
               </button>
 
               {/* 分割线 */}
-              <div className="my-1 border-t border-gray-200/50 dark:border-slate-600/50" />
+              <div className="my-1 border-t border-gray-200 dark:border-slate-600" />
 
               {/* 退出登录 */}
               <button

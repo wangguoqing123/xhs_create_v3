@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { MySQLAuthProvider } from "@/components/mysql-auth-context"
 import { CreditsProvider } from "@/components/credits-context"
 import { DatabaseInitializer } from "@/components/database-initializer"
+import { LayoutContent } from "@/components/layout-content"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -33,7 +34,9 @@ export default function RootLayout({
           <DatabaseInitializer />
           <MySQLAuthProvider>
             <CreditsProvider>
-              {children}
+              <LayoutContent>
+                {children}
+              </LayoutContent>
             </CreditsProvider>
           </MySQLAuthProvider>
         </ThemeProvider>

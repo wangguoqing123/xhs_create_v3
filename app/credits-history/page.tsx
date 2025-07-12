@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Header } from '@/components/header'
 import { useMySQLAuth } from '@/components/mysql-auth-context'
 import { 
   Coins, 
@@ -154,7 +153,6 @@ export default function CreditsHistory() {
   if (!user) {
     return (
       <>
-        <Header />
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center pt-20">
           <Card className="w-96 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-0 shadow-xl">
             <CardContent className="p-8 text-center">
@@ -175,9 +173,8 @@ export default function CreditsHistory() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="pt-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="pt-8">
+        <div className="">
           {/* 页面标题 */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">积分账单</h1>

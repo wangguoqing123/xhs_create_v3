@@ -151,7 +151,7 @@ export const Header = memo(function Header() {
     if (user) {
       return (
         <div className="flex items-center space-x-4">
-          <CreditsDisplay compact />
+          <CreditsDisplay />
           <UserDropdown />
         </div>
       )
@@ -176,7 +176,7 @@ export const Header = memo(function Header() {
     if (user) {
       return (
         <div className="flex items-center space-x-3">
-          <CreditsDisplay compact />
+          <CreditsDisplay />
           <UserDropdown />
         </div>
       )
