@@ -59,7 +59,7 @@ const navigationItems = [
         description: "复制作者风格"
       },
       {
-        href: "/note-rewrite",
+        href: "/rewrite",
         icon: FileText,
         label: "笔记翻写", 
         description: "翻写笔记内容"

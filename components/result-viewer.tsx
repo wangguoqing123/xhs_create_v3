@@ -8,7 +8,54 @@ import { Copy, CheckCircle, XCircle, Clock, Download, FileText, AlertCircle, Fil
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import * as XLSX from 'xlsx'
-import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
+import { getProxiedImageUrl, preprocessImageUrl } from "@/lib/image-utils"
+
+// 智能图片组件 - 自动处理加载失败
+function SmartImage({ 
+  src, 
+  alt, 
+  width, 
+  height, 
+  className 
+}: { 
+  src: string
+  alt: string
+  width: number
+  height: number
+  className?: string
+}) {
+  const [imageError, setImageError] = useState(false)
+  const [imageSrc, setImageSrc] = useState(() => {
+    // 使用预处理功能，确保URL有效
+    return preprocessImageUrl(src, '/placeholder.svg')
+  })
+
+  // 处理图片加载错误
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('❌ [SmartImage] 图片加载失败:', src)
+    
+    const img = event.currentTarget
+    
+    // 如果还没有尝试过占位符，使用占位符
+    if (!imageError && img.src !== '/placeholder.svg') {
+      setImageError(true)
+      setImageSrc('/placeholder.svg')
+      console.log('🔄 [SmartImage] 使用占位符图片')
+    }
+  }
+
+  return (
+    <Image
+      src={imageSrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      onError={handleImageError}
+      loading="lazy"
+    />
+  )
+}
 
 interface GeneratedContent {
   id: string
@@ -213,12 +260,12 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
         </div>
       </CardHeader>
 
-      <CardContent className="p-4">
-                  {/* 标题 */}
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">标题</h3>
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/30">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
+                    <CardContent className="p-4">
+        {/* 标题 */}
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">标题</h3>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+            <p className="text-base font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
                 {result.status === "generating" && result.title && result.title.length > 0 ? (
                   <TypewriterText 
                     text={result.title} 
@@ -236,12 +283,12 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
             </div>
           </div>
 
-          {/* 正文 */}
+                    {/* 正文 */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">正文内容</h3>
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-3 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner min-h-64 max-h-[356px] overflow-y-auto">
+            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner min-h-80 max-h-96 overflow-y-auto">
               <div className="prose max-w-none">
-                <pre className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-xs">
+                <pre className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-sm">
                   {result.status === "generating" && result.content && result.content.length > 0 ? (
                     <TypewriterText 
                       text={result.content} 
@@ -264,8 +311,38 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
 }
 
 export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
-  // 导出为文本文件
   const handleExportTxt = () => {
+    if (!task) return
+    
+    const completedResults = task.results.filter(result => result.status === "completed")
+    if (completedResults.length === 0) {
+      alert("暂无已完成的内容可导出")
+      return
+    }
+
+    const content = completedResults.map((result, index) => 
+      `=== 版本 ${index + 1} ===\n标题：${result.title}\n\n内容：\n${result.content}`
+    ).join('\n\n' + '='.repeat(50) + '\n\n')
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${taskName || '批量改写任务'}_${task.noteTitle}_${new Date().toLocaleDateString('zh-CN')}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportExcel = () => {
+    if (!task) return
+    
+    // 准备Excel数据
+    const excelData = [
+      ['任务名称', '笔记编号', '仿写笔记标题', '仿写笔记封面链接', '内容编号', '仿写标题', '仿写内容', '生成状态', '导出时间']
+    ]
+
     // 只导出已完成的内容
     const completedResults = task.results.filter(result => result.status === "completed")
     
@@ -274,81 +351,19 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
       return
     }
 
-    const allContent = completedResults
-      .map((result, index) => {
-        return `=== ${result.title} ===\n\n${result.content}\n\n${"=".repeat(50)}\n\n`
-      })
-      .join("")
-
-    const blob = new Blob([allContent], { type: "text/plain;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${task.noteTitle.slice(0, 20)}_批量生成内容.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  // 导出为Excel文件（按数据层级结构）
-  const handleExportExcel = () => {
-    // 使用所有任务数据，如果没有则使用当前任务
-    const tasksToExport = allTasks || [task]
-    
-    // 检查是否有已完成的内容
-    const hasCompletedContent = tasksToExport.some(t => 
-      t.results.some(r => r.status === "completed")
-    )
-    
-    if (!hasCompletedContent) {
-      alert("暂无已完成的内容可导出")
-      return
-    }
-
-    // 准备Excel数据
-    const excelData = []
-    
-    // 添加表头
-    excelData.push([
-      '任务名称',
-      '笔记编号',
-      '仿写笔记标题', 
-      '仿写笔记封面链接',
-      '内容编号',
-      '仿写标题',
-      '仿写内容',
-      '生成状态',
-      '导出时间'
-    ])
-
-    // 遍历所有任务
-    tasksToExport.forEach((taskItem, taskIndex) => {
-      // 只导出已完成的内容
-      const completedResults = taskItem.results.filter(result => result.status === "completed")
-      
-      if (completedResults.length > 0) {
-        completedResults.forEach((result, resultIndex) => {
-          excelData.push([
-            taskName || `批量改写任务`, // 任务名称
-            taskIndex + 1, // 笔记编号
-            taskItem.noteTitle, // 仿写笔记标题
-            taskItem.noteCover, // 仿写笔记封面链接
-            resultIndex + 1, // 内容编号
-            result.title || '', // 仿写标题
-            result.content || '', // 仿写内容
-            '已完成', // 生成状态
-            new Date().toLocaleString('zh-CN') // 导出时间
-          ])
-        })
-      }
+    completedResults.forEach((result, index) => {
+      excelData.push([
+        taskName || '批量改写任务', // 任务名称
+        '1', // 笔记编号（单个笔记）
+        task.noteTitle, // 仿写笔记标题
+        task.noteCover || '', // 仿写笔记封面链接
+        `版本${index + 1}`, // 内容编号
+        result.title, // 仿写标题
+        result.content, // 仿写内容
+        '已完成', // 生成状态
+        new Date().toLocaleString('zh-CN') // 导出时间
+      ])
     })
-
-    // 如果没有数据行，说明没有已完成的内容
-    if (excelData.length <= 1) {
-      alert("暂无已完成的内容可导出")
-      return
-    }
 
     // 创建工作簿
     const worksheet = XLSX.utils.aoa_to_sheet(excelData)
@@ -394,24 +409,37 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
     alert(`Excel文件导出成功！\n文件名：${fileName}\n共导出 ${excelData.length - 1} 条记录`)
   }
 
-  const completedCount = task.results.filter(result => result.status === "completed").length
-  const generatingCount = task.results.filter(result => result.status === "generating").length
+  // 安全地获取统计数据
+  const completedCount = task?.results?.filter(result => result.status === "completed").length || 0
+  const generatingCount = task?.results?.filter(result => result.status === "generating").length || 0
+
+  // 如果没有task，显示错误状态
+  if (!task) {
+    return (
+      <div className="h-full flex items-center justify-center bg-white dark:bg-slate-900">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-semibold text-red-600 mb-2">数据加载错误</h3>
+          <p className="text-gray-700 dark:text-gray-300">无法加载任务数据，请刷新页面重试</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+    <div className="h-full flex flex-col bg-white dark:bg-slate-900">
       {/* Source Note Header */}
-      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 p-4">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200/50 dark:border-slate-700/50 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Cover with 3:4 ratio */}
             <div className="w-16 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 shadow-lg">
-              <Image
-                src={getProxiedImageUrl(task.noteCover || "/placeholder.svg")} // 使用代理URL
+              <SmartImage
+                src={task.noteCover || "/placeholder.svg"}
                 alt="源笔记"
                 width={64}
                 height={80}
                 className="w-full h-full object-cover"
-                onError={createImageErrorHandler(task.noteCover, "/placeholder.svg")} // 添加错误处理
               />
             </div>
 
@@ -434,22 +462,13 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
                     ，生成中 <span className="font-semibold text-yellow-600 dark:text-yellow-400">{generatingCount}</span> 篇
                   </>
                 )}
-                ，共 <span className="font-semibold text-purple-600 dark:text-purple-400">{task.results.length}</span> 篇内容
+                ，共 <span className="font-semibold text-purple-600 dark:text-purple-400">{task.results?.length || 0}</span> 篇内容
               </p>
             </div>
           </div>
 
           {/* Export Buttons */}
           <div className="flex items-center gap-2">
-            {/* <Button
-              onClick={handleExportTxt}
-              size="lg"
-              disabled={completedCount === 0}
-              className="h-10 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              导出TXT
-            </Button> */}
             <Button
               onClick={handleExportExcel}
               size="lg"
@@ -463,17 +482,23 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
         </div>
       </div>
 
-      {/* Generated Results - 横向并排显示 */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-3 gap-6">
-            {task.results.map((result, index) => (
+      {/* Generated Results - 固定3列布局，优化间距确保内容完全展示 */}
+      <div className="flex-1 overflow-y-auto p-4 xl:p-6">
+        <div className="max-w-none mx-auto">
+          {/* 
+            固定3列布局：
+            - 小屏幕（<768px）：1列
+            - 中等屏幕（768px-1024px）：2列  
+            - 大屏幕（>=1024px）：3列 - 固定3列，减少间距确保内容完全展示
+          */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
+            {task.results?.map((result, index) => (
               <ContentDisplay 
                 key={result.id} 
                 result={result} 
                 index={index}
               />
-            ))}
+            )) || []}
           </div>
         </div>
       </div>

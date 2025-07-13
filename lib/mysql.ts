@@ -12,12 +12,12 @@ const mysqlConfig = {
   database: process.env.DB_NAME || 'xhs_create_v3',
   charset: process.env.DB_CHARSET || 'utf8mb4',
   timezone: '+08:00',
-  // 增加连接超时时间，处理网络延迟
-  acquireTimeout: 120000, // 2分钟获取连接超时
-  timeout: 120000, // 2分钟查询超时
+  // 连接超时时间（毫秒）
   connectTimeout: 60000, // 1分钟连接超时
-  // 启用自动重连
-  reconnect: true,
+  // 查询超时时间（毫秒）
+  queryTimeout: 120000, // 2分钟查询超时
+  // 启用多语句查询
+  multipleStatements: false,
   // 设置keep-alive以保持连接活跃
   keepAliveInitialDelay: 0,
   enableKeepAlive: true

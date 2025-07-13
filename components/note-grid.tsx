@@ -61,7 +61,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
     // 作者复刻场景的空状态
     if (context === 'author-copy') {
       return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-16">
           <div className="flex flex-col items-center justify-center py-12">
             {/* 主标题 */}
             <div className="text-center mb-16">

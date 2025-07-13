@@ -7,8 +7,55 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Clock, XCircle, Sparkles, Download, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
-import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
+import { getProxiedImageUrl, preprocessImageUrl } from "@/lib/image-utils"
 import * as XLSX from 'xlsx'
+
+// 智能图片组件 - 自动处理加载失败
+function SmartImage({ 
+  src, 
+  alt, 
+  width, 
+  height, 
+  className 
+}: { 
+  src: string
+  alt: string
+  width: number
+  height: number
+  className?: string
+}) {
+  const [imageError, setImageError] = useState(false)
+  const [imageSrc, setImageSrc] = useState(() => {
+    // 使用预处理功能，确保URL有效
+    return preprocessImageUrl(src, '/placeholder.svg')
+  })
+
+  // 处理图片加载错误
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('❌ [SmartImage] 图片加载失败:', src)
+    
+    const img = event.currentTarget
+    
+    // 如果还没有尝试过占位符，使用占位符
+    if (!imageError && img.src !== '/placeholder.svg') {
+      setImageError(true)
+      setImageSrc('/placeholder.svg')
+      console.log('🔄 [SmartImage] 使用占位符图片')
+    }
+  }
+
+  return (
+    <Image
+      src={imageSrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      onError={handleImageError}
+      loading="lazy"
+    />
+  )
+}
 
 interface GeneratedContent {
   id: string
@@ -206,8 +253,9 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
   return (
     <div
       className={cn(
-        "bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-gray-200/50 dark:border-slate-700/50 h-full overflow-hidden flex transition-all duration-300",
-        isTaskListCollapsed ? "w-80" : "w-[500px]",
+        "bg-white dark:bg-slate-900 border-r border-gray-200/50 dark:border-slate-700/50 h-full overflow-hidden flex transition-all duration-300",
+        // 根据收起状态调整宽度 - 减少侧边栏宽度为右侧内容区域让出更多空间
+        isTaskListCollapsed ? "w-64" : "w-[400px]"
       )}
     >
       {/* 左侧：任务列表 */}
@@ -270,12 +318,9 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
       </div>
 
       {/* 中间：笔记列表 */}
-      <div
-        className={cn(
-          "h-full overflow-y-auto border-r border-gray-200/50 dark:border-slate-700/50",
-          isTaskListCollapsed ? "w-80" : "w-80",
-        )}
-      >
+      <div className={cn(
+        "h-full overflow-y-auto border-r border-gray-200/50 dark:border-slate-700/50 flex-1"
+      )}>
         {/* 收起/展开按钮和导出按钮 */}
         <div className="p-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -325,13 +370,12 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
                 <CardContent className="p-2">
                   <div className="flex gap-2">
                     <div className="w-10 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
-                      <Image
-                        src={getProxiedImageUrl(task.noteCover || "/placeholder.svg")} // 使用代理URL
+                      <SmartImage
+                        src={task.noteCover || "/placeholder.svg"} // 使用代理URL
                         alt="笔记封面"
                         width={40}
                         height={48}
                         className="w-full h-full object-cover"
-                        onError={createImageErrorHandler(task.noteCover, "/placeholder.svg")} // 添加错误处理
                       />
                     </div>
                     <div className="flex-1 min-w-0">

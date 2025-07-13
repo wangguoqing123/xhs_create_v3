@@ -48,14 +48,19 @@ export function getProxiedImageUrl(originalUrl: string): string {
 }
 
 /**
- * 简单的图片URL有效性检查
+ * 验证图片URL是否有效
  * @param url 图片URL
- * @returns 是否可能是有效的图片URL
+ * @returns 是否有效
  */
-function isValidImageUrl(url: string): boolean {
-  // 检查URL长度（过长的URL可能无效）
-  if (url.length > 2000) {
-    return false
+export function isValidImageUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false
+  
+  // 检查是否为有效的URL格式
+  try {
+    new URL(url)
+  } catch {
+    // 如果不是完整URL，检查是否为相对路径
+    if (!url.startsWith('/')) return false
   }
   
   // 检查是否包含明显的错误标识
@@ -65,11 +70,34 @@ function isValidImageUrl(url: string): boolean {
     'error',
     'not_found',
     '404',
-    'invalid'
+    'invalid',
+    'data:,', // 空的data URL
   ]
   
   const lowerUrl = url.toLowerCase()
   return !invalidPatterns.some(pattern => lowerUrl.includes(pattern))
+}
+
+/**
+ * 预处理图片URL，确保返回有效的URL
+ * @param url 原始图片URL
+ * @param fallback 降级URL
+ * @returns 处理后的URL
+ */
+export function preprocessImageUrl(url: string, fallback: string = '/placeholder.svg'): string {
+  // 如果URL无效，直接返回降级URL
+  if (!isValidImageUrl(url)) {
+    console.warn('⚠️ [图片预处理] 无效的图片URL，使用降级图片:', url)
+    return fallback
+  }
+  
+  // 如果是本地图片，直接返回
+  if (url.startsWith('/') || url.startsWith('data:')) {
+    return url
+  }
+  
+  // 返回代理URL
+  return getProxiedImageUrl(url)
 }
 
 /**
@@ -119,12 +147,14 @@ export function createImageErrorHandler(
   fallbackUrl: string = '/placeholder.svg'
 ) {
   return (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('❌ [图片加载] 图片加载失败:', originalUrl)
+    // 安全地获取originalUrl，避免undefined错误
+    const safeOriginalUrl = originalUrl || 'unknown'
+    console.error('❌ [图片加载] 图片加载失败:', safeOriginalUrl)
     
     const img = event.currentTarget
     
     // 如果当前显示的是代理URL且失败了，尝试直接访问原图
-    if (img.src.includes('/api/image-proxy') && !originalUrl.includes('/api/image-proxy')) {
+    if (img.src.includes('/api/image-proxy') && originalUrl && !originalUrl.includes('/api/image-proxy')) {
       // 检查是否是HTTPS的小红书图片，如果是HTTP则转换为HTTPS再尝试
       if (originalUrl.startsWith('http://') && originalUrl.includes('xhscdn.com')) {
         const httpsUrl = originalUrl.replace('http://', 'https://')
@@ -141,6 +171,37 @@ export function createImageErrorHandler(
     // 最终降级到占位符图片
     if (img.src !== fallbackUrl) {
       console.log('🔄 [图片加载] 使用占位符图片:', fallbackUrl)
+      img.src = fallbackUrl
+    }
+  }
+}
+
+/**
+ * 创建带有快速降级的图片错误处理函数
+ * 当遇到403等错误时，更快地降级到占位符
+ */
+export function createFastFallbackImageHandler(
+  originalUrl: string, 
+  fallbackUrl: string = '/placeholder.svg'
+) {
+  return (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    // 安全地获取originalUrl，避免undefined错误
+    const safeOriginalUrl = originalUrl || 'unknown'
+    console.error('❌ [图片加载] 图片加载失败:', safeOriginalUrl)
+    
+    const img = event.currentTarget
+    
+    // 如果是代理URL失败，直接使用占位符，不再尝试原图
+    // 这样可以避免用户长时间等待
+    if (img.src.includes('/api/image-proxy')) {
+      console.log('🔄 [图片加载] 代理失败，直接使用占位符:', fallbackUrl)
+      img.src = fallbackUrl
+      return
+    }
+    
+    // 如果是直接访问原图失败，也使用占位符
+    if (img.src !== fallbackUrl) {
+      console.log('🔄 [图片加载] 原图访问失败，使用占位符:', fallbackUrl)
       img.src = fallbackUrl
     }
   }

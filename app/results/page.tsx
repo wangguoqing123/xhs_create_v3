@@ -6,6 +6,7 @@ import { TaskSidebar } from "@/components/task-sidebar"
 import { ResultViewer } from "@/components/result-viewer"
 import { useBatchRewrite } from "@/lib/hooks/use-batch-rewrite"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
+import { FileText } from "lucide-react"
 
 // 任务显示接口（兼容现有UI组件）
 interface Task {
@@ -234,67 +235,71 @@ function ResultsPageContent() {
   }, [selectedTaskId, convertedTasks]) // 依赖selectedTaskId，确保任务切换时重新选择笔记
 
   return (
-    <div className="h-screen flex">
-      {/* Left Sidebar */}
-      <TaskSidebar 
-        tasks={convertedTasks} 
-        selectedTaskId={selectedTaskId} 
-        onTaskSelect={setSelectedTaskId}
-        selectedNoteId={selectedNoteId}
-        onNoteSelect={setSelectedNoteId}
-        taskName={selectedTask?.taskName || '批量改写任务'}
-        taskList={taskList}
-      />
+    <div 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, rgb(248 250 252) 0%, rgb(219 234 254) 50%, rgb(199 210 254) 100%)',
+        overflow: 'hidden'
+      }}
+    >
+      {/* 主内容容器 - 80%宽度，100%高度 */}
+      <div 
+        style={{ 
+          width: '75vw',
+          height: '100vh',
+          display: 'flex',
+          overflow: 'hidden',
+          marginLeft: '10vw'
+        }}
+      >
+        {/* Left Sidebar - 固定宽度 */}
+        <TaskSidebar 
+          tasks={convertedTasks} 
+          selectedTaskId={selectedTaskId} 
+          onTaskSelect={setSelectedTaskId}
+          selectedNoteId={selectedNoteId}
+          onNoteSelect={setSelectedNoteId}
+          taskName={selectedTask?.taskName || '批量改写任务'}
+          taskList={taskList}
+        />
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-700 dark:text-gray-300">正在加载任务数据...</p>
+        {/* Main Content - 自适应宽度 */}
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          {selectedNoteId && convertedTasks.length > 0 ? (
+            <ResultViewer 
+              task={convertedTasks.find(task => task.id === selectedNoteId)!} 
+              taskName={selectedTask?.taskName}
+              allTasks={convertedTasks}
+            />
+          ) : (
+            <div style={{ 
+              height: '100%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              backgroundColor: 'white'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  {isLoading ? '加载中...' : error ? '加载失败' : '请选择一个笔记'}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {isLoading ? '正在获取任务数据...' : error || '从左侧列表中选择一个笔记来查看改写结果'}
+                </p>
+              </div>
             </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="text-red-500 text-6xl mb-4">⚠️</div>
-              <h3 className="text-xl font-semibold text-red-600 mb-2">加载失败</h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                重新加载
-              </button>
-            </div>
-          </div>
-        ) : selectedTask && convertedTasks.length > 0 ? (
-          <ResultViewer 
-            task={convertedTasks.find(t => t.id === selectedNoteId) || convertedTasks[0]} 
-            taskName={selectedTask?.taskName}
-            allTasks={convertedTasks}
-          />
-        ) : selectedTask ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="text-gray-400 text-6xl mb-4">📝</div>
-              <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                {selectedTask.taskName}
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                任务状态：{selectedTask.status === 'completed' ? '已完成' : selectedTask.status === 'processing' ? '处理中' : '待处理'}
-              </p>
-              <p className="text-gray-500 dark:text-gray-400">
-                包含 {selectedTask.progress?.total || 0} 个笔记，生成了 {selectedTask.contentStats?.completed || 0} 个内容
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 text-xl">
-            请选择一个任务查看结果
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

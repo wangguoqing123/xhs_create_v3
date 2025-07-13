@@ -79,11 +79,32 @@ export async function GET(request: NextRequest) {
     
     // 对于小红书图片，添加特定的Referer和Origin
     if (targetUrl.hostname.includes('xhscdn.com') || targetUrl.hostname.includes('xiaohongshu.com')) {
+      // 尝试多种不同的请求头策略
       headers.set('Referer', 'https://www.xiaohongshu.com/')
       headers.set('Origin', 'https://www.xiaohongshu.com')
+      headers.set('Sec-Ch-Ua', '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"')
+      headers.set('Sec-Ch-Ua-Mobile', '?0')
+      headers.set('Sec-Ch-Ua-Platform', '"macOS"')
+      headers.set('Upgrade-Insecure-Requests', '1')
+      headers.set('Dnt', '1')
+      
+      // 添加更多可能有用的头部
+      headers.set('Sec-Fetch-User', '?1')
+      headers.set('Sec-Fetch-Site', 'same-origin')
+      headers.set('Sec-Fetch-Mode', 'navigate')
+      headers.set('Sec-Fetch-Dest', 'document')
+      
       // 移除可能导致问题的头部
       headers.delete('Cache-Control')
       headers.delete('Pragma')
+      headers.delete('Sec-Fetch-Dest')
+      headers.delete('Sec-Fetch-Mode')
+      headers.delete('Sec-Fetch-Site')
+      
+      // 重新设置为图片请求
+      headers.set('Sec-Fetch-Dest', 'image')
+      headers.set('Sec-Fetch-Mode', 'no-cors')
+      headers.set('Sec-Fetch-Site', 'cross-site')
     }
 
     // 请求原始图片（使用可能转换过的URL）
