@@ -80,7 +80,7 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
       <DialogContent className="sm:max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-0 shadow-2xl rounded-3xl">
         <DialogHeader className="text-center pb-6">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
               <Cookie className="h-6 w-6 text-white" />
             </div>
           </div>
@@ -94,9 +94,9 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
 
         <div className="space-y-6">
           {/* 说明信息 */}
-          <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-800 dark:text-blue-300">
+          <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+            <Info className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-purple-800 dark:text-purple-300">
               <p className="font-medium mb-1">如何获取Cookie：</p>
               <ol className="list-decimal list-inside space-y-1 text-xs">
                 <li>打开浏览器开发者工具（F12）</li>
@@ -173,7 +173,7 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
           <Button
             onClick={handleSave}
             disabled={loading}
-            className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            className="flex-1 h-11 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             {loading ? '保存中...' : '保存Cookie'}
           </Button>

@@ -196,7 +196,7 @@ export function AccountPositioningComplete({
     <div className={`space-y-2 ${className}`}>
       {/* 标签 */}
       <Label className="flex items-center gap-2 text-sm font-medium">
-        <User className="h-3 w-3 text-indigo-600" />
+        <User className="h-3 w-3 text-purple-600" />
         账号定位
       </Label>
 
@@ -248,9 +248,9 @@ export function AccountPositioningComplete({
                     e.stopPropagation()
                     setShowAddModal(true)
                   }}
-                  className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
+                  className="h-6 w-6 p-0 hover:bg-purple-100 dark:hover:bg-purple-900"
                 >
-                  <Plus className="h-3 w-3 text-blue-600" />
+                  <Plus className="h-3 w-3 text-purple-600" />
                 </Button>
               </div>
             ))}
@@ -278,7 +278,7 @@ export function AccountPositioningComplete({
             <Badge
               key={position.id}
               variant="secondary"
-              className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300"
+              className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300"
             >
               {position.name}
               <button
@@ -295,10 +295,10 @@ export function AccountPositioningComplete({
       {/* 添加账号定位模态框 */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="max-w-4xl bg-white dark:bg-slate-900 border-0 rounded-2xl shadow-2xl p-0 overflow-hidden">
-          <DialogHeader className="px-6 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-b border-gray-100 dark:border-slate-700">
+          <DialogHeader className="px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-100 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -344,7 +344,7 @@ export function AccountPositioningComplete({
                     key={position.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
                       selectedHistoryId === position.id
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                         : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
                     }`}
                     onClick={() => handleHistorySelect(position.id)}
@@ -453,7 +453,7 @@ export function AccountPositioningComplete({
                 </Button>
                 <Button
                   onClick={handleAddPosition}
-                  className="px-8 py-2 h-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium rounded-xl"
+                  className="px-8 py-2 h-auto bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-xl"
                 >
                   保存定位
                 </Button>

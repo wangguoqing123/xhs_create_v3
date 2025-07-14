@@ -382,7 +382,7 @@ export function AccountPositioning({
       {/* 标签 */}
       {!hideLabel && (
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <User className="h-3 w-3 text-indigo-600" />
+          <User className="h-3 w-3 text-purple-600" />
           账号定位
         </Label>
       )}
@@ -412,7 +412,7 @@ export function AccountPositioning({
             {/* 不设置定位选项 */}
             <div
               className={`flex items-center px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-100 dark:border-slate-600 ${
-                selectedPosition === "" ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                selectedPosition === "" ? 'bg-purple-50 dark:bg-purple-900/20' : ''
               }`}
               onClick={() => handlePositionSelect("")}
             >
@@ -428,7 +428,7 @@ export function AccountPositioning({
               <div
                 key={position.id}
                 className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-100 dark:border-slate-600 last:border-b-0 ${
-                  selectedPosition === position.id ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                  selectedPosition === position.id ? 'bg-purple-50 dark:bg-purple-900/20' : ''
                 }`}
                 onClick={() => handlePositionSelect(position.id)}
               >
@@ -446,9 +446,9 @@ export function AccountPositioning({
                     e.stopPropagation()
                     handleEditPosition(position) // 调用编辑函数
                   }}
-                  className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
+                  className="h-6 w-6 p-0 hover:bg-purple-100 dark:hover:bg-purple-900"
                 >
-                  <Edit className="h-3 w-3 text-blue-600" />
+                  <Edit className="h-3 w-3 text-purple-600" />
                 </Button>
               </div>
             ))}
@@ -484,10 +484,10 @@ export function AccountPositioning({
       {/* 添加账号定位模态框 */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="max-w-4xl bg-white dark:bg-slate-900 border-0 rounded-2xl shadow-2xl p-0 overflow-hidden">
-          <DialogHeader className="px-6 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-b border-gray-100 dark:border-slate-700">
+          <DialogHeader className="px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-100 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -533,7 +533,7 @@ export function AccountPositioning({
                   key={blankPosition.id}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
                     selectedHistoryId === blankPosition.id
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                       : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
                   }`}
                   onClick={() => {
@@ -562,7 +562,7 @@ export function AccountPositioning({
                     key={position.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
                       selectedHistoryId === position.id
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                         : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
                     }`}
                     onClick={() => handleHistorySelect(position.id)}
@@ -672,7 +672,7 @@ export function AccountPositioning({
                 <Button
                   onClick={handleSavePosition}
                   disabled={isSaving}
-                  className="px-8 py-2 h-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
+                  className="px-8 py-2 h-auto bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>

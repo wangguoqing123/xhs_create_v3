@@ -28,20 +28,20 @@ export function SearchStatusPrompt({
     description: "登录后即可开始搜索小红书爆文笔记，体验AI批量生成功能",
     buttonText: "立即登录",
     buttonAction: onLoginClick,
-    gradient: "from-blue-500 to-indigo-500",
-    bgGradient: "from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
-    borderColor: "border-blue-200/50 dark:border-blue-800/50",
-    iconBg: "from-blue-500 to-indigo-500"
+    gradient: "from-purple-500 to-pink-500",
+    bgGradient: "from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20",
+    borderColor: "border-purple-200/50 dark:border-purple-800/50",
+    iconBg: "from-purple-500 to-pink-500"
   } : {
     icon: Cookie,
     title: "请配置小红书Cookie",
     description: "配置Cookie后才能正常搜索和抓取小红书笔记数据，确保功能正常使用",
     buttonText: "配置Cookie",
     buttonAction: onCookieClick,
-    gradient: "from-orange-500 to-red-500",
-    bgGradient: "from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20",
-    borderColor: "border-orange-200/50 dark:border-orange-800/50",
-    iconBg: "from-orange-500 to-red-500"
+    gradient: "from-purple-600 to-pink-600",
+    bgGradient: "from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20",
+    borderColor: "border-purple-200/50 dark:border-purple-800/50",
+    iconBg: "from-purple-600 to-pink-600"
   }
 
   const Icon = config.icon

@@ -130,7 +130,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       <DialogContent className="sm:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-0 shadow-2xl rounded-3xl">
         <DialogHeader className="text-center pb-6">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
           </div>
@@ -175,7 +175,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
               <Button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                className="w-full h-11 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 {loading ? '发送中...' : '发送验证码'}
               </Button>
@@ -217,7 +217,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
                   variant="ghost"
                   onClick={handleResendCode}
                   disabled={countdown > 0 || loading}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                  className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
                 >
                   {countdown > 0 ? (
                     <span className="flex items-center gap-1">
@@ -239,7 +239,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
               <Button
                 type="submit"
                 disabled={loading || verificationCode.length !== 6}
-                className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                className="w-full h-11 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 {loading ? '验证中...' : '验证并登录'}
               </Button>
@@ -249,11 +249,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <div className="text-center text-xs text-gray-500 dark:text-gray-400">
             <p>
               继续使用即表示您同意我们的{' '}
-              <a href="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
+              <a href="/terms" className="text-purple-600 dark:text-purple-400 hover:underline">
                 用户协议
               </a>{' '}
               和{' '}
-              <a href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+              <a href="/privacy" className="text-purple-600 dark:text-purple-400 hover:underline">
                 隐私政策
               </a>
             </p>

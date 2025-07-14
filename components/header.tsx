@@ -43,8 +43,8 @@ const NavLink = memo(function NavLink({ href, children, className = "", onClick 
       prefetch={true}
       className={`group relative py-2 px-1 font-medium transition-all duration-300 ${
         isActive 
-          ? 'text-blue-600 dark:text-blue-400' 
-          : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+          ? 'text-purple-600 dark:text-purple-400' 
+          : 'text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400'
       } ${className}`}
       onClick={handleClick}
     >
@@ -52,7 +52,7 @@ const NavLink = memo(function NavLink({ href, children, className = "", onClick 
         {children}
       </span>
       {/* 底部指示线 */}
-      <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 transition-transform duration-300 origin-left ${
+      <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 transition-transform duration-300 origin-left ${
         isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
       }`}></div>
     </Link>
@@ -78,14 +78,14 @@ const MobileNavLink = memo(function MobileNavLink({ href, children, onClick }: {
       prefetch={true}
       className={`flex items-center justify-between p-4 rounded-xl transition-colors duration-200 group ${
         isActive 
-          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
+          ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' 
           : 'hover:bg-gray-50 dark:hover:bg-slate-800/50 text-gray-800 dark:text-gray-200'
       }`}
       onClick={handleClick}
     >
       <span className="font-semibold">{children}</span>
       {isActive && (
-        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
       )}
     </Link>
   )
@@ -160,7 +160,7 @@ export const Header = memo(function Header() {
     return (
       <Button
         onClick={handleAuthModalOpen}
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-6 py-2.5 rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105 border-0"
+        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-2.5 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105 border-0"
       >
         立即登录
       </Button>
@@ -185,7 +185,7 @@ export const Header = memo(function Header() {
     return (
       <Button
         onClick={handleMobileAuthClick}
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold px-6 py-2 rounded-full shadow-lg"
+        className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold px-6 py-2 rounded-full shadow-lg"
       >
         立即登录
       </Button>
@@ -197,17 +197,17 @@ export const Header = memo(function Header() {
       {/* 简洁现代导航栏 */}
       <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-300">
         {/* 底部渐变线 */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
         
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           {/* Logo区域 */}
           <Link href="/" className="group flex items-center space-x-3 transition-all duration-300">
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:shadow-blue-500/30 transition-all duration-300">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:shadow-purple-500/30 transition-all duration-300">
                 <Sparkles className="h-5 w-5 text-white group-hover:rotate-12 transition-transform duration-300" />
               </div>
             </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent group-hover:from-blue-600 group-hover:to-indigo-600 transition-all duration-300">
+            <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
               灵感矩阵
             </span>
           </Link>

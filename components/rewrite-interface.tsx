@@ -352,10 +352,10 @@ export function RewriteInterface() {
     <div className="container mx-auto px-4 h-[calc(100vh-4.5rem)] flex flex-col">
       {/* 页面标题 */}
       <div className="relative text-center py-4">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl mb-2 shadow-md">
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl mb-2 shadow-md">
           <Wand2 className="h-6 w-6 text-white" />
         </div>
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-1">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent mb-1">
           爆文改写
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">基于爆款笔记智能生成高质量仿写内容</p>
@@ -585,7 +585,7 @@ export function RewriteInterface() {
                   <Button
                     onClick={handleGenerate}
                     disabled={!originalText.trim() || isGenerating}
-                    className="w-full h-10 text-sm font-medium bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700"
+                    className="w-full h-10 text-sm font-medium bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700"
                   >
                     {isGenerating ? (
                       <>

@@ -267,7 +267,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
       >
         <div className="p-3 border-b border-gray-100 dark:border-slate-700">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
               <Sparkles className="h-3 w-3 text-white" />
             </div>
             <div>
@@ -284,7 +284,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
               className={cn(
                 "cursor-pointer transition-all duration-200 hover:shadow-md border-0 p-2",
                 selectedTaskId === task.id
-                  ? "ring-1 ring-purple-500 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20"
+                  ? "ring-1 ring-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20"
                   : "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700",
               )}
               onClick={() => onTaskSelect(task.id)}
@@ -338,7 +338,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
             {/* <Button
               onClick={handleExportTxt}
               size="sm"
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg shadow-sm text-xs px-2 py-1 h-7"
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg shadow-sm text-xs px-2 py-1 h-7"
             >
               <Download className="h-3 w-3 mr-1" />
               TXT
@@ -346,7 +346,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
             <Button
               onClick={handleExportExcel}
               size="sm"
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-sm text-xs px-2 py-1 h-7"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg shadow-sm text-xs px-2 py-1 h-7"
             >
               <FileSpreadsheet className="h-3 w-3 mr-1" />
               Excel
@@ -362,7 +362,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
                 className={cn(
                   "cursor-pointer transition-all duration-200 hover:shadow-md border-0",
                   selectedNoteId === task.id
-                    ? "ring-1 ring-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
+                    ? "ring-1 ring-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20"
                     : "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
                 )}
                 onClick={() => onNoteSelect?.(task.id)}
@@ -392,7 +392,7 @@ export function TaskSidebar({ tasks, selectedTaskId, onTaskSelect, selectedNoteI
                         {task.noteTitle}
                       </h4>
                       <div className="flex items-center gap-1">
-                        <Badge className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-0 rounded-full">
+                        <Badge className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-0 rounded-full">
                           图文笔记
                         </Badge>
                         <span className="text-xs text-gray-500 dark:text-gray-400">

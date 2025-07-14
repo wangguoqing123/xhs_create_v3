@@ -6,13 +6,13 @@ const features = [
     icon: Zap,
     title: "批量生成",
     description: "一键生成多篇高质量内容，效率提升10倍",
-    gradient: "from-yellow-400 to-orange-500",
+    gradient: "from-purple-400 to-pink-500",
   },
   {
     icon: RefreshCw,
     title: "主题改写",
     description: "智能适配不同赛道，一个灵感无限可能",
-    gradient: "from-green-400 to-blue-500",
+    gradient: "from-purple-500 to-pink-600",
   },
   {
     icon: MessageSquare,
@@ -24,19 +24,19 @@ const features = [
     icon: Target,
     title: "营销导向",
     description: "精准匹配营销目标，转化效果显著提升",
-    gradient: "from-red-400 to-pink-500",
+    gradient: "from-purple-600 to-pink-700",
   },
   {
     icon: Brain,
     title: "AI人设",
     description: "多样化人设定位，打造独特内容风格",
-    gradient: "from-indigo-400 to-purple-500",
+    gradient: "from-purple-400 to-pink-400",
   },
   {
     icon: Sparkles,
     title: "智能优化",
     description: "持续学习优化，内容质量不断提升",
-    gradient: "from-cyan-400 to-blue-500",
+    gradient: "from-purple-300 to-pink-300",
   },
 ]
 
@@ -47,7 +47,7 @@ export function FeatureShowcase() {
         <div className="text-center mb-20">
           <h2 className="text-5xl font-bold text-white mb-6">
             强大功能，
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">无限创意</span>
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">无限创意</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             集成最先进的AI技术，为创作者提供全方位的内容生成解决方案

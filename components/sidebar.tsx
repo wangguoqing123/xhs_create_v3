@@ -59,7 +59,7 @@ const navigationItems = [
         description: "复制作者风格"
       },
       {
-        href: "/rewrite",
+        href: "/note-rewrite",
         icon: FileText,
         label: "笔记翻写", 
         description: "翻写笔记内容"
@@ -94,23 +94,20 @@ const navigationItems = [
   }
 ]
 
-// 骨架屏组件 - 世界级设计
+// 骨架屏组件 - 简洁设计
 const UserSkeleton = memo(function UserSkeleton() {
   return (
-    <div className="space-y-4">
-      {/* 积分区域骨架 */}
-      <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl p-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gray-200/50 dark:bg-slate-700/50 rounded-xl animate-pulse"></div>
-          <div className="flex-1 space-y-2">
-            <div className="h-3 bg-gray-200/50 dark:bg-slate-700/50 rounded animate-pulse w-16"></div>
-            <div className="h-4 bg-gray-200/50 dark:bg-slate-700/50 rounded animate-pulse w-12"></div>
-          </div>
+    <div className="space-y-3">
+      {/* 积分区域骨架 - 简洁版本 */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-2 border border-purple-200/50 dark:border-purple-700/50">
+        <div className="flex items-center space-x-2">
+          <div className="w-5 h-5 bg-gray-200/50 dark:bg-slate-700/50 rounded-md animate-pulse"></div>
+          <div className="h-4 bg-gray-200/50 dark:bg-slate-700/50 rounded animate-pulse w-16"></div>
         </div>
       </div>
       
       {/* 用户信息骨架 */}
-      <div className="flex items-center space-x-3 p-3">
+      <div className="flex items-center space-x-3 p-2">
         <div className="w-8 h-8 bg-gray-200/50 dark:bg-slate-700/50 rounded-lg animate-pulse"></div>
         <div className="flex-1 space-y-2">
           <div className="h-3 bg-gray-200/50 dark:bg-slate-700/50 rounded animate-pulse w-20"></div>
@@ -258,16 +255,14 @@ export const Sidebar = memo(function Sidebar() {
     
     if (user) {
       return (
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200/50 dark:border-slate-700/50">
-          {/* 积分卡片 */}
-          <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 dark:from-purple-400/10 dark:to-pink-400/10 rounded-xl p-3 mb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-                <Sparkles className="h-5 w-5 text-white" />
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-gray-200/50 dark:border-slate-700/50">
+          {/* 积分显示 - 简洁版本 */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-2 mb-3 border border-purple-200/50 dark:border-purple-700/50">
+            <div className="flex items-center space-x-2">
+              <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
+                <Sparkles className="h-3 w-3 text-white" />
               </div>
-              <div className="flex-1">
-                <CreditsDisplay />
-              </div>
+              <CreditsDisplay />
             </div>
           </div>
           
@@ -308,13 +303,14 @@ export const Sidebar = memo(function Sidebar() {
         "bg-white dark:bg-slate-900",
         "border-r border-gray-200/30 dark:border-slate-700/30",
         "transition-all duration-300 ease-in-out",
+        "flex flex-col", // 使用flex布局
         // 桌面端：始终固定在左侧
         "lg:translate-x-0",
         // 移动端：使用滑动效果
         !isCollapsed ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        {/* 顶部Logo区域 */}
-        <div className="flex items-center p-4 border-b border-gray-200/50 dark:border-slate-700/50">
+        {/* 顶部Logo区域 - 固定高度 */}
+        <div className="flex items-center p-4 border-b border-gray-200/50 dark:border-slate-700/50 flex-shrink-0">
           <Link href="/" className="flex items-center space-x-3 min-w-0">
             <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg">
               <Sparkles className="h-4 w-4 text-white" />
@@ -325,8 +321,8 @@ export const Sidebar = memo(function Sidebar() {
           </Link>
         </div>
 
-        {/* 导航菜单 */}
-        <nav className="flex-1 p-3 space-y-1">
+        {/* 导航菜单 - 可滚动区域 */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           {navigationItems.map((item, index) => (
             <SidebarNavItem
               key={item.type === "section" ? `section-${index}` : item.href}
@@ -343,29 +339,17 @@ export const Sidebar = memo(function Sidebar() {
           ))}
         </nav>
 
-        {/* 底部区域 - 1:1完美复刻图片样式 */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 mb-5 mt-6">
-          {/* 分割线 */}
-          <div className="border-t border-gray-200 dark:border-gray-700"></div>
-          
-          {/* 跟随系统 - 完整的主题切换功能，居中展示 */}
-          <div className="flex justify-center mt-6">
+        {/* 底部区域 - 固定在底部 */}
+        <div className="flex-shrink-0 p-4 border-t border-gray-200/50 dark:border-slate-700/50">
+          {/* 主题切换 */}
+          <div className="flex justify-center mb-4">
             <ThemeToggle variant="sidebar" />
           </div>
           
-          {/* 95积分 - 新的背景和边框颜色 */}
-          <div className="rounded-lg px-3 py-2 flex items-center space-x-3 border mt-6 mb-4" style={{ backgroundColor: '#fff7ed', borderColor: 'rgb(253 230 138 / 0.5)' }}>
-            <div className="w-4 h-4 text-yellow-600 dark:text-yellow-500">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <circle cx="12" cy="12" r="9" fill="currentColor"/>
-                <path d="M12 6v12M9 9h6M9 15h6" stroke="white" strokeWidth="2" fill="none"/>
-              </svg>
-            </div>
-            <CreditsDisplay />
+          {/* 用户区域 - 根据登录状态动态显示 */}
+          <div>
+            {userSection}
           </div>
-          
-          {/* 用户名 - 紫色头像 */}
-          <UserDropdown />
         </div>
       </aside>
 

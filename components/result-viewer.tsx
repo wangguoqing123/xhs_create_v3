@@ -85,7 +85,7 @@ function SkeletonLoader() {
       {/* 标题骨架 */}
       <div className="space-y-2">
         <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/30">
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/30">
           <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
         </div>
       </div>
@@ -146,7 +146,7 @@ function TypewriterText({ text, speed = 30, onComplete }: { text: string; speed?
     <span className="relative">
       {displayedText}
       {isTyping && text && text.length > 0 && (
-        <span className="inline-block w-0.5 h-4 bg-blue-500 ml-0.5 animate-pulse"></span>
+        <span className="inline-block w-0.5 h-4 bg-purple-500 ml-0.5 animate-pulse"></span>
       )}
     </span>
   )
@@ -241,7 +241,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
               <Button
                 size="sm"
                 onClick={() => handleCopy(`${result.title}\n\n${result.content}`, result.id)}
-                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 rounded-lg text-xs px-2 py-1 h-7"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 rounded-lg text-xs px-2 py-1 h-7"
               >
                 {copiedId === result.id ? (
                   <>
@@ -264,7 +264,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
         {/* 标题 */}
         <div className="mb-4">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">标题</h3>
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800/30">
             <p className="text-base font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
                 {result.status === "generating" && result.title && result.title.length > 0 ? (
                   <TypewriterText 
@@ -445,7 +445,7 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-                <Badge className="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
+                <Badge className="text-xs px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
                   源笔记
                 </Badge>
                 <Badge className="text-xs px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
@@ -473,7 +473,7 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
               onClick={handleExportExcel}
               size="lg"
               disabled={completedCount === 0}
-              className="h-10 px-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 px-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               导出Excel ({completedCount})

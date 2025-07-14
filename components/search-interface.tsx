@@ -133,7 +133,7 @@ export function SearchInterface({
           {/* 搜索输入框 - 缩小版 */}
           <div className="flex-1 relative">
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl blur-lg group-hover:blur-xl transition-all duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl blur-lg group-hover:blur-xl transition-all duration-300" />
               <div className="relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-600/50 shadow-lg">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <Input
@@ -183,7 +183,7 @@ export function SearchInterface({
                         onClick={() => setTempConfig({ ...tempConfig, sort: option.value as 0 | 1 | 2 })}
                         className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                           tempConfig.sort === option.value
-                            ? 'bg-blue-500 text-white shadow-md'
+                            ? 'bg-purple-500 text-white shadow-md'
                             : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                         }`}
                       >
@@ -208,7 +208,7 @@ export function SearchInterface({
                         onClick={() => setTempConfig({ ...tempConfig, noteType: option.value as 0 | 1 | 2 })}
                         className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                           tempConfig.noteType === option.value
-                            ? 'bg-indigo-500 text-white shadow-md'
+                            ? 'bg-pink-500 text-white shadow-md'
                             : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                         }`}
                       >
@@ -246,7 +246,7 @@ export function SearchInterface({
                 <div className="flex gap-3">
                   <Button
                     onClick={applyFilter}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg"
                   >
                     确定
                   </Button>

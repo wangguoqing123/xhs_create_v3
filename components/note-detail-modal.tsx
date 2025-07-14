@@ -258,7 +258,7 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
                   note.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="inline-block px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:bg-opacity-40 dark:hover:bg-blue-900 dark:hover:bg-opacity-60 text-blue-700 dark:text-blue-300 rounded-full cursor-pointer transition-colors flex-shrink-0"
+                      className="inline-block px-2 py-1 text-xs bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:bg-opacity-40 dark:hover:bg-purple-900 dark:hover:bg-opacity-60 text-purple-700 dark:text-purple-300 rounded-full cursor-pointer transition-colors flex-shrink-0"
                     >
                       #{tag}
                     </span>
@@ -277,8 +277,8 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
                   <Heart className={`h-4 w-4 ${note.isLiked ? 'text-red-500 fill-red-500' : ''}`} />
                   <span className="text-xs font-medium">{note.likeCount.toLocaleString()}</span>
                 </button>
-                <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900 dark:hover:bg-opacity-20 rounded-lg transition-colors">
-                  <Bookmark className={`h-4 w-4 ${note.isCollected ? 'text-blue-500 fill-blue-500' : ''}`} />
+                <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900 dark:hover:bg-opacity-20 rounded-lg transition-colors">
+                  <Bookmark className={`h-4 w-4 ${note.isCollected ? 'text-purple-500 fill-purple-500' : ''}`} />
                   <span className="text-xs font-medium">{note.collectCount.toLocaleString()}</span>
                 </button>
                 <button className="flex flex-col items-center justify-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">

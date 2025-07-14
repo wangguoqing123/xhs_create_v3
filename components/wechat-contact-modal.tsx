@@ -39,29 +39,29 @@ export function WeChatContactModal({ isOpen, onClose, trigger = 'other' }: WeCha
       icon: Crown,
       title: "开通会员",
       description: "获取专属会员权益，享受更多创作功能",
-      color: "from-indigo-500 to-purple-500",
-      bgColor: "from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20"
+      color: "from-purple-500 to-pink-500",
+      bgColor: "from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20"
     },
     {
       icon: CreditCard,
       title: "购买积分包",
       description: "灵活购买积分，按需使用创作服务",
-      color: "from-emerald-500 to-teal-500",
-      bgColor: "from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20"
+      color: "from-purple-600 to-pink-600",
+      bgColor: "from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20"
     },
     {
       icon: Bug,
       title: "Bug反馈",
       description: "遇到问题？我们将第一时间为您解决",
-      color: "from-orange-500 to-red-500",
-      bgColor: "from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20"
+      color: "from-purple-700 to-pink-700",
+      bgColor: "from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20"
     },
     {
       icon: Users,
       title: "加入社群",
       description: "与其他创作者交流，分享经验和技巧",
-      color: "from-blue-500 to-cyan-500",
-      bgColor: "from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20"
+      color: "from-purple-400 to-pink-400",
+      bgColor: "from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20"
     }
   ]
 
@@ -81,15 +81,15 @@ export function WeChatContactModal({ isOpen, onClose, trigger = 'other' }: WeCha
         {/* 弹框头部 */}
         <DialogHeader className="p-6 pb-4 text-center relative">
           {/* 背景装饰 */}
-          <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-950/20 dark:via-emerald-950/20 dark:to-teal-950/20 opacity-50" />
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50 to-red-50 dark:from-purple-950/20 dark:via-pink-950/20 dark:to-red-950/20 opacity-50" />
           
           <div className="relative z-10">
             {/* 微信图标 */}
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
               <MessageCircle className="h-8 w-8 text-white" />
             </div>
             
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-green-800 to-slate-900 dark:from-white dark:via-green-200 dark:to-white bg-clip-text text-transparent mb-2">
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-200 dark:to-white bg-clip-text text-transparent mb-2">
               联系我们
             </DialogTitle>
             
@@ -131,7 +131,7 @@ export function WeChatContactModal({ isOpen, onClose, trigger = 'other' }: WeCha
                         onClick={copyWeChatId}
                       >
                         {copied ? (
-                          <Check className="h-3 w-3 text-green-600" />
+                          <Check className="h-3 w-3 text-purple-600" />
                         ) : (
                           <Copy className="h-3 w-3" />
                         )}
@@ -139,7 +139,7 @@ export function WeChatContactModal({ isOpen, onClose, trigger = 'other' }: WeCha
                     </div>
                   </div>
                   
-                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                  <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800">
                     扫码添加更便捷
                   </Badge>
                 </CardContent>
@@ -190,16 +190,16 @@ export function WeChatContactModal({ isOpen, onClose, trigger = 'other' }: WeCha
           </div>
 
           {/* 底部提示 */}
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-blue-200/30 dark:border-blue-800/30">
+          <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl border border-purple-200/30 dark:border-purple-800/30">
             <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                <h4 className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-1">
                   温馨提示
                 </h4>
-                <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
                   添加微信时请备注您的需求（如：开通会员、购买积分等），我们将为您提供专属服务。工作时间：9:00-21:00
                 </p>
               </div>

@@ -8,7 +8,7 @@ const features = [
     title: "爆文改写",
     description: "智能分析热门内容，一键生成多种风格的改写文案，保持原文精髓的同时避免同质化",
     buttonText: "开始使用",
-    gradient: "from-blue-500 to-cyan-500",
+    gradient: "from-purple-500 to-pink-500",
     href: "/rewrite"
   },
   {
@@ -24,7 +24,7 @@ const features = [
     title: "作者复刻",
     description: "分析优秀作者的写作风格和内容特点，智能模仿其创作模式，快速提升创作水平",
     buttonText: "开始使用",
-    gradient: "from-orange-500 to-red-500", 
+    gradient: "from-purple-600 to-pink-600", 
     href: "/author-copy"
   },
 ]
