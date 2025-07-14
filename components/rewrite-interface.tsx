@@ -183,7 +183,7 @@ export function RewriteInterface() {
     } catch (error) {
       // 捕获并处理解析过程中的错误
       console.error('链接解析失败:', error)
-      let errorMessage = error instanceof Error ? error.message : '链接解析失败，请稍后重试'
+              const errorMessage = error instanceof Error ? error.message : '链接解析失败，请稍后重试'
       
       // 检查是否是Cookie失效的错误
       if (errorMessage.includes('请求响应失败') || 

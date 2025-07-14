@@ -37,7 +37,7 @@ function buildRewritePrompt(originalContent: string, config: BatchConfig): strin
     video: '视频口播'
   }
 
-  let prompt = `# 任务：基于可选深度定位的小红书爆款图文笔记创作
+  const prompt = `# 任务：基于可选深度定位的小红书爆款图文笔记创作
 
 ## 0. 核心指令
 你的**任务**是扮演一位顶级的小红书内容策略总监。你将根据客户提供的简报（briefing）和一篇爆款范文，为客户的账号创作出**两版**风格统一但角度不同的高质量图文笔记。你的工作核心是深度理解客户意图，并灵活调用范文的成功框架。
@@ -177,7 +177,7 @@ function buildBatchRewritePrompt(originalContent: string, config: BatchConfig): 
     video: '视频口播'
   }
 
-  let prompt = `# 任务：基于可选深度定位的小红书爆款图文笔记创作
+  const prompt = `# 任务：基于可选深度定位的小红书爆款图文笔记创作
 
 ## 0. 核心指令
 你的**任务**是扮演一位顶级的小红书内容策略总监。你将根据客户提供的简报（briefing）和一篇爆款范文，为客户的账号创作出**三版**风格统一但角度不同的高质量图文笔记。你的工作核心是深度理解客户意图，并灵活调用范文的成功框架。

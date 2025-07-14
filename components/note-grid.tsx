@@ -25,7 +25,7 @@ interface NoteGridProps {
   onNoteView: (note: Note) => void
   isLoading?: boolean // 新增加载状态
   error?: string | null // 新增错误状态
-  context?: 'search' | 'author-copy' // 新增：使用场景标识，默认为搜索场景
+  context?: 'search' | 'author-copy' | 'note-rewrite' // 新增：使用场景标识，默认为搜索场景
 }
 
 export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoading = false, error, context = 'search' }: NoteGridProps) {
@@ -214,6 +214,58 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
       )
     }
 
+    // 爆文仿写场景的空状态
+    if (context === 'note-rewrite') {
+      return (
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center py-12">
+            {/* 主标题 */}
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                开始您的<span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">爆文仿写</span>之旅
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                选择筛选条件，找到优质的行业爆款内容进行仿写
+              </p>
+            </div>
+
+            {/* 提示信息 */}
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 rounded-xl p-8 border border-purple-100 dark:border-slate-600">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">暂无匹配的爆款内容</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    请尝试调整筛选条件，或者清空搜索关键词重新搜索
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-gray-700 dark:text-gray-300">更换行业分类</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                      <span className="text-gray-700 dark:text-gray-300">调整内容形式</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-gray-700 dark:text-gray-300">修改搜索关键词</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                      <span className="text-gray-700 dark:text-gray-300">清空所有筛选</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     // 搜索场景的空状态（原有逻辑）
     return (
       <div className="container mx-auto px-4 py-8">
@@ -266,7 +318,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
                   
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">搜索关键词</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    输入您想要创作的领域关键词，如"护肤"、"美食"、"旅行"等
+                    输入您想要创作的领域关键词，如&quot;护肤&quot;、&quot;美食&quot;、&quot;旅行&quot;等
                   </p>
                   
                   {/* 示例关键词 */}

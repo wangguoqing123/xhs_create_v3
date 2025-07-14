@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise'
-import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams, RewriteRecord, RewriteRecordInsert, RewriteRecordUpdate, RewriteRecordListParams, RewriteGenerationConfig, RewriteGeneratedVersion, CreditHistoryParams } from './types'
+import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams, RewriteRecord, RewriteRecordInsert, RewriteRecordUpdate, RewriteRecordListParams, RewriteGenerationConfig, RewriteGeneratedVersion, CreditHistoryParams, ExplosiveContentListParams, ExplosiveContentInsert, ExplosiveContentUpdate } from './types'
 import { sendVerificationEmail, isEmailConfigured } from './email'
 import crypto from 'crypto'
 
@@ -591,8 +591,8 @@ export const getCreditHistory = async (params: CreditHistoryParams) => {
     const { user_id, transaction_type, start_date, end_date, limit = 20, offset = 0 } = params
     
     // 构建WHERE条件
-    let whereConditions = ['user_id = ?']
-    let queryParams: any[] = [user_id]
+    const whereConditions = ['user_id = ?']
+    const queryParams: any[] = [user_id]
     
     // 交易类型筛选
     if (transaction_type && transaction_type !== 'all') {
@@ -1284,24 +1284,24 @@ export const getAccountPositioningList = async (params: AccountPositioningListPa
     const offset = params.offset || 0
     
     // 构建查询条件
-    let whereClause = 'WHERE user_id = ?'
-    const queryParams: any[] = [params.user_id]
+    const whereConditions = ['1=1']
+    const queryParams: any[] = []
     
     // 如果有搜索关键词，添加搜索条件
     if (params.search && params.search.trim()) {
-      whereClause += ' AND name LIKE ?'
+      whereConditions.push('name LIKE ?')
       queryParams.push(`%${params.search.trim()}%`)
     }
     
     // 执行查询，按创建时间倒序排列
     const [rows] = await connection.execute(
-      `SELECT * FROM account_positioning ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      `SELECT * FROM account_positioning ${whereConditions.join(' AND ')} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
       queryParams
     ) as any[]
     
     // 查询总数
     const [countRows] = await connection.execute(
-      `SELECT COUNT(*) as total FROM account_positioning ${whereClause}`,
+      `SELECT COUNT(*) as total FROM account_positioning ${whereConditions.join(' AND ')}`,
       queryParams
     ) as any[]
     
@@ -2242,47 +2242,600 @@ export const checkUserMembership = async (userId: string) => {
   }
 }
 
-export default {
-  testConnection,
-  sendVerificationCode,
-  verifyEmailCode,
-  getProfile,
-  updateProfile,
-  updateUserCookie,
-  consumeCredits,
-  refundCredits,
-  getCreditTransactions,
-  isMySQLReady,
-  createBatchTask,
-  createTaskNotes,
-  getBatchTasks,
-  getBatchTaskWithNotes,
-  updateBatchTaskStatus,
-  getTaskNotes,
-  updateTaskNoteStatus,
-  createGeneratedContent,
-  updateGeneratedContent,
-  getTaskNotesWithContents,
-  // 账号定位相关函数
-  createAccountPositioning,
-  getAccountPositioningList,
-  getAccountPositioningById,
-  updateAccountPositioning,
-  deleteAccountPositioning,
-  // 爆文改写记录相关函数
-  createRewriteRecord,
-  updateRewriteRecord,
-  getRewriteRecordById,
-  getRewriteRecordList,
-  // 会员管理相关函数
-  authenticateAdmin,
-  searchUsers,
-  getUserMembershipStatus,
-  adminGrantCredits,
-  adminSetMonthlyMembership,
-  adminSetYearlyMembership,
-  adminGrantCreditPackage,
-  getAdminOperationLogs,
-  grantYearlyMemberMonthlyCredits,
-  checkUserMembership
-} 
+// ============================================
+// 爆款内容相关数据库操作函数
+// ============================================
+
+// 获取爆款内容列表
+export const getExplosiveContentList = async (params: ExplosiveContentListParams) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: [], 
+      total: 0,
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 构建查询条件
+    const whereConditions = ['1=1']
+    const queryParams: any[] = []
+    
+    // 行业筛选
+    if (params.industry) {
+      whereConditions.push('industry = ?')
+      queryParams.push(params.industry)
+    }
+    
+    // 内容形式筛选
+    if (params.content_type) {
+      whereConditions.push('content_type = ?')
+      queryParams.push(params.content_type)
+    }
+    
+    // 状态筛选
+    if (params.status) {
+      whereConditions.push('status = ?')
+      queryParams.push(params.status)
+    }
+    
+    // 搜索关键词
+    if (params.search) {
+      whereConditions.push('(title LIKE ? OR content LIKE ?)')
+      queryParams.push(`%${params.search}%`, `%${params.search}%`)
+    }
+    
+    const whereClause = whereConditions.join(' AND ')
+    const limit = params.limit || 20
+    const offset = params.offset || 0
+    
+    // 调试信息：打印查询参数
+    console.log('🔍 [getExplosiveContentList] 查询参数:', {
+      whereClause,
+      queryParams,
+      limit,
+      offset,
+      finalParams: [...queryParams, limit, offset]
+    })
+    
+    // 检查表是否存在
+    try {
+      const [tableExists] = await connection.execute(
+        `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'explosive_contents'`,
+        []
+      ) as any[]
+      
+      console.log('🔍 [getExplosiveContentList] 表存在检查:', tableExists[0].count > 0 ? '表存在' : '表不存在')
+      
+      if (tableExists[0].count === 0) {
+        connection.release()
+        return { 
+          data: [], 
+          total: 0,
+          error: 'explosive_contents 表不存在，请先执行数据库迁移' 
+        }
+      }
+    } catch (tableCheckError) {
+      console.error('❌ [getExplosiveContentList] 表存在检查失败:', tableCheckError)
+      connection.release()
+      return { 
+        data: [], 
+        total: 0,
+        error: '数据库表检查失败' 
+      }
+    }
+    
+    // 获取总数
+    const [countRows] = await connection.execute(
+      `SELECT COUNT(*) as total FROM explosive_contents WHERE ${whereClause}`,
+      queryParams
+    ) as any[]
+    
+    const total = countRows[0].total
+    
+    // 获取列表数据 - 使用字符串拼接而不是参数绑定来避免 MySQL 版本兼容问题
+    const limitStr = String(limit)
+    const offsetStr = String(offset)
+    
+    console.log('🔍 [getExplosiveContentList] 准备执行查询:', {
+      sql: `SELECT * FROM explosive_contents WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limitStr} OFFSET ${offsetStr}`,
+      params: queryParams
+    })
+    
+    const [rows] = await connection.execute(
+      `SELECT * FROM explosive_contents WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limitStr} OFFSET ${offsetStr}`,
+      queryParams
+    ) as any[]
+    
+    connection.release()
+    
+    // 解析JSON字段
+    const contents = (rows as any[]).map(content => {
+      try {
+        content.tags = typeof content.tags === 'string' 
+          ? JSON.parse(content.tags || '[]')
+          : content.tags || []
+        content.source_urls = typeof content.source_urls === 'string' 
+          ? JSON.parse(content.source_urls || '[]')
+          : content.source_urls || []
+      } catch (parseError) {
+        console.error('❌ [获取爆款内容列表] JSON解析失败:', parseError)
+        content.tags = []
+        content.source_urls = []
+      }
+      return content
+    })
+    
+    console.log('✅ [获取爆款内容列表] 查询成功:', contents.length, '条记录')
+    return { data: contents, total, error: null }
+  } catch (error) {
+    console.error('❌ [获取爆款内容列表] 查询失败:', error)
+    return { 
+      data: [], 
+      total: 0,
+      error: error instanceof Error ? error.message : '查询失败' 
+    }
+  }
+}
+
+// 通过ID获取爆款内容
+export const getExplosiveContentById = async (id: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 查询爆款内容
+    const [rows] = await connection.execute(
+      'SELECT * FROM explosive_contents WHERE id = ?',
+      [id]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length === 0) {
+      return { data: null, error: '爆款内容不存在' }
+    }
+    
+    const content = rows[0]
+    
+    // 解析JSON字段
+    try {
+      content.tags = typeof content.tags === 'string' 
+        ? JSON.parse(content.tags || '[]')
+        : content.tags || []
+      content.source_urls = typeof content.source_urls === 'string' 
+        ? JSON.parse(content.source_urls || '[]')
+        : content.source_urls || []
+    } catch (parseError) {
+      console.error('❌ [获取爆款内容] JSON解析失败:', parseError)
+      content.tags = []
+      content.source_urls = []
+    }
+    
+    console.log('✅ [获取爆款内容] 查询成功:', content.id)
+    return { data: content, error: null }
+  } catch (error) {
+    console.error('❌ [获取爆款内容] 查询失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '查询失败' 
+    }
+  }
+}
+
+// 创建爆款内容
+export const createExplosiveContent = async (data: ExplosiveContentInsert) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    const contentId = crypto.randomUUID()
+    
+    // 准备数据
+    const insertData = {
+      id: contentId,
+      title: data.title,
+      content: data.content,
+      tags: JSON.stringify(data.tags || []),
+      industry: data.industry,
+      content_type: data.content_type,
+      source_urls: JSON.stringify(data.source_urls || []),
+      cover_image: data.cover_image || null,
+      likes: data.likes || 0,
+      views: data.views || 0,
+      author: data.author || null,
+      status: data.status || 'enabled'
+    }
+    
+    // 插入爆款内容
+    await connection.execute(
+      `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        insertData.id,
+        insertData.title,
+        insertData.content,
+        insertData.tags,
+        insertData.industry,
+        insertData.content_type,
+        insertData.source_urls,
+        insertData.cover_image,
+        insertData.likes,
+        insertData.views,
+        insertData.author,
+        insertData.status
+      ]
+    )
+    
+    // 获取创建的内容
+    const [rows] = await connection.execute(
+      'SELECT * FROM explosive_contents WHERE id = ?',
+      [contentId]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      const content = rows[0]
+      
+      // 解析JSON字段
+      try {
+        content.tags = JSON.parse(content.tags || '[]')
+        content.source_urls = JSON.parse(content.source_urls || '[]')
+      } catch (parseError) {
+        console.error('❌ [创建爆款内容] JSON解析失败:', parseError)
+        content.tags = []
+        content.source_urls = []
+      }
+      
+      console.log('✅ [创建爆款内容] 创建成功:', content.id)
+      return { data: content, error: null }
+    }
+    
+    return { data: null, error: '创建失败' }
+  } catch (error) {
+    console.error('❌ [创建爆款内容] 创建失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '创建失败' 
+    }
+  }
+}
+
+// 更新爆款内容
+export const updateExplosiveContent = async (id: string, updates: ExplosiveContentUpdate) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 构建更新字段
+    const updateFields: string[] = []
+    const updateParams: any[] = []
+    
+    if (updates.title !== undefined) {
+      updateFields.push('title = ?')
+      updateParams.push(updates.title)
+    }
+    
+    if (updates.content !== undefined) {
+      updateFields.push('content = ?')
+      updateParams.push(updates.content)
+    }
+    
+    if (updates.tags !== undefined) {
+      updateFields.push('tags = ?')
+      updateParams.push(JSON.stringify(updates.tags))
+    }
+    
+    if (updates.industry !== undefined) {
+      updateFields.push('industry = ?')
+      updateParams.push(updates.industry)
+    }
+    
+    if (updates.content_type !== undefined) {
+      updateFields.push('content_type = ?')
+      updateParams.push(updates.content_type)
+    }
+    
+    if (updates.source_urls !== undefined) {
+      updateFields.push('source_urls = ?')
+      updateParams.push(JSON.stringify(updates.source_urls))
+    }
+    
+    if (updates.cover_image !== undefined) {
+      updateFields.push('cover_image = ?')
+      updateParams.push(updates.cover_image)
+    }
+    
+    if (updates.likes !== undefined) {
+      updateFields.push('likes = ?')
+      updateParams.push(updates.likes)
+    }
+    
+    if (updates.views !== undefined) {
+      updateFields.push('views = ?')
+      updateParams.push(updates.views)
+    }
+    
+    if (updates.author !== undefined) {
+      updateFields.push('author = ?')
+      updateParams.push(updates.author)
+    }
+    
+    if (updates.status !== undefined) {
+      updateFields.push('status = ?')
+      updateParams.push(updates.status)
+    }
+    
+    if (updateFields.length === 0) {
+      return { data: null, error: '没有需要更新的字段' }
+    }
+    
+    // 更新爆款内容
+    await connection.execute(
+      `UPDATE explosive_contents SET ${updateFields.join(', ')} WHERE id = ?`,
+      [...updateParams, id]
+    )
+    
+    // 获取更新后的内容
+    const [rows] = await connection.execute(
+      'SELECT * FROM explosive_contents WHERE id = ?',
+      [id]
+    ) as any[]
+    
+    connection.release()
+    
+    if (rows.length > 0) {
+      const content = rows[0]
+      
+      // 解析JSON字段
+      try {
+        content.tags = JSON.parse(content.tags || '[]')
+        content.source_urls = JSON.parse(content.source_urls || '[]')
+      } catch (parseError) {
+        console.error('❌ [更新爆款内容] JSON解析失败:', parseError)
+        content.tags = []
+        content.source_urls = []
+      }
+      
+      console.log('✅ [更新爆款内容] 更新成功:', content.id)
+      return { data: content, error: null }
+    }
+    
+    return { data: null, error: '内容不存在' }
+  } catch (error) {
+    console.error('❌ [更新爆款内容] 更新失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '更新失败' 
+    }
+  }
+}
+
+// 删除爆款内容
+export const deleteExplosiveContent = async (id: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 删除爆款内容
+    const [result] = await connection.execute(
+      'DELETE FROM explosive_contents WHERE id = ?',
+      [id]
+    ) as any[]
+    
+    connection.release()
+    
+    if (result.affectedRows > 0) {
+      console.log('✅ [删除爆款内容] 删除成功:', id)
+      return { success: true, error: null }
+    }
+    
+    return { success: false, error: '内容不存在' }
+  } catch (error) {
+    console.error('❌ [删除爆款内容] 删除失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '删除失败' 
+    }
+  }
+}
+
+// 获取爆款内容统计信息
+export const getExplosiveContentStats = async () => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用存储过程获取统计信息
+    const [rows] = await connection.execute('CALL GetExplosiveContentsStats()') as any[]
+    
+    connection.release()
+    
+    const stats = rows[0]
+    
+    // 解析统计数据
+    const result = {
+      total_count: 0,
+      enabled_count: 0,
+      disabled_count: 0,
+      industry_stats: [] as any[],
+      content_type_stats: [] as any[]
+    }
+    
+    stats.forEach((stat: any) => {
+      if (stat.type === 'total') {
+        result.total_count = stat.count
+        result.enabled_count = stat.enabled_count
+        result.disabled_count = stat.disabled_count
+      } else if (stat.type.startsWith('industry_')) {
+        result.industry_stats.push({
+          industry: stat.type.replace('industry_', ''),
+          count: stat.count,
+          enabled_count: stat.enabled_count,
+          disabled_count: stat.disabled_count
+        })
+      } else if (stat.type.startsWith('content_type_')) {
+        result.content_type_stats.push({
+          content_type: stat.type.replace('content_type_', ''),
+          count: stat.count,
+          enabled_count: stat.enabled_count,
+          disabled_count: stat.disabled_count
+        })
+      }
+    })
+    
+    console.log('✅ [获取爆款内容统计] 查询成功')
+    return { data: result, error: null }
+  } catch (error) {
+    console.error('❌ [获取爆款内容统计] 查询失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '查询失败' 
+    }
+  }
+}
+
+// 批量导入爆款内容
+export const batchImportExplosiveContent = async (contents: ExplosiveContentInsert[]) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    const results = {
+      total_processed: contents.length,
+      successful_count: 0,
+      failed_count: 0,
+      failed_items: [] as any[]
+    }
+    
+    // 开始事务
+    await connection.beginTransaction()
+    
+    try {
+      for (let i = 0; i < contents.length; i++) {
+        const content = contents[i]
+        
+        try {
+          const contentId = crypto.randomUUID()
+          
+          // 准备数据
+          const insertData = {
+            id: contentId,
+            title: content.title,
+            content: content.content,
+            tags: JSON.stringify(content.tags || []),
+            industry: content.industry,
+            content_type: content.content_type,
+            source_urls: JSON.stringify(content.source_urls || []),
+            cover_image: content.cover_image || null,
+            likes: content.likes || 0,
+            views: content.views || 0,
+            author: content.author || null,
+            status: content.status || 'enabled'
+          }
+          
+          // 插入爆款内容
+          await connection.execute(
+            `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              insertData.id,
+              insertData.title,
+              insertData.content,
+              insertData.tags,
+              insertData.industry,
+              insertData.content_type,
+              insertData.source_urls,
+              insertData.cover_image,
+              insertData.likes,
+              insertData.views,
+              insertData.author,
+              insertData.status
+            ]
+          )
+          
+          results.successful_count++
+        } catch (error) {
+          results.failed_count++
+          results.failed_items.push({
+            index: i,
+            error: error instanceof Error ? error.message : '导入失败',
+            title: content.title
+          })
+        }
+      }
+      
+      // 提交事务
+      await connection.commit()
+      
+    } catch (error) {
+      // 回滚事务
+      await connection.rollback()
+      throw error
+    }
+    
+    connection.release()
+    
+    console.log('✅ [批量导入爆款内容] 导入完成:', results)
+    return { data: results, error: null }
+  } catch (error) {
+    console.error('❌ [批量导入爆款内容] 导入失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '导入失败' 
+    }
+  }
+}

@@ -59,10 +59,10 @@ const navigationItems = [
         description: "复制作者风格"
       },
       {
-        href: "/note-rewrite",
+        href: "/rewrite",
         icon: FileText,
-        label: "笔记翻写", 
-        description: "翻写笔记内容"
+        label: "笔记仿写", 
+        description: "仿写特定笔记内容"
       },
       {
         href: "/search",
@@ -71,10 +71,10 @@ const navigationItems = [
         description: "批量内容生成"
       },
       {
-        href: "/rewrite",
+        href: "/note-rewrite",
         icon: RefreshCw,
         label: "爆文改写",
-        description: "AI改写内容"
+        description: "爆文库改写成特定主题"
       }
     ]
   },
@@ -84,13 +84,6 @@ const navigationItems = [
     icon: CreditCard,
     label: "定价方案",
     description: "查看价格套餐"
-  },
-  {
-    type: "item",
-    href: "/task-management",
-    icon: Settings,
-    label: "任务管理",
-    description: "管理任务"
   }
 ]
 

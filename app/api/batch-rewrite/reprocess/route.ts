@@ -6,7 +6,8 @@ import {
   getTaskNotes, 
   updateTaskNoteStatus,
   updateGeneratedContent,
-  getProfile
+  getProfile,
+  getTaskNotesWithContents
 } from '@/lib/mysql'
 import type { BatchConfig, TaskNote } from '@/lib/types'
 import { generateBatchRewriteContent, parseThreeVersions } from '@/lib/ark-api'
@@ -198,8 +199,7 @@ export async function POST(request: NextRequest) {
     // 解析配置
     const config = task.config as BatchConfig
 
-    // 获取现有的生成内容记录ID
-    const { getTaskNotesWithContents } = require('@/lib/mysql')
+          // 获取现有的生成内容记录ID
     const { data: notesWithContents } = await getTaskNotesWithContents(taskId)
     
     // 异步处理（不阻塞响应）

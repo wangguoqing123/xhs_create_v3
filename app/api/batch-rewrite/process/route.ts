@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
           try {
             // 这里可以从note_data中获取笔记信息，或者通过API重新获取
             // 为了简化，我们使用存储的note_data
-            let noteData = taskNote.note_data
+            const noteData = taskNote.note_data
 
             // 如果note_data为空，标记为失败
             if (!noteData || Object.keys(noteData).length === 0) {

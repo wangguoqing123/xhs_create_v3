@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import type { AuthUser } from './mysql'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key'
@@ -60,7 +61,7 @@ export const isJWTConfigured = (): boolean => {
 
 // 生成随机密钥（用于开发环境）
 export const generateRandomSecret = (): string => {
-  return require('crypto').randomBytes(32).toString('hex')
+  return crypto.randomBytes(32).toString('hex')
 }
 
 export default {

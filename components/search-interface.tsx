@@ -127,7 +127,7 @@ export function SearchInterface({
   }
 
   return (
-    <div className="sticky top-20 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 transition-colors duration-300">
+    <div className="bg-white dark:bg-slate-900 border-b border-gray-200/50 dark:border-slate-700/50 transition-colors duration-300">
       <div className="container mx-auto px-6 py-6">
         <div className="flex items-center gap-6 max-w-4xl mx-auto">
           {/* 搜索输入框 - 缩小版 */}

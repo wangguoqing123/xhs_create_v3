@@ -194,7 +194,7 @@ function AuthorCopyPageContent() {
   }, [])
 
   return (
-    <div>
+    <div className="pt-6 lg:pt-6" >
       {/* 作者搜索界面 */}
       <AuthorSearchInterface
         userProfileUrl={userProfileUrl}

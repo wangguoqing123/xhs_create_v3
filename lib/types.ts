@@ -850,3 +850,185 @@ export interface AuthorNotesResult {
   auther_info: AuthorInfo
   notes: XiaohongshuNote[]
 }
+
+// ============================================
+// 爆款内容相关类型定义
+// ============================================
+
+// 行业分类枚举
+export type IndustryType = 'decoration' | 'beauty' | 'parenting' | 'food' | 'travel' | 'fashion' | 'tech' | 'education' | 'lifestyle' | 'fitness'
+
+// 内容形式枚举
+export type ContentFormType = 'note' | 'review' | 'guide' | 'case'
+
+// 爆款内容状态枚举
+export type ExplosiveContentStatus = 'enabled' | 'disabled'
+
+// 爆款内容基础接口
+export interface ExplosiveContent {
+  id: string // 爆款内容ID
+  title: string // 内容标题
+  content: string // 内容正文
+  tags: string[] // 标签列表
+  industry: IndustryType // 行业分类
+  content_type: ContentFormType // 内容形式
+  source_urls: string[] // 来源链接列表
+  cover_image: string | null // 封面图片URL
+  likes: number // 点赞数
+  views: number // 浏览数
+  author: string | null // 作者
+  status: ExplosiveContentStatus // 状态
+  created_at: string // 创建时间
+  updated_at: string // 更新时间
+}
+
+// 爆款内容插入接口
+export interface ExplosiveContentInsert {
+  title: string // 内容标题（必填）
+  content: string // 内容正文（必填）
+  tags?: string[] // 标签列表（可选）
+  industry: IndustryType // 行业分类（必填）
+  content_type: ContentFormType // 内容形式（必填）
+  source_urls?: string[] // 来源链接列表（可选）
+  cover_image?: string | null // 封面图片URL（可选）
+  likes?: number // 点赞数（可选）
+  views?: number // 浏览数（可选）
+  author?: string | null // 作者（可选）
+  status?: ExplosiveContentStatus // 状态（可选）
+}
+
+// 爆款内容更新接口
+export interface ExplosiveContentUpdate {
+  title?: string // 内容标题
+  content?: string // 内容正文
+  tags?: string[] // 标签列表
+  industry?: IndustryType // 行业分类
+  content_type?: ContentFormType // 内容形式
+  source_urls?: string[] // 来源链接列表
+  cover_image?: string | null // 封面图片URL
+  likes?: number // 点赞数
+  views?: number // 浏览数
+  author?: string | null // 作者
+  status?: ExplosiveContentStatus // 状态
+}
+
+// 爆款内容响应接口
+export interface ExplosiveContentResponse {
+  success: boolean
+  data?: ExplosiveContent | ExplosiveContent[] | null
+  error?: string
+}
+
+// 爆款内容列表查询参数
+export interface ExplosiveContentListParams {
+  industry?: IndustryType // 行业筛选
+  content_type?: ContentFormType // 内容形式筛选
+  status?: ExplosiveContentStatus // 状态筛选
+  limit?: number // 每页数量，默认20
+  offset?: number // 偏移量，默认0
+  search?: string // 搜索关键词（按标题搜索）
+}
+
+// 爆款内容统计信息
+export interface ExplosiveContentStats {
+  total_count: number // 总数量
+  enabled_count: number // 启用数量
+  disabled_count: number // 禁用数量
+  industry_stats: Array<{
+    industry: IndustryType
+    count: number
+    enabled_count: number
+    disabled_count: number
+  }>
+  content_type_stats: Array<{
+    content_type: ContentFormType
+    count: number
+    enabled_count: number
+    disabled_count: number
+  }>
+}
+
+// 行业选项映射
+export const INDUSTRY_OPTIONS: Record<IndustryType, string> = {
+  decoration: '装修',
+  beauty: '美妆',
+  parenting: '母婴',
+  food: '美食',
+  travel: '旅游',
+  fashion: '时尚',
+  tech: '科技',
+  education: '教育',
+  lifestyle: '生活',
+  fitness: '健身'
+}
+
+// 内容形式选项映射
+export const CONTENT_TYPE_OPTIONS: Record<ContentFormType, string> = {
+  note: '笔记',
+  review: '测评',
+  guide: '干货',
+  case: '案例'
+}
+
+// 管理员操作：添加爆款内容
+export interface AdminAddExplosiveContentRequest {
+  title: string
+  content: string
+  tags: string[]
+  industry: IndustryType
+  content_type: ContentFormType
+  source_urls: string[]
+  cover_image?: string | null
+  likes?: number
+  views?: number
+  author?: string | null
+  status?: ExplosiveContentStatus
+}
+
+// 管理员操作：更新爆款内容
+export interface AdminUpdateExplosiveContentRequest {
+  id: string
+  title?: string
+  content?: string
+  tags?: string[]
+  industry?: IndustryType
+  content_type?: ContentFormType
+  source_urls?: string[]
+  cover_image?: string | null
+  likes?: number
+  views?: number
+  author?: string | null
+  status?: ExplosiveContentStatus
+}
+
+// 管理员操作：爆款内容批量导入
+export interface AdminBatchImportExplosiveContentRequest {
+  contents: Array<{
+    title: string
+    content: string
+    tags: string[]
+    industry: IndustryType
+    content_type: ContentFormType
+    source_urls: string[]
+    cover_image?: string | null
+    likes?: number
+    views?: number
+    author?: string | null
+  }>
+}
+
+// 爆款内容批量导入响应
+export interface BatchImportExplosiveContentResponse {
+  success: boolean
+  data?: {
+    total_processed: number
+    successful_count: number
+    failed_count: number
+    failed_items: Array<{
+      index: number
+      error: string
+      title: string
+    }>
+  }
+  error?: string
+}
