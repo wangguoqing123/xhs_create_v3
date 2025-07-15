@@ -24,6 +24,7 @@ CREATE TABLE explosive_contents (
   views INTEGER DEFAULT 0 COMMENT '浏览数',
   author VARCHAR(100) DEFAULT NULL COMMENT '作者',
   status ENUM('enabled', 'disabled') DEFAULT 'enabled' COMMENT '状态：enabled=启用，disabled=禁用',
+  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '笔记发布时间',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   
@@ -31,6 +32,7 @@ CREATE TABLE explosive_contents (
   INDEX idx_explosive_contents_industry (industry),
   INDEX idx_explosive_contents_content_type (content_type),
   INDEX idx_explosive_contents_status (status),
+  INDEX idx_explosive_contents_published_at (published_at DESC),
   INDEX idx_explosive_contents_created_at (created_at DESC),
   INDEX idx_explosive_contents_industry_type (industry, content_type),
   INDEX idx_explosive_contents_status_created (status, created_at DESC)

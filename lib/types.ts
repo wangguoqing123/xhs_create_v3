@@ -855,8 +855,8 @@ export interface AuthorNotesResult {
 // 爆款内容相关类型定义
 // ============================================
 
-// 行业分类枚举
-export type IndustryType = 'decoration' | 'beauty' | 'parenting' | 'food' | 'travel' | 'fashion' | 'tech' | 'education' | 'lifestyle' | 'fitness'
+// 行业分类类型（支持动态添加）
+export type IndustryType = string
 
 // 内容形式枚举
 export type ContentFormType = 'note' | 'review' | 'guide' | 'case'
@@ -878,6 +878,7 @@ export interface ExplosiveContent {
   views: number // 浏览数
   author: string | null // 作者
   status: ExplosiveContentStatus // 状态
+  published_at: string // 笔记发布时间
   created_at: string // 创建时间
   updated_at: string // 更新时间
 }
@@ -895,6 +896,7 @@ export interface ExplosiveContentInsert {
   views?: number // 浏览数（可选）
   author?: string | null // 作者（可选）
   status?: ExplosiveContentStatus // 状态（可选）
+  published_at?: string // 笔记发布时间（可选）
 }
 
 // 爆款内容更新接口
@@ -948,8 +950,8 @@ export interface ExplosiveContentStats {
   }>
 }
 
-// 行业选项映射
-export const INDUSTRY_OPTIONS: Record<IndustryType, string> = {
+// 行业选项映射（默认选项，支持动态扩展）
+export const INDUSTRY_OPTIONS: Record<string, string> = {
   decoration: '装修',
   beauty: '美妆',
   parenting: '母婴',

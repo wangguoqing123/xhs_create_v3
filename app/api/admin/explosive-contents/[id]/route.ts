@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getExplosiveContentById, updateExplosiveContent, deleteExplosiveContent } from '@/lib/mysql'
+import { updateExplosiveContent, deleteExplosiveContent, getExplosiveContentById } from '@/lib/mysql'
 import { cookies } from 'next/headers'
-import type { ExplosiveContentUpdate } from '@/lib/types'
 
 // 检查管理员认证
 async function checkAdminAuth() {
@@ -11,153 +10,178 @@ async function checkAdminAuth() {
 }
 
 // GET方法：获取单个爆款内容
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    // 检查管理员认证
+    // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()
     if (!isAuthenticated) {
       return NextResponse.json(
-        { success: false, message: '未授权访问' },
+        { error: '未授权访问' },
         { status: 401 }
       )
     }
 
-    const { id } = params
-
-    if (!id) {
+    const contentId = params.id
+    
+    // 获取爆款内容
+    const { data: content, error } = await getExplosiveContentById(contentId)
+    
+    if (error) {
       return NextResponse.json(
-        { success: false, message: '缺少内容ID' },
-        { status: 400 }
+        { error: error },
+        { status: 500 }
       )
     }
 
-    // 获取爆款内容
-    const result = await getExplosiveContentById(id)
-    
-    if (result.error) {
+    if (!content) {
       return NextResponse.json(
-        { success: false, message: result.error },
-        { status: result.error === '爆款内容不存在' ? 404 : 500 }
+        { error: '内容不存在' },
+        { status: 404 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      data: result.data
+      data: content
     })
 
   } catch (error) {
-    console.error('获取爆款内容错误:', error)
+    console.error('获取爆款内容失败:', error)
     return NextResponse.json(
-      { success: false, message: '服务器错误' },
+      { error: '服务器内部错误' },
       { status: 500 }
     )
   }
 }
 
 // PUT方法：更新爆款内容
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    // 检查管理员认证
+    // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()
     if (!isAuthenticated) {
       return NextResponse.json(
-        { success: false, message: '未授权访问' },
+        { error: '未授权访问' },
         { status: 401 }
       )
     }
 
-    const { id } = params
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: '缺少内容ID' },
-        { status: 400 }
-      )
-    }
-
+    const contentId = params.id
     const body = await request.json()
     
-    // 准备更新数据
-    const updateData: ExplosiveContentUpdate = {}
-    
-    if (body.title !== undefined) updateData.title = body.title
-    if (body.content !== undefined) updateData.content = body.content
-    if (body.tags !== undefined) updateData.tags = body.tags
-    if (body.industry !== undefined) updateData.industry = body.industry
-    if (body.content_type !== undefined) updateData.content_type = body.content_type
-    if (body.source_urls !== undefined) updateData.source_urls = body.source_urls
-    if (body.cover_image !== undefined) updateData.cover_image = body.cover_image
-    if (body.likes !== undefined) updateData.likes = parseInt(body.likes) || 0
-    if (body.views !== undefined) updateData.views = parseInt(body.views) || 0
-    if (body.author !== undefined) updateData.author = body.author
-    if (body.status !== undefined) updateData.status = body.status
-
     // 更新爆款内容
-    const result = await updateExplosiveContent(id, updateData)
+    const { data: content, error } = await updateExplosiveContent(contentId, body)
     
-    if (result.error) {
+    if (error) {
       return NextResponse.json(
-        { success: false, message: result.error },
-        { status: result.error === '内容不存在' ? 404 : 500 }
+        { error: error },
+        { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      message: '爆款内容更新成功',
-      data: result.data
+      data: content
     })
 
   } catch (error) {
-    console.error('更新爆款内容错误:', error)
+    console.error('更新爆款内容失败:', error)
     return NextResponse.json(
-      { success: false, message: '服务器错误' },
+      { error: '服务器内部错误' },
       { status: 500 }
     )
   }
 }
 
 // DELETE方法：删除爆款内容
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    // 检查管理员认证
+    // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()
     if (!isAuthenticated) {
       return NextResponse.json(
-        { success: false, message: '未授权访问' },
+        { error: '未授权访问' },
         { status: 401 }
       )
     }
 
-    const { id } = params
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: '缺少内容ID' },
-        { status: 400 }
-      )
-    }
-
-    // 删除爆款内容
-    const result = await deleteExplosiveContent(id)
+    const contentId = params.id
     
-    if (!result.success) {
+    // 删除爆款内容
+    const { error } = await deleteExplosiveContent(contentId)
+    
+    if (error) {
       return NextResponse.json(
-        { success: false, message: result.error },
-        { status: result.error === '内容不存在' ? 404 : 500 }
+        { error: error },
+        { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      message: '爆款内容删除成功'
+      message: '删除成功'
     })
 
   } catch (error) {
-    console.error('删除爆款内容错误:', error)
+    console.error('删除爆款内容失败:', error)
     return NextResponse.json(
-      { success: false, message: '服务器错误' },
+      { error: '服务器内部错误' },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH方法：审核操作（启用/禁用）
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // 验证管理员权限
+    const isAuthenticated = await checkAdminAuth()
+    if (!isAuthenticated) {
+      return NextResponse.json(
+        { error: '未授权访问' },
+        { status: 401 }
+      )
+    }
+
+    const contentId = params.id
+    const body = await request.json()
+    const { action } = body // 'approve' 或 'disable'
+    
+    // 根据操作类型设置状态
+    const status = action === 'approve' ? 'enabled' : 'disabled'
+    
+    // 更新爆款内容状态
+    const { data: content, error } = await updateExplosiveContent(contentId, { status })
+    
+    if (error) {
+      return NextResponse.json(
+        { error: error },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: content,
+      message: action === 'approve' ? '已审核通过' : '已禁用'
+    })
+
+  } catch (error) {
+    console.error('审核操作失败:', error)
+    return NextResponse.json(
+      { error: '服务器内部错误' },
       { status: 500 }
     )
   }

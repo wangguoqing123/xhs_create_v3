@@ -59,7 +59,7 @@ export default function NoteRewritePage() {
       views: content.views,
       content: content.content,
       tags: content.tags,
-      publishTime: content.created_at,
+      publishTime: content.published_at || content.created_at,
       originalData: {
         note_id: content.id,
         note_display_title: content.title,

@@ -2464,13 +2464,14 @@ export const createExplosiveContent = async (data: ExplosiveContentInsert) => {
       likes: data.likes || 0,
       views: data.views || 0,
       author: data.author || null,
-      status: data.status || 'enabled'
+      status: data.status || 'enabled',
+      published_at: data.published_at || null
     }
     
     // 插入爆款内容
     await connection.execute(
-      `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status, published_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         insertData.id,
         insertData.title,
@@ -2483,7 +2484,8 @@ export const createExplosiveContent = async (data: ExplosiveContentInsert) => {
         insertData.likes,
         insertData.views,
         insertData.author,
-        insertData.status
+        insertData.status,
+        insertData.published_at
       ]
     )
     
@@ -2784,13 +2786,14 @@ export const batchImportExplosiveContent = async (contents: ExplosiveContentInse
             likes: content.likes || 0,
             views: content.views || 0,
             author: content.author || null,
-            status: content.status || 'enabled'
+            status: content.status || 'enabled',
+            published_at: content.published_at || null
           }
           
           // 插入爆款内容
           await connection.execute(
-            `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status, published_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               insertData.id,
               insertData.title,
@@ -2803,7 +2806,8 @@ export const batchImportExplosiveContent = async (contents: ExplosiveContentInse
               insertData.likes,
               insertData.views,
               insertData.author,
-              insertData.status
+              insertData.status,
+              insertData.published_at
             ]
           )
           
