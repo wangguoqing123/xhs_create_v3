@@ -1295,13 +1295,13 @@ export const getAccountPositioningList = async (params: AccountPositioningListPa
     
     // 执行查询，按创建时间倒序排列
     const [rows] = await connection.execute(
-      `SELECT * FROM account_positioning ${whereConditions.join(' AND ')} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      `SELECT * FROM account_positioning WHERE ${whereConditions.join(' AND ')} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
       queryParams
     ) as any[]
     
     // 查询总数
     const [countRows] = await connection.execute(
-      `SELECT COUNT(*) as total FROM account_positioning ${whereConditions.join(' AND ')}`,
+      `SELECT COUNT(*) as total FROM account_positioning WHERE ${whereConditions.join(' AND ')}`,
       queryParams
     ) as any[]
     
