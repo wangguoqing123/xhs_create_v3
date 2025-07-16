@@ -179,6 +179,7 @@ export function createImageErrorHandler(
 /**
  * 创建带有快速降级的图片错误处理函数
  * 当遇到403等错误时，更快地降级到占位符
+ * 这是推荐的错误处理函数，避免用户长时间等待
  */
 export function createFastFallbackImageHandler(
   originalUrl: string, 

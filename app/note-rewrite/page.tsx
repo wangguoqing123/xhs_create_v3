@@ -11,12 +11,12 @@ import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { useNoteDetail } from "@/lib/hooks/use-note-detail"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Sparkles, Filter } from "lucide-react"
-import type { Note, ExplosiveContent, IndustryType, ContentFormType } from "@/lib/types"
-import { INDUSTRY_OPTIONS, CONTENT_TYPE_OPTIONS } from "@/lib/types"
+import { Badge } from "@/components/ui/badge"
+import { Search, Sparkles, Filter, X } from "lucide-react"
+import type { Note, ExplosiveContent, IndustryType, ContentFormType, ToneType } from "@/lib/types"
+import { INDUSTRY_OPTIONS, CONTENT_TYPE_OPTIONS, TONE_OPTIONS } from "@/lib/types"
 
 export default function NoteRewritePage() {
   const router = useRouter()
@@ -30,8 +30,9 @@ export default function NoteRewritePage() {
   // 爆款内容数据
   const [explosiveContents, setExplosiveContents] = useState<ExplosiveContent[]>([])
   const [filters, setFilters] = useState({
-    industry: 'all',
-    content_type: 'all',
+    industry: [] as IndustryType[],
+    content_type: [] as ContentFormType[],
+    tone: [] as ToneType[],
     search: ''
   })
   
@@ -91,9 +92,20 @@ export default function NoteRewritePage() {
     
     try {
       const params = new URLSearchParams()
-      if (filters.industry && filters.industry !== 'all') params.append('industry', filters.industry)
-      if (filters.content_type && filters.content_type !== 'all') params.append('content_type', filters.content_type)
-      if (filters.search) params.append('search', filters.search)
+      
+      // 多选筛选参数
+      if (filters.industry.length > 0) {
+        filters.industry.forEach(industry => params.append('industry', industry))
+      }
+      if (filters.content_type.length > 0) {
+        filters.content_type.forEach(contentType => params.append('content_type', contentType))
+      }
+      if (filters.tone.length > 0) {
+        filters.tone.forEach(tone => params.append('tone', tone))
+      }
+      if (filters.search) {
+        params.append('search', filters.search)
+      }
       
       const response = await fetch(`/api/explosive-contents?${params.toString()}`)
       const data = await response.json()
@@ -121,6 +133,31 @@ export default function NoteRewritePage() {
   const handleFilter = useCallback(() => {
     loadExplosiveContents()
   }, [loadExplosiveContents])
+
+  // 处理标签选择
+  const handleTagSelect = useCallback((type: 'industry' | 'content_type' | 'tone', value: string) => {
+    setFilters(prev => {
+      const currentValues = prev[type] as string[]
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(v => v !== value)
+        : [...currentValues, value]
+      
+      return {
+        ...prev,
+        [type]: newValues
+      }
+    })
+  }, [])
+
+  // 清除所有筛选
+  const handleClearFilters = useCallback(() => {
+    setFilters({
+      industry: [],
+      content_type: [],
+      tone: [],
+      search: ''
+    })
+  }, [])
 
   // 处理笔记选择（用于批量操作）
   const handleNoteSelect = useCallback((noteId: string, selected: boolean) => {
@@ -180,6 +217,9 @@ export default function NoteRewritePage() {
     setShowAuthModal(false)
   }, [])
 
+  // 计算已选择的筛选项数量
+  const selectedFiltersCount = filters.industry.length + filters.content_type.length + filters.tone.length
+
   return (
     <div className="pt-6 lg:pt-6">
       {/* 页面标题 */}
@@ -195,58 +235,94 @@ export default function NoteRewritePage() {
       {/* 筛选器 */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            筛选条件
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              筛选条件
+              {selectedFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {selectedFiltersCount} 个筛选项
+                </Badge>
+              )}
+            </div>
+            {selectedFiltersCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-4 h-4 mr-1" />
+                清除筛选
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label>行业分类</Label>
-              <Select
-                value={filters.industry}
-                onValueChange={(value) => setFilters({ ...filters, industry: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="选择行业" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部行业</SelectItem>
-                  {Object.entries(INDUSTRY_OPTIONS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <CardContent className="space-y-4">
+          {/* 行业筛选 */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">行业分类</Label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(INDUSTRY_OPTIONS).map(([key, label]) => (
+                <Badge
+                  key={key}
+                  variant={filters.industry.includes(key as IndustryType) ? "default" : "outline"}
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => handleTagSelect('industry', key)}
+                >
+                  {label}
+                </Badge>
+              ))}
             </div>
-            <div>
-              <Label>内容形式</Label>
-              <Select
-                value={filters.content_type}
-                onValueChange={(value) => setFilters({ ...filters, content_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="选择形式" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部形式</SelectItem>
-                  {Object.entries(CONTENT_TYPE_OPTIONS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          </div>
+
+          {/* 内容类型筛选 */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">内容类型</Label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(CONTENT_TYPE_OPTIONS).map(([key, label]) => (
+                <Badge
+                  key={key}
+                  variant={filters.content_type.includes(key as ContentFormType) ? "default" : "outline"}
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => handleTagSelect('content_type', key)}
+                >
+                  {label}
+                </Badge>
+              ))}
             </div>
-            <div>
-              <Label>搜索关键词</Label>
+          </div>
+
+          {/* 口吻筛选 */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">笔记口吻</Label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(TONE_OPTIONS).map(([key, label]) => (
+                <Badge
+                  key={key}
+                  variant={filters.tone.includes(key as ToneType) ? "default" : "outline"}
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => handleTagSelect('tone', key)}
+                >
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* 搜索框 */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label className="text-sm font-medium mb-2 block">搜索关键词</Label>
               <Input
                 placeholder="搜索标题或内容..."
                 value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 onKeyPress={(e) => e.key === 'Enter' && handleFilter()}
               />
             </div>
             <div className="flex items-end">
-              <Button onClick={handleFilter} disabled={isLoading} className="w-full">
+              <Button onClick={handleFilter} disabled={isLoading}>
                 <Search className="w-4 h-4 mr-2" />
                 筛选
               </Button>
@@ -335,25 +411,19 @@ export default function NoteRewritePage() {
       )}
 
       {/* 笔记详情错误提示 */}
-      {detailError && selectedNoteForDetail && (
+      {detailError && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-900 rounded-lg p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-red-600 mb-2">获取详情失败</h3>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">{detailError}</p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => handleNoteView(selectedNoteForDetail)}
-                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-              >
-                重试
-              </button>
-              <button
-                onClick={handleCloseNoteDetail}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-              >
-                关闭
-              </button>
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-6 text-center max-w-md">
+            <div className="text-red-500 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">获取详情失败</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{detailError}</p>
+            <Button onClick={handleCloseNoteDetail} variant="outline">
+              关闭
+            </Button>
           </div>
         </div>
       )}

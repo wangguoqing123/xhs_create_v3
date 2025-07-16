@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Heart, Eye } from "lucide-react"
 import Image from "next/image"
-import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
+import { getProxiedImageUrl, createFastFallbackImageHandler } from "@/lib/image-utils"
 
 interface Note {
   id: string
@@ -44,7 +44,7 @@ export function NoteCard({ note, selected, onSelect, onView }: NoteCardProps) {
             width={300}
             height={200}
             className="w-full h-48 object-cover"
-            onError={createImageErrorHandler(note.cover, "/placeholder.svg")} // 添加错误处理
+            onError={createFastFallbackImageHandler(note.cover, "/placeholder.svg")} // 添加快速降级错误处理
           />
         </div>
       </div>

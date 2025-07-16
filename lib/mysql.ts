@@ -2265,16 +2265,25 @@ export const getExplosiveContentList = async (params: ExplosiveContentListParams
     const whereConditions = ['1=1']
     const queryParams: any[] = []
     
-    // 行业筛选
-    if (params.industry) {
-      whereConditions.push('industry = ?')
-      queryParams.push(params.industry)
+    // 行业筛选（支持多选）
+    if (params.industry && params.industry.length > 0) {
+      const placeholders = params.industry.map(() => '?').join(',')
+      whereConditions.push(`industry IN (${placeholders})`)
+      queryParams.push(...params.industry)
     }
     
-    // 内容形式筛选
-    if (params.content_type) {
-      whereConditions.push('content_type = ?')
-      queryParams.push(params.content_type)
+    // 内容形式筛选（支持多选）
+    if (params.content_type && params.content_type.length > 0) {
+      const placeholders = params.content_type.map(() => '?').join(',')
+      whereConditions.push(`content_type IN (${placeholders})`)
+      queryParams.push(...params.content_type)
+    }
+    
+    // 口吻筛选（支持多选）
+    if (params.tone && params.tone.length > 0) {
+      const placeholders = params.tone.map(() => '?').join(',')
+      whereConditions.push(`tone IN (${placeholders})`)
+      queryParams.push(...params.tone)
     }
     
     // 状态筛选
@@ -2459,6 +2468,7 @@ export const createExplosiveContent = async (data: ExplosiveContentInsert) => {
       tags: JSON.stringify(data.tags || []),
       industry: data.industry,
       content_type: data.content_type,
+      tone: data.tone,
       source_urls: JSON.stringify(data.source_urls || []),
       cover_image: data.cover_image || null,
       likes: data.likes || 0,
@@ -2470,8 +2480,8 @@ export const createExplosiveContent = async (data: ExplosiveContentInsert) => {
     
     // 插入爆款内容
     await connection.execute(
-      `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status, published_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, tone, source_urls, cover_image, likes, views, author, status, published_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         insertData.id,
         insertData.title,
@@ -2479,6 +2489,7 @@ export const createExplosiveContent = async (data: ExplosiveContentInsert) => {
         insertData.tags,
         insertData.industry,
         insertData.content_type,
+        insertData.tone,
         insertData.source_urls,
         insertData.cover_image,
         insertData.likes,
@@ -2565,6 +2576,11 @@ export const updateExplosiveContent = async (id: string, updates: ExplosiveConte
     if (updates.content_type !== undefined) {
       updateFields.push('content_type = ?')
       updateParams.push(updates.content_type)
+    }
+    
+    if (updates.tone !== undefined) {
+      updateFields.push('tone = ?')
+      updateParams.push(updates.tone)
     }
     
     if (updates.source_urls !== undefined) {
@@ -2781,6 +2797,7 @@ export const batchImportExplosiveContent = async (contents: ExplosiveContentInse
             tags: JSON.stringify(content.tags || []),
             industry: content.industry,
             content_type: content.content_type,
+            tone: content.tone,
             source_urls: JSON.stringify(content.source_urls || []),
             cover_image: content.cover_image || null,
             likes: content.likes || 0,
@@ -2792,8 +2809,8 @@ export const batchImportExplosiveContent = async (contents: ExplosiveContentInse
           
           // 插入爆款内容
           await connection.execute(
-            `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, source_urls, cover_image, likes, views, author, status, published_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO explosive_contents (id, title, content, tags, industry, content_type, tone, source_urls, cover_image, likes, views, author, status, published_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               insertData.id,
               insertData.title,
@@ -2801,6 +2818,7 @@ export const batchImportExplosiveContent = async (contents: ExplosiveContentInse
               insertData.tags,
               insertData.industry,
               insertData.content_type,
+              insertData.tone,
               insertData.source_urls,
               insertData.cover_image,
               insertData.likes,

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Heart, User, Loader2, Search } from "lucide-react"
 import Image from "next/image"
-import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
+import { getProxiedImageUrl, createFastFallbackImageHandler } from "@/lib/image-utils"
 
 interface Note {
   id: string
@@ -457,7 +457,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
                   width={240}
                   height={320}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={createImageErrorHandler(note.cover, "/placeholder.svg")} // 添加错误处理
+                  onError={createFastFallbackImageHandler(note.cover, "/placeholder.svg")} // 添加快速降级错误处理
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>

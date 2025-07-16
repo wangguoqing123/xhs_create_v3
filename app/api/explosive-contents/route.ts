@@ -90,8 +90,9 @@ export async function GET(request: NextRequest) {
     
     // 解析查询参数
     const params: ExplosiveContentListParams = {
-      industry: searchParams.get('industry') as any || undefined,
-      content_type: searchParams.get('content_type') as any || undefined,
+      industry: searchParams.getAll('industry') as any[] || undefined,
+      content_type: searchParams.getAll('content_type') as any[] || undefined,
+      tone: searchParams.getAll('tone') as any[] || undefined,
       status: 'enabled', // 普通用户只能看到启用的内容
       limit: parseInt(searchParams.get('limit') || '20'),
       offset: parseInt(searchParams.get('offset') || '0'),

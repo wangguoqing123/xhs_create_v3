@@ -7,7 +7,7 @@ import { Heart, X, ChevronLeft, ChevronRight, User, Calendar, MessageCircle, Sha
 import Image from "next/image"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect } from "react"
-import { getProxiedImageUrl, createImageErrorHandler, getProxiedImageUrls } from "@/lib/image-utils"
+import { getProxiedImageUrl, createFastFallbackImageHandler, getProxiedImageUrls } from "@/lib/image-utils"
 import { NoteDetail } from "@/lib/types"
 
 interface NoteDetailModalProps {
@@ -216,7 +216,7 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
                       fill
                       className="object-cover rounded-full"
                       sizes="40px"
-                      onError={createImageErrorHandler(note.authorAvatar, "/placeholder-user.jpg")} // 添加错误处理
+                      onError={createFastFallbackImageHandler(note.authorAvatar, "/placeholder-user.jpg")} // 添加快速降级错误处理
                     />
                   ) : (
                     <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">

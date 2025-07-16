@@ -855,11 +855,14 @@ export interface AuthorNotesResult {
 // 爆款内容相关类型定义
 // ============================================
 
-// 行业分类类型（支持动态添加）
-export type IndustryType = string
+// 行业分类类型
+export type IndustryType = 'decoration' | 'travel' | 'study_abroad' | 'other'
 
 // 内容形式枚举
-export type ContentFormType = 'note' | 'review' | 'guide' | 'case'
+export type ContentFormType = 'review' | 'guide' | 'marketing' | 'other'
+
+// 口吻类型枚举
+export type ToneType = 'personal' | 'business' | 'other'
 
 // 爆款内容状态枚举
 export type ExplosiveContentStatus = 'enabled' | 'disabled'
@@ -872,6 +875,7 @@ export interface ExplosiveContent {
   tags: string[] // 标签列表
   industry: IndustryType // 行业分类
   content_type: ContentFormType // 内容形式
+  tone: ToneType // 笔记口吻
   source_urls: string[] // 来源链接列表
   cover_image: string | null // 封面图片URL
   likes: number // 点赞数
@@ -890,6 +894,7 @@ export interface ExplosiveContentInsert {
   tags?: string[] // 标签列表（可选）
   industry: IndustryType // 行业分类（必填）
   content_type: ContentFormType // 内容形式（必填）
+  tone: ToneType // 笔记口吻（必填）
   source_urls?: string[] // 来源链接列表（可选）
   cover_image?: string | null // 封面图片URL（可选）
   likes?: number // 点赞数（可选）
@@ -906,6 +911,7 @@ export interface ExplosiveContentUpdate {
   tags?: string[] // 标签列表
   industry?: IndustryType // 行业分类
   content_type?: ContentFormType // 内容形式
+  tone?: ToneType // 笔记口吻
   source_urls?: string[] // 来源链接列表
   cover_image?: string | null // 封面图片URL
   likes?: number // 点赞数
@@ -923,8 +929,9 @@ export interface ExplosiveContentResponse {
 
 // 爆款内容列表查询参数
 export interface ExplosiveContentListParams {
-  industry?: IndustryType // 行业筛选
-  content_type?: ContentFormType // 内容形式筛选
+  industry?: IndustryType[] // 行业筛选（支持多选）
+  content_type?: ContentFormType[] // 内容形式筛选（支持多选）
+  tone?: ToneType[] // 口吻筛选（支持多选）
   status?: ExplosiveContentStatus // 状态筛选
   limit?: number // 每页数量，默认20
   offset?: number // 偏移量，默认0
@@ -948,28 +955,35 @@ export interface ExplosiveContentStats {
     enabled_count: number
     disabled_count: number
   }>
+  tone_stats: Array<{
+    tone: ToneType
+    count: number
+    enabled_count: number
+    disabled_count: number
+  }>
 }
 
-// 行业选项映射（默认选项，支持动态扩展）
-export const INDUSTRY_OPTIONS: Record<string, string> = {
+// 行业选项映射
+export const INDUSTRY_OPTIONS: Record<IndustryType, string> = {
   decoration: '装修',
-  beauty: '美妆',
-  parenting: '母婴',
-  food: '美食',
   travel: '旅游',
-  fashion: '时尚',
-  tech: '科技',
-  education: '教育',
-  lifestyle: '生活',
-  fitness: '健身'
+  study_abroad: '游学',
+  other: '其他'
 }
 
 // 内容形式选项映射
 export const CONTENT_TYPE_OPTIONS: Record<ContentFormType, string> = {
-  note: '笔记',
   review: '测评',
   guide: '干货',
-  case: '案例'
+  marketing: '推荐/营销',
+  other: '其他'
+}
+
+// 口吻选项映射
+export const TONE_OPTIONS: Record<ToneType, string> = {
+  personal: '素人口吻',
+  business: '商家口吻',
+  other: '其他'
 }
 
 // 管理员操作：添加爆款内容
@@ -979,6 +993,7 @@ export interface AdminAddExplosiveContentRequest {
   tags: string[]
   industry: IndustryType
   content_type: ContentFormType
+  tone: ToneType
   source_urls: string[]
   cover_image?: string | null
   likes?: number
@@ -995,6 +1010,7 @@ export interface AdminUpdateExplosiveContentRequest {
   tags?: string[]
   industry?: IndustryType
   content_type?: ContentFormType
+  tone?: ToneType
   source_urls?: string[]
   cover_image?: string | null
   likes?: number
@@ -1011,6 +1027,7 @@ export interface AdminBatchImportExplosiveContentRequest {
     tags: string[]
     industry: IndustryType
     content_type: ContentFormType
+    tone: ToneType
     source_urls: string[]
     cover_image?: string | null
     likes?: number

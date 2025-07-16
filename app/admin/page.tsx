@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Search, Users, CreditCard, Gift, LogOut, Shield, Clock, FileText, Plus, Edit, Trash2, Upload, User, Heart, Eye, ExternalLink, CheckCircle, XCircle } from 'lucide-react'
 import type { ExplosiveContent, ExplosiveContentInsert, IndustryType, ContentFormType } from '@/lib/types'
 import { INDUSTRY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/types'
+import CSVImportModal from '@/components/csv-import-modal'
 
 interface User {
   id: string
@@ -956,6 +957,7 @@ export default function AdminPage() {
                   <Upload className="w-4 h-4 mr-2" />
                   下载模板
                 </Button>
+                <CSVImportModal />
                 <Button
                   variant="outline"
                   onClick={() => setShowBatchImport(true)}

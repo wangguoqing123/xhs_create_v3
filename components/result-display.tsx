@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Copy, CheckCircle } from "lucide-react"
 import Image from "next/image"
-import { getProxiedImageUrl, createImageErrorHandler } from "@/lib/image-utils"
+import { getProxiedImageUrl, createFastFallbackImageHandler } from "@/lib/image-utils"
 
 interface GeneratedContent {
   id: string
