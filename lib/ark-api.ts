@@ -640,6 +640,233 @@ export function extractTitleFromContent(content: string): string {
 }
 
 /**
+ * 解析两个版本的内容（专门用于爆文改写）
+ * @param fullContent 完整的AI生成内容
+ * @returns Array<{title: string, content: string}> 两个版本的内容数组
+ */
+export function parseTwoVersions(fullContent: string): Array<{title: string, content: string}> {
+  const versions: Array<{title: string, content: string}> = []
+  
+  try {
+    console.log('🔍 [爆文改写] 开始解析两个版本的内容，原始内容长度:', fullContent.length)
+    
+    // 方法1：寻找明确的版本标识符
+    const version1Patterns = [
+      /###\s*版本一[：:：]\s*经典策略版/gi,
+      /版本一[：:：]\s*经典策略版/gi,
+      /###\s*版本一[：:：]/gi,
+      /版本一[：:：]/gi
+    ]
+    
+    const version2Patterns = [
+      /###\s*版本二[：:：]\s*人设深耕版/gi,
+      /版本二[：:：]\s*人设深耕版/gi,
+      /###\s*版本二[：:：]/gi,
+      /版本二[：:：]/gi
+    ]
+    
+    let version1Match = null
+    let version2Match = null
+    
+    // 尝试匹配版本标识符
+    for (const pattern of version1Patterns) {
+      version1Match = fullContent.match(pattern)
+      if (version1Match) {
+        console.log('🔍 [爆文改写] 找到版本一标识符:', version1Match[0])
+        break
+      }
+    }
+    
+    for (const pattern of version2Patterns) {
+      version2Match = fullContent.match(pattern)
+      if (version2Match) {
+        console.log('🔍 [爆文改写] 找到版本二标识符:', version2Match[0])
+        break
+      }
+    }
+    
+    let sections: string[] = []
+    
+    if (version1Match && version2Match) {
+      // 找到了明确的版本标识符，直接分割
+      const v1Index = fullContent.indexOf(version1Match[0])
+      const v2Index = fullContent.indexOf(version2Match[0])
+      
+      if (v1Index !== -1 && v2Index !== -1 && v1Index < v2Index) {
+        const v1Start = v1Index + version1Match[0].length
+        const v2Start = v2Index + version2Match[0].length
+        
+        sections = [
+          fullContent.substring(v1Start, v2Index).trim(),
+          fullContent.substring(v2Start).trim()
+        ]
+        console.log('🔍 [爆文改写] 使用版本标识符分割，得到2个sections')
+      }
+    }
+    
+    // 方法2：如果版本标识符方法失败，尝试分割线方法
+    if (sections.length < 2) {
+      console.log('🔍 [爆文改写] 版本标识符方法失败，尝试分割线方法')
+      
+             // 寻找有效的分割线（前后都有实质内容）
+       const allSections = fullContent.split(/---+/)
+       const validSections: string[] = []
+      
+      for (let i = 0; i < allSections.length; i++) {
+        const section = allSections[i].trim()
+        
+        // 过滤掉太短的section（可能是空白或无意义内容）
+        if (section.length > 100) {
+          // 检查是否包含标题和正文标识符
+          const hasTitle = section.includes('**标题**') || section.includes('标题：') || section.includes('标题:')
+          const hasContent = section.includes('**正文**') || section.includes('正文：') || section.includes('正文:')
+          
+          if (hasTitle || hasContent || section.length > 200) {
+            validSections.push(section)
+          }
+        }
+      }
+      
+      console.log('🔍 [爆文改写] 分割线方法找到有效sections:', validSections.length)
+      
+      if (validSections.length >= 2) {
+        sections = validSections.slice(0, 2)
+      }
+    }
+    
+    // 方法3：如果前两种方法都失败，尝试智能分割
+    if (sections.length < 2) {
+      console.log('🔍 [爆文改写] 分割线方法失败，尝试智能分割')
+      
+             // 寻找可能的分割点
+       const lines = fullContent.split('\n')
+       let splitPoints: number[] = []
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        
+        // 寻找可能的标题行
+        if (line.includes('**标题**') || 
+            line.includes('标题：') || 
+            line.includes('标题:') ||
+            (line.length > 10 && line.length < 50 && 
+             (line.includes('绍兴') || line.includes('施工') || line.includes('装修')))) {
+          splitPoints.push(i)
+        }
+      }
+      
+      console.log('🔍 [爆文改写] 找到可能的分割点:', splitPoints.length)
+      
+      if (splitPoints.length >= 2) {
+        const midPoint = Math.floor(lines.length / 2)
+        const firstSplit = splitPoints.find(p => p < midPoint) || splitPoints[0]
+        const secondSplit = splitPoints.find(p => p > midPoint) || splitPoints[1]
+        
+        sections = [
+          lines.slice(0, secondSplit).join('\n').trim(),
+          lines.slice(secondSplit).join('\n').trim()
+        ]
+      }
+    }
+    
+    console.log('🔍 [爆文改写] 最终分割后的sections数量:', sections.length)
+    
+    // 处理每个版本
+    for (let i = 0; i < 2; i++) {
+      let versionContent = ''
+      let title = i === 0 ? '经典策略版' : '人设深耕版'
+      
+      if (sections.length > i && sections[i]) {
+        versionContent = sections[i].trim()
+        
+        // 清理版本标识符
+        versionContent = versionContent
+          .replace(/^###\s*版本[一二][：:：].*?\n/gm, '')
+          .replace(/^版本[一二][：:：].*?\n/gm, '')
+          .trim()
+        
+        // 提取标题
+        const titlePatterns = [
+          /\*\*标题\*\*[：:]\s*(.+?)(?=\n|\*\*正文\*\*)/,
+          /标题[：:]\s*(.+?)(?=\n)/,
+          /^(.+?)(?=\n)/
+        ]
+        
+        for (const pattern of titlePatterns) {
+          const titleMatch = versionContent.match(pattern)
+          if (titleMatch && titleMatch[1]) {
+            const extractedTitle = titleMatch[1].trim()
+            if (extractedTitle.length > 5 && extractedTitle.length < 100) {
+              title = extractedTitle
+              // 移除标题行
+              versionContent = versionContent.replace(pattern, '').trim()
+              break
+            }
+          }
+        }
+        
+        // 提取正文
+        const contentMatch = versionContent.match(/\*\*正文\*\*[：:]\s*([\s\S]*)/)
+        if (contentMatch) {
+          versionContent = contentMatch[1].trim()
+        }
+        
+        // 清理多余的空行和格式
+        versionContent = versionContent
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/^\s*\n+/, '')
+          .replace(/\n+\s*$/, '')
+          .trim()
+        
+        console.log(`🔍 [爆文改写] 版本${i + 1} 解析结果:`, {
+          title: title,
+          contentLength: versionContent.length,
+          contentPreview: versionContent.substring(0, 100) + '...'
+        })
+      }
+      
+      versions.push({
+        title: title || (i === 0 ? '经典策略版' : '人设深耕版'),
+        content: versionContent || ''
+      })
+    }
+    
+    // 验证解析结果
+    const validVersions = versions.filter(v => v.content.length > 20)
+    if (validVersions.length === 0) {
+      console.warn('⚠️ [爆文改写] 没有解析出有效的版本内容，使用原始内容')
+      const defaultTitle = extractTitleFromContent(fullContent)
+      return [
+        { title: defaultTitle + ' - 经典策略版', content: fullContent },
+        { title: defaultTitle + ' - 人设深耕版', content: fullContent }
+      ]
+    }
+    
+    // 如果只解析出一个版本，复制为两个版本
+    if (validVersions.length === 1) {
+      const firstValid = validVersions[0]
+      return [
+        { title: firstValid.title, content: firstValid.content },
+        { title: firstValid.title + ' - 人设深耕版', content: firstValid.content }
+      ]
+    }
+    
+    console.log('✅ [爆文改写] 最终解析结果:', versions.map(v => ({ title: v.title, contentLength: v.content.length })))
+    return versions.slice(0, 2) // 确保只返回两个版本
+    
+  } catch (error) {
+    console.error('❌ [爆文改写] 解析两个版本内容失败:', error)
+    
+    // 出错时返回默认版本
+    const defaultTitle = extractTitleFromContent(fullContent)
+    return [
+      { title: defaultTitle + ' - 经典策略版', content: fullContent },
+      { title: defaultTitle + ' - 人设深耕版', content: fullContent }
+    ]
+  }
+}
+
+/**
  * 解析三个版本的内容
  * @param fullContent 完整的AI生成内容
  * @returns Array<{title: string, content: string}> 三个版本的内容数组

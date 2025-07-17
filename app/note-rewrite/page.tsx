@@ -237,8 +237,8 @@ export default function NoteRewritePage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              筛选条件
+            <Filter className="w-5 h-5" />
+            筛选条件
               {selectedFiltersCount > 0 && (
                 <Badge variant="secondary" className="ml-2">
                   {selectedFiltersCount} 个筛选项
@@ -260,10 +260,10 @@ export default function NoteRewritePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 行业筛选 */}
-          <div>
+            <div>
             <Label className="text-sm font-medium mb-2 block">行业分类</Label>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(INDUSTRY_OPTIONS).map(([key, label]) => (
+                  {Object.entries(INDUSTRY_OPTIONS).map(([key, label]) => (
                 <Badge
                   key={key}
                   variant={filters.industry.includes(key as IndustryType) ? "default" : "outline"}
@@ -277,10 +277,10 @@ export default function NoteRewritePage() {
           </div>
 
           {/* 内容类型筛选 */}
-          <div>
+            <div>
             <Label className="text-sm font-medium mb-2 block">内容类型</Label>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(CONTENT_TYPE_OPTIONS).map(([key, label]) => (
+                  {Object.entries(CONTENT_TYPE_OPTIONS).map(([key, label]) => (
                 <Badge
                   key={key}
                   variant={filters.content_type.includes(key as ContentFormType) ? "default" : "outline"}
@@ -294,7 +294,7 @@ export default function NoteRewritePage() {
           </div>
 
           {/* 口吻筛选 */}
-          <div>
+            <div>
             <Label className="text-sm font-medium mb-2 block">笔记口吻</Label>
             <div className="flex flex-wrap gap-2">
               {Object.entries(TONE_OPTIONS).map(([key, label]) => (

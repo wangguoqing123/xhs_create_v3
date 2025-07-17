@@ -636,7 +636,7 @@ export function RewriteInterface() {
                             {index + 1}
                           </div>
                           <span className={index === 0 ? "text-blue-600" : "text-purple-600"}>
-                            {index === 0 ? "情感共鸣版" : "干货分享版"}
+                            {index === 0 ? "经典策略版" : "人设深耕版"}
                           </span>
                         </CardTitle>
                       </CardHeader>
@@ -690,7 +690,7 @@ export function RewriteInterface() {
                         {index + 1}
                       </div>
                       <span className={index === 0 ? "text-blue-600" : "text-purple-600"}>
-                        {index === 0 ? "情感共鸣版" : "干货分享版"}
+                        {index === 0 ? "经典策略版" : "人设深耕版"}
                       </span>
                     </CardTitle>
                   </CardHeader>

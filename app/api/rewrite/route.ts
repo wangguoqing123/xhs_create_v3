@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { getProfile, consumeCredits, refundCredits, createRewriteRecord, updateRewriteRecord } from '@/lib/mysql'
-import { generateRewriteContent, parseThreeVersions } from '@/lib/ark-api'
+import { generateRewriteContent, parseTwoVersions } from '@/lib/ark-api'
 import type { BatchConfig, RewriteGenerationConfig, RewriteGeneratedVersion } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
@@ -190,15 +190,18 @@ export async function POST(request: NextRequest) {
           try {
             console.log(`📊 [爆文改写] 内容生成完成，最终长度: ${finalContent.length}`)
             
-            // 解析三个版本的内容
-            const versions = parseThreeVersions(finalContent)
+            // 调试：输出完整的生成内容
+            console.log('🔍 [爆文改写] 完整生成内容:')
+            console.log('='.repeat(80))
+            console.log(finalContent)
+            console.log('='.repeat(80))
+            
+            // 解析两个版本的内容
+            const versions = parseTwoVersions(finalContent)
             console.log(`📋 [爆文改写] 解析得到 ${versions.length} 个版本`)
             
-            // 只取前2个版本
-            const twoVersions = versions.slice(0, 2)
-            
             // 转换为数据库存储格式
-            const generatedVersions: RewriteGeneratedVersion[] = twoVersions.map((version, index) => ({
+            const generatedVersions: RewriteGeneratedVersion[] = versions.map((version, index) => ({
               title: version.title || `版本${index + 1}`,
               content: version.content || '',
               version_name: index === 0 ? '经典策略版' : '人设深耕版'
@@ -224,7 +227,7 @@ export async function POST(request: NextRequest) {
             resolve(NextResponse.json({
               success: true,
               data: {
-                versions: twoVersions,
+                versions: versions,
                 creditsConsumed: requiredCredits,
                 originalTextLength: originalText.length,
                 generatedAt: new Date().toISOString(),
