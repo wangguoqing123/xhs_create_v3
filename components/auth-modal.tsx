@@ -147,103 +147,63 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
         <div className="space-y-6">
           {step === 'email' ? (
-            <form onSubmit={handleSendCode} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  邮箱地址
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="请输入您的邮箱地址"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11 pl-10 pr-4 border-gray-200 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={loading || !email.trim()}
-                className="w-full h-11 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                {loading ? '发送中...' : '发送验证码'}
-              </Button>
-            </form>
+            <div>
+              <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">邮箱地址</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="请输入您的邮箱"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-2"
+                disabled={loading}
+              />
+            </div>
           ) : (
-            <form onSubmit={handleVerifyCode} className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBack}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-gray-600 dark:text-gray-400">返回修改邮箱</span>
-              </div>
+            <div>
+              <Label htmlFor="code" className="text-gray-700 dark:text-gray-300">验证码</Label>
+              <Input
+                id="code"
+                type="text"
+                placeholder="请输入6位验证码"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="mt-2"
+                disabled={loading}
+                maxLength={6}
+              />
+            </div>
+          )}
 
-              <div className="space-y-2">
-                <Label htmlFor="code" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  验证码
-                </Label>
-                <Input
-                  id="code"
-                  type="text"
-                  placeholder="请输入6位验证码"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="h-11 text-center text-lg tracking-widest border-gray-200 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  maxLength={6}
-                  required
-                />
-              </div>
-
-              <div className="flex justify-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleResendCode}
-                  disabled={countdown > 0 || loading}
-                  className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
-                >
-                  {countdown > 0 ? (
-                    <span className="flex items-center gap-1">
-                      <Timer className="h-4 w-4" />
-                      {countdown}秒后可重发
-                    </span>
-                  ) : (
-                    '重新发送验证码'
-                  )}
-                </Button>
-              </div>
-
-              {error && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-                  {error}
+          <div className="flex gap-3">
+            <Button
+              onClick={step === 'email' ? handleSendCode : handleVerifyCode}
+              disabled={loading || (step === 'email' ? !email : !verificationCode)}
+              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  {step === 'email' ? '发送中...' : '验证中...'}
                 </div>
+              ) : (
+                step === 'email' ? '发送验证码' : '验证登录'
               )}
+            </Button>
+            
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="px-6 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl"
+            >
+              取消
+            </Button>
+          </div>
 
-              <Button
-                type="submit"
-                disabled={loading || verificationCode.length !== 6}
-                className="w-full h-11 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                {loading ? '验证中...' : '验证并登录'}
-              </Button>
-            </form>
+          {error && (
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+              {error}
+            </div>
           )}
 
           <div className="text-center text-xs text-gray-500 dark:text-gray-400">

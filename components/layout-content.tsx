@@ -21,7 +21,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
 // 布局内容组件
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-100 dark:from-slate-900 dark:via-slate-800 dark:to-purple-900 transition-colors duration-300">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-100 dark:from-slate-900 dark:via-slate-800 dark:to-purple-900/80 transition-colors duration-300">
       <SidebarProvider>
         {/* 左侧导航栏 */}
         <Sidebar />

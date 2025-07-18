@@ -221,7 +221,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
   }
 
   return (
-    <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-lg rounded-2xl hover:shadow-xl transition-all duration-300">
+    <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-lg rounded-2xl hover:shadow-xl transition-all duration-300 dark:shadow-2xl dark:shadow-black/20">
       <CardHeader className="pb-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-100 dark:border-slate-700 rounded-t-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -260,33 +260,22 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
         </div>
       </CardHeader>
 
-                    <CardContent className="p-4">
-        {/* 标题 */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">标题</h3>
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800/30">
-            <p className="text-base font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
-                {result.status === "generating" && result.title && result.title.length > 0 ? (
-                  <TypewriterText 
-                    text={result.title} 
-                    speed={50} 
-                    onComplete={() => setTitleComplete(true)}
-                  />
-                ) : result.status === "completed" && result.title ? (
-                  result.title
-                ) : result.status === "failed" ? (
-                  <span className="text-red-500">标题生成失败</span>
-                ) : (
-                  <span className="text-gray-500">标题生成中...</span>
-                )}
+      <CardContent className="p-6">
+        {result.status === "completed" && result.title && (
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">标题</h3>
+            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-3 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner">
+              <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed">
+                {result.title}
               </p>
             </div>
           </div>
+        )}
 
-                    {/* 正文 */}
+        {result.content && (
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">正文内容</h3>
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner min-h-80 max-h-96 overflow-y-auto">
+            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner min-h-80 max-h-96 overflow-y-auto scrollbar-thin">
               <div className="prose max-w-none">
                 <pre className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-sm">
                   {result.status === "generating" && result.content && result.content.length > 0 ? (
@@ -297,14 +286,34 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
                   ) : result.status === "completed" && result.content ? (
                     result.content
                   ) : result.status === "failed" ? (
-                    <span className="text-red-500">内容生成失败，请重试</span>
+                    <span className="text-red-500 dark:text-red-400">内容生成失败，请重试</span>
                   ) : (
-                    <span className="text-gray-500">内容生成中，请稍候...</span>
+                    <span className="text-gray-500 dark:text-gray-400">内容生成中，请稍候...</span>
                   )}
                 </pre>
               </div>
             </div>
           </div>
+        )}
+
+        {result.status === "failed" && (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-red-500 dark:text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">生成失败</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              内容生成过程中遇到了问题，请重试。
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="px-4 py-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+            >
+              重新生成
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

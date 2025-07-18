@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Cookie, Info, Copy, Check } from 'lucide-react'
 import { useMySQLAuth } from '@/components/mysql-auth-context'
+import { Textarea } from '@/components/ui/textarea'
 
 interface CookieSettingsModalProps {
   open: boolean
@@ -75,6 +76,8 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
     setCookieValue('')
   }
 
+  const isLoading = loading || !cookieValue.trim()
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-0 shadow-2xl rounded-3xl">
@@ -108,76 +111,55 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
           </div>
 
           {/* Cookie输入框 */}
-          <div className="space-y-3">
-            <Label htmlFor="cookie" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Cookie 字符串
+          <div>
+            <Label htmlFor="cookie" className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+              Cookie 值
             </Label>
-            <div className="relative">
-              <textarea
-                id="cookie"
-                placeholder="请粘贴您的Cookie字符串，例如：sessionid=abc123; csrftoken=xyz789; ..."
-                value={cookieValue}
-                onChange={(e) => setCookieValue(e.target.value)}
-                className="w-full h-32 px-4 py-3 text-sm border border-gray-200 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200"
-                disabled={loading}
-              />
-              {cookieValue && (
-                <div className="absolute top-2 right-2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCopy}
-                    className="h-8 px-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    {copied ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-              <span>字符数：{cookieValue.length}</span>
-              {cookieValue && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClear}
-                  className="h-auto p-0 text-xs text-red-500 hover:text-red-700"
-                >
-                  清空
-                </Button>
-              )}
-            </div>
+            <Textarea
+              id="cookie"
+              placeholder="请粘贴从浏览器获取的Cookie值..."
+              value={cookieValue}
+              onChange={(e) => setCookieValue(e.target.value)}
+              rows={8}
+              className="mt-2 resize-none text-sm font-mono"
+              disabled={isLoading}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              * 请确保Cookie值的完整性，不完整的Cookie可能导致功能异常
+            </p>
           </div>
 
-          {error && (
-            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-              {error}
-            </div>
-          )}
+          <div className="flex gap-3">
+            <Button
+              onClick={handleSave}
+              disabled={isLoading || !cookieValue.trim()}
+              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  保存中...
+                </div>
+              ) : (
+                '保存设置'
+              )}
+            </Button>
+            
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="px-6 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl"
+            >
+              取消
+            </Button>
+          </div>
         </div>
 
-        <DialogFooter className="flex gap-3 pt-6">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 h-11 rounded-xl border-gray-200 dark:border-slate-600"
-          >
-            取消
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={loading}
-            className="flex-1 h-11 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            {loading ? '保存中...' : '保存Cookie'}
-          </Button>
-        </DialogFooter>
+        {error && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+            {error}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

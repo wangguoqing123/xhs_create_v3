@@ -2861,3 +2861,201 @@ export const batchImportExplosiveContent = async (contents: ExplosiveContentInse
     }
   }
 }
+
+// ============================================
+// 封面更新相关函数
+// ============================================
+
+// 获取需要更新封面的爆款内容（有source_urls但cover_image为空或失效的记录）
+export const getExplosiveContentsNeedCoverUpdate = async (limit: number = 50) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    console.log('🔍 [获取需要更新封面的内容] 开始查询, limit:', limit)
+    
+    // 先检查表是否存在
+    const [tableCheck] = await connection.execute(
+      `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'explosive_contents'`
+    ) as any[]
+    
+    if (tableCheck[0].count === 0) {
+      connection.release()
+      console.error('❌ [获取需要更新封面的内容] explosive_contents表不存在')
+      return { 
+        data: null, 
+        error: 'explosive_contents表不存在' 
+      }
+    }
+    
+    // 查询需要更新封面的记录
+    const sql = `SELECT id, title, source_urls, cover_image, author, likes, views 
+       FROM explosive_contents 
+       WHERE status = 'enabled' 
+       AND (
+         cover_image IS NULL 
+         OR cover_image = '' 
+         OR cover_image = '/placeholder.jpg'
+         OR cover_image LIKE '%placeholder%'
+       )
+       AND source_urls IS NOT NULL
+       AND source_urls != ''
+       AND source_urls != '[]'
+       ORDER BY created_at DESC
+       LIMIT ${limit}`
+    
+    console.log('🔍 [获取需要更新封面的内容] 执行SQL:', sql)
+    
+    const [rows] = await connection.execute(sql) as any[]
+    
+    connection.release()
+    
+    console.log('🔍 [获取需要更新封面的内容] 原始查询结果:', rows.length)
+    
+    // 转换数据格式
+    const contents = rows.map((row: any) => {
+      let sourceUrls = []
+      const sourceUrlsStr = String(row.source_urls || '[]')
+      console.log('🔍 [获取需要更新封面的内容] 原始字符串:', sourceUrlsStr)
+      console.log('🔍 [获取需要更新封面的内容] 数据类型:', typeof sourceUrlsStr)
+      console.log('🔍 [获取需要更新封面的内容] 字符串长度:', sourceUrlsStr.length)
+      
+      // 直接用正则表达式提取URL
+      const urlMatches = sourceUrlsStr.match(/https?:\/\/[^\s'"\[\]]+/g)
+      sourceUrls = urlMatches || []
+      console.log('✅ [获取需要更新封面的内容] 正则匹配结果:', urlMatches)
+      console.log('✅ [获取需要更新封面的内容] 最终sourceUrls:', sourceUrls)
+      
+      const result = {
+        id: row.id,
+        title: row.title,
+        source_urls: sourceUrls,
+        cover_image: row.cover_image,
+        author: row.author,
+        likes: row.likes,
+        views: row.views
+      }
+      
+      console.log('🔍 [获取需要更新封面的内容] 处理结果:', {
+        id: result.id,
+        title: result.title?.substring(0, 30) + '...',
+        source_urls_count: result.source_urls.length,
+        has_cover: !!result.cover_image
+      })
+      
+      return result
+    }).filter((content: any) => {
+      const hasUrls = content.source_urls.length > 0
+      if (!hasUrls) {
+        console.log('❌ [获取需要更新封面的内容] 过滤掉无URL的内容:', content.title?.substring(0, 30) + '...')
+      }
+      return hasUrls
+    }) // 过滤掉没有有效源链接的内容
+    
+    console.log('✅ [获取需要更新封面的内容] 查询成功:', contents.length)
+    return { data: contents, error: null }
+  } catch (error) {
+    console.error('❌ [获取需要更新封面的内容] 查询失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '查询失败' 
+    }
+  }
+}
+
+// 更新爆款内容的封面图片
+export const updateExplosiveContentCover = async (id: string, coverImage: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 更新封面图片
+    await connection.execute(
+      'UPDATE explosive_contents SET cover_image = ? WHERE id = ?',
+      [coverImage, id]
+    )
+    
+    connection.release()
+    
+    console.log('✅ [更新爆款内容封面] 更新成功:', { id, coverImage })
+    return { data: true, error: null }
+  } catch (error) {
+    console.error('❌ [更新爆款内容封面] 更新失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '更新失败' 
+    }
+  }
+}
+
+// 批量更新封面处理状态记录
+export const createCoverUpdateLog = async (
+  totalCount: number,
+  successCount: number,
+  failCount: number,
+  details: any[]
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      data: null, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 检查是否存在日志表，如果不存在则创建
+    try {
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS cover_update_logs (
+          id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          total_count INT NOT NULL DEFAULT 0,
+          success_count INT NOT NULL DEFAULT 0,
+          fail_count INT NOT NULL DEFAULT 0,
+          details JSON DEFAULT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `)
+    } catch (createError) {
+      console.log('📝 [封面更新日志] 日志表可能已存在，继续执行...')
+    }
+    
+    // 插入日志记录
+    const logId = crypto.randomUUID()
+    await connection.execute(
+      `INSERT INTO cover_update_logs (id, total_count, success_count, fail_count, details) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [logId, totalCount, successCount, failCount, JSON.stringify(details)]
+    )
+    
+    connection.release()
+    
+    console.log('✅ [封面更新日志] 记录成功:', { logId, totalCount, successCount, failCount })
+    return { data: { logId }, error: null }
+  } catch (error) {
+    console.error('❌ [封面更新日志] 记录失败:', error)
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : '记录失败' 
+    }
+  }
+}

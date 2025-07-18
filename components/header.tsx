@@ -195,9 +195,9 @@ export const Header = memo(function Header() {
   return (
     <>
       {/* 简洁现代导航栏 */}
-      <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-300">
+      <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl transition-all duration-300 border-b border-gray-200/50 dark:border-slate-700/50">
         {/* 底部渐变线 */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent dark:via-purple-400/50"></div>
         
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           {/* Logo区域 */}
@@ -214,49 +214,39 @@ export const Header = memo(function Header() {
 
           {/* 桌面导航 */}
           <nav className="hidden lg:flex items-center space-x-8">
-            <NavLink href="/">
-              <span>首页</span>
-            </NavLink>
-            
-            <NavLink href="/rewrite">
-              <span>爆文改写</span>
-            </NavLink>
-            
-            <NavLink href="/search">
-              <span>批量生成</span>
-            </NavLink>
-            
-            <NavLink href="/author-copy">
-              <span>作者复刻</span>
-            </NavLink>
-            
-            <NavLink href="/prices">
-              <span>定价方案</span>
-            </NavLink>
-
-            {/* 用户操作区域 */}
-            <div className="flex items-center space-x-6 pl-6 border-l border-gray-200/50 dark:border-slate-700/50">
-              <ThemeToggle />
-              {userSection}
-            </div>
+            <NavLink href="/">首页</NavLink>
+            <NavLink href="/rewrite">爆文改写</NavLink>
+            <NavLink href="/search">批量生成</NavLink>
+            <NavLink href="/author-copy">作者复刻</NavLink>
+            <NavLink href="/prices">定价方案</NavLink>
           </nav>
 
-          {/* 移动端菜单按钮 */}
-          <button
-            className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors duration-200"
-            onClick={handleMobileMenuToggle}
-          >
-            <div className="relative w-6 h-6">
-              <Menu className={`absolute inset-0 h-6 w-6 text-gray-700 dark:text-gray-300 transition-all duration-300 ${mobileMenuOpen ? 'opacity-0 rotate-90' : 'opacity-100 rotate-0'}`} />
-              <X className={`absolute inset-0 h-6 w-6 text-gray-700 dark:text-gray-300 transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-90'}`} />
+          {/* 右侧操作区域 */}
+          <div className="flex items-center space-x-4">
+            {/* 主题切换 */}
+            <div className="hidden lg:block">
+              <ThemeToggle />
             </div>
-          </button>
+            
+            {/* 用户相关 */}
+            {userSection}
+            
+            {/* 移动端菜单按钮 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMobileMenuToggle}
+              className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* 移动端菜单 */}
       <div className={`lg:hidden fixed top-20 left-0 right-0 z-50 transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
-        <div className="mx-4 mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden">
+        <div className="mx-4 mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-gray-200/50 dark:border-slate-700/50">
           <div className="p-6 space-y-1">
             <MobileNavLink href="/" onClick={handleMobileMenuClose}>
               首页

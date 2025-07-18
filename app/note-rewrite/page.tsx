@@ -36,6 +36,15 @@ export default function NoteRewritePage() {
     search: ''
   })
   
+  // 分页状态
+  const [pagination, setPagination] = useState({
+    limit: 20,
+    offset: 0,
+    hasMore: true,
+    total: 0
+  })
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  
   // 使用认证Hook获取用户信息
   const { user, profile, loading: authLoading } = useMySQLAuth()
   
@@ -84,11 +93,15 @@ export default function NoteRewritePage() {
   }, [explosiveContents])
 
   // 获取爆款内容列表
-  const loadExplosiveContents = useCallback(async () => {
+  const loadExplosiveContents = useCallback(async (isLoadMore = false) => {
     if (!user) return
     
-    setIsLoading(true)
-    setError(null)
+    if (isLoadMore) {
+      setIsLoadingMore(true)
+    } else {
+      setIsLoading(true)
+      setError(null)
+    }
     
     try {
       const params = new URLSearchParams()
@@ -107,20 +120,47 @@ export default function NoteRewritePage() {
         params.append('search', filters.search)
       }
       
+      // 分页参数
+      const currentOffset = isLoadMore ? pagination.offset : 0
+      params.append('limit', pagination.limit.toString())
+      params.append('offset', currentOffset.toString())
+      
       const response = await fetch(`/api/explosive-contents?${params.toString()}`)
       const data = await response.json()
       
       if (data.success) {
-        setExplosiveContents(data.data)
+        if (isLoadMore) {
+          // 加载更多：追加数据
+          setExplosiveContents(prev => [...prev, ...data.data])
+          setPagination(prev => ({
+            ...prev,
+            offset: prev.offset + prev.limit,
+            hasMore: data.data.length === prev.limit,
+            total: data.total || prev.total
+          }))
+        } else {
+          // 首次加载或筛选：替换数据
+          setExplosiveContents(data.data)
+          setPagination(prev => ({
+            ...prev,
+            offset: prev.limit,
+            hasMore: data.data.length === prev.limit,
+            total: data.total || 0
+          }))
+        }
       } else {
         setError(data.error || '获取爆款内容失败')
       }
     } catch (error) {
       setError('获取爆款内容失败，请稍后重试')
     } finally {
-      setIsLoading(false)
+      if (isLoadMore) {
+        setIsLoadingMore(false)
+      } else {
+        setIsLoading(false)
+      }
     }
-  }, [user, filters])
+  }, [user, filters, pagination.limit, pagination.offset])
 
   // 初始加载数据
   useEffect(() => {
@@ -131,8 +171,21 @@ export default function NoteRewritePage() {
 
   // 处理筛选
   const handleFilter = useCallback(() => {
-    loadExplosiveContents()
+    // 重置分页状态
+    setPagination(prev => ({
+      ...prev,
+      offset: 0,
+      hasMore: true
+    }))
+    loadExplosiveContents(false)
   }, [loadExplosiveContents])
+  
+  // 加载更多
+  const handleLoadMore = useCallback(() => {
+    if (pagination.hasMore && !isLoadingMore) {
+      loadExplosiveContents(true)
+    }
+  }, [pagination.hasMore, isLoadingMore, loadExplosiveContents])
 
   // 处理标签选择
   const handleTagSelect = useCallback((type: 'industry' | 'content_type' | 'tone', value: string) => {
@@ -157,6 +210,12 @@ export default function NoteRewritePage() {
       tone: [],
       search: ''
     })
+    // 重置分页状态
+    setPagination(prev => ({
+      ...prev,
+      offset: 0,
+      hasMore: true
+    }))
   }, [])
 
   // 处理笔记选择（用于批量操作）
@@ -378,6 +437,9 @@ export default function NoteRewritePage() {
             isLoading={isLoading}
             error={error}
             context="note-rewrite"
+            hasMore={pagination.hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={handleLoadMore}
           />
         </div>
       )}
