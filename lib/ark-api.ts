@@ -740,7 +740,7 @@ export function parseTwoVersions(fullContent: string): Array<{title: string, con
       
              // 寻找可能的分割点
        const lines = fullContent.split('\n')
-       let splitPoints: number[] = []
+       const splitPoints: number[] = []
       
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim()
@@ -759,7 +759,6 @@ export function parseTwoVersions(fullContent: string): Array<{title: string, con
       
       if (splitPoints.length >= 2) {
         const midPoint = Math.floor(lines.length / 2)
-        const firstSplit = splitPoints.find(p => p < midPoint) || splitPoints[0]
         const secondSplit = splitPoints.find(p => p > midPoint) || splitPoints[1]
         
         sections = [
