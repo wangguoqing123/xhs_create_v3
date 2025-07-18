@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       tags: body.tags || [],
       industry: body.industry,
       content_type: body.content_type,
+      tone: body.tone || 'other',
       source_urls: body.source_urls || [],
       cover_image: body.cover_image || null,
       likes: parseInt(body.likes) || 0,

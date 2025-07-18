@@ -12,8 +12,9 @@ async function checkAdminAuth() {
 // GET方法：获取单个爆款内容
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params
   try {
     // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()
@@ -60,8 +61,9 @@ export async function GET(
 // PUT方法：更新爆款内容
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params
   try {
     // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()
@@ -102,8 +104,9 @@ export async function PUT(
 // DELETE方法：删除爆款内容
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params
   try {
     // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()
@@ -143,8 +146,9 @@ export async function DELETE(
 // PATCH方法：审核操作（启用/禁用）
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params
   try {
     // 验证管理员权限
     const isAuthenticated = await checkAdminAuth()

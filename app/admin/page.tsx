@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Search, Users, CreditCard, Gift, LogOut, Shield, Clock, FileText, Plus, Edit, Trash2, Upload, User, Heart, Eye, ExternalLink, CheckCircle, XCircle } from 'lucide-react'
-import type { ExplosiveContent, ExplosiveContentInsert, IndustryType, ContentFormType } from '@/lib/types'
-import { INDUSTRY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/types'
+import type { ExplosiveContent, ExplosiveContentInsert, IndustryType, ContentFormType, ToneType } from '@/lib/types'
+import { INDUSTRY_OPTIONS, CONTENT_TYPE_OPTIONS, TONE_OPTIONS } from '@/lib/types'
 import CSVImportModal from '@/components/csv-import-modal'
 
 interface User {
@@ -76,8 +76,9 @@ export default function AdminPage() {
     title: '',
     content: '',
     tags: [],
-    industry: '',
-    content_type: 'note' as ContentFormType,
+    industry: 'other' as IndustryType,
+    content_type: 'other' as ContentFormType,
+    tone: 'other' as ToneType,
     source_urls: [],
     cover_image: null,
     likes: 0,
@@ -485,6 +486,7 @@ export default function AdminPage() {
       tags: content.tags,
       industry: content.industry,
       content_type: content.content_type,
+      tone: content.tone,
       source_urls: content.source_urls,
       cover_image: content.cover_image,
       likes: content.likes,
@@ -500,8 +502,9 @@ export default function AdminPage() {
       title: '',
       content: '',
       tags: [],
-      industry: '',
-      content_type: 'note' as ContentFormType,
+      industry: 'other' as IndustryType,
+      content_type: 'other' as ContentFormType,
+      tone: 'other' as ToneType,
       source_urls: [],
       cover_image: null,
       likes: 0,
@@ -1294,17 +1297,22 @@ export default function AdminPage() {
                         rows={6}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
                         <Label>行业 *</Label>
-                        <Input
+                        <Select
                           value={contentForm.industry}
-                          onChange={(e) => setContentForm({ ...contentForm, industry: e.target.value })}
-                          placeholder="请输入行业分类，如：家装装修、美妆护肤等"
-                        />
-                        <div className="text-xs text-gray-500 mt-1">
-                          常用选项：装修、美妆、母婴、美食、旅游、时尚、科技、教育、生活、健身
-                        </div>
+                          onValueChange={(value) => setContentForm({ ...contentForm, industry: value as IndustryType })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(INDUSTRY_OPTIONS).map(([key, label]) => (
+                              <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Label>内容形式 *</Label>
@@ -1317,6 +1325,22 @@ export default function AdminPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {Object.entries(CONTENT_TYPE_OPTIONS).map(([key, label]) => (
+                              <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>口吻 *</Label>
+                        <Select
+                          value={contentForm.tone}
+                          onValueChange={(value) => setContentForm({ ...contentForm, tone: value as ToneType })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(TONE_OPTIONS).map(([key, label]) => (
                               <SelectItem key={key} value={key}>{label}</SelectItem>
                             ))}
                           </SelectContent>

@@ -83,8 +83,9 @@ function convertNoteDetailToExplosiveContent(noteDetail: any, sourceUrl: string)
     title: noteDetail.note_display_title || '需要补充标题',
     content: processedContent,
     tags: tags,
-    industry: industry || 'other', // 如果为空，设置为 'other'
+    industry: (industry || 'other') as any, // 如果为空，设置为 'other'
     content_type: contentType as any,
+    tone: 'other' as any, // 默认为其他口吻
     source_urls: [sourceUrl],
     cover_image: coverImage,
     likes: likeCount,
