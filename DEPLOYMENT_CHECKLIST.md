@@ -77,7 +77,8 @@ cd xhs_create_v3
 ### 2. 环境变量配置 ✅
 创建 `.env.local` 文件：
 ```bash
-vim /var/www/xhs_create_v3/.env.local
+# 使用vi编辑器创建文件
+vi .env.local
 ```
 
 复制以下内容并替换真实值：
