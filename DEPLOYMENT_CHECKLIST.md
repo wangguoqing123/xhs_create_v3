@@ -116,7 +116,7 @@ bash scripts/deploy.sh
 
 ## 部署后验证
 
-### 1. 服务状态检查 ✅
+### 1. 服务状态检查 ✅1
 ```bash
 # 检查PM2进程
 pm2 status
