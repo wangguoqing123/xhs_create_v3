@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { cookie } = body
 
-    // 验证Cookie参数
-    if (typeof cookie !== 'string') {
+    // 验证Cookie参数 - 允许字符串或null（用于清空Cookie）
+    if (cookie !== null && typeof cookie !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Cookie参数无效' },
         { status: 400 }

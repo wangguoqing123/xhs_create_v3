@@ -855,68 +855,141 @@ export interface AuthorNotesResult {
 // 爆款内容相关类型定义
 // ============================================
 
-// 行业分类类型
-export type IndustryType = 'decoration' | 'travel' | 'study_abroad' | 'other'
+// 笔记赛道类型
+export interface NoteTrack {
+  id: number
+  name: string
+  description: string | null
+  status: 'enabled' | 'disabled'
+  created_at: string
+  updated_at: string
+}
 
-// 内容形式枚举
-export type ContentFormType = 'review' | 'guide' | 'marketing' | 'other'
+// 笔记类型
+export interface NoteType {
+  id: number
+  name: string
+  description: string | null
+  status: 'enabled' | 'disabled'
+  created_at: string
+  updated_at: string
+}
 
-// 口吻类型枚举
-export type ToneType = 'personal' | 'business' | 'other'
+// 笔记口吻
+export interface NoteTone {
+  id: number
+  name: string
+  description: string | null
+  status: 'enabled' | 'disabled'
+  created_at: string
+  updated_at: string
+}
 
 // 爆款内容状态枚举
 export type ExplosiveContentStatus = 'enabled' | 'disabled'
 
-// 爆款内容基础接口
+// 新的爆款内容接口（适配coze接口返回数据）
 export interface ExplosiveContent {
   id: string // 爆款内容ID
-  title: string // 内容标题
-  content: string // 内容正文
-  tags: string[] // 标签列表
-  industry: IndustryType // 行业分类
-  content_type: ContentFormType // 内容形式
-  tone: ToneType // 笔记口吻
-  source_urls: string[] // 来源链接列表
-  cover_image: string | null // 封面图片URL
-  likes: number // 点赞数
-  views: number // 浏览数
-  author: string | null // 作者
-  status: ExplosiveContentStatus // 状态
-  published_at: string // 笔记发布时间
-  created_at: string // 创建时间
+  title: string // 笔记标题
+  content: string // 笔记正文内容
+  cover_image: string | null // 笔记封面图片URL（存储到OSS后的URL）
+  original_cover_url: string | null // 原始封面图片URL
+  
+  // 作者信息
+  author_name: string | null // 笔记作者昵称
+  author_id: string | null // 作者用户ID
+  author_avatar: string | null // 作者头像URL
+  
+  // 互动数据
+  likes_count: number // 点赞数
+  collects_count: number // 收藏数
+  comments_count: number // 评论数
+  
+  // 分类信息（使用ID关联类型表）
+  track_id: number // 笔记赛道ID
+  tone_id: number // 笔记口吻ID
+  type_id: number // 笔记类型ID
+  
+  // 元数据
+  note_url: string | null // 原始笔记链接
+  note_id: string | null // 小红书笔记ID
+  tags: string[] // 笔记标签列表
+  
+  // 时间信息
+  published_at: string | null // 笔记发布时间
+  created_at: string // 添加时间
   updated_at: string // 更新时间
+  
+  // 状态
+  status: ExplosiveContentStatus // 状态
 }
 
 // 爆款内容插入接口
 export interface ExplosiveContentInsert {
-  title: string // 内容标题（必填）
-  content: string // 内容正文（必填）
-  tags?: string[] // 标签列表（可选）
-  industry: IndustryType // 行业分类（必填）
-  content_type: ContentFormType // 内容形式（必填）
-  tone: ToneType // 笔记口吻（必填）
-  source_urls?: string[] // 来源链接列表（可选）
-  cover_image?: string | null // 封面图片URL（可选）
-  likes?: number // 点赞数（可选）
-  views?: number // 浏览数（可选）
-  author?: string | null // 作者（可选）
+  title: string // 笔记标题（必填）
+  content: string // 笔记正文内容（必填）
+  cover_image?: string | null // 笔记封面图片URL（可选）
+  original_cover_url?: string | null // 原始封面图片URL（可选）
+  
+  // 作者信息
+  author_name?: string | null // 笔记作者昵称（可选）
+  author_id?: string | null // 作者用户ID（可选）
+  author_avatar?: string | null // 作者头像URL（可选）
+  
+  // 互动数据
+  likes_count?: number // 点赞数（可选）
+  collects_count?: number // 收藏数（可选）
+  comments_count?: number // 评论数（可选）
+  
+  // 分类信息
+  track_id: number // 笔记赛道ID（必填）
+  tone_id: number // 笔记口吻ID（必填）
+  type_id: number // 笔记类型ID（必填）
+  
+  // 元数据
+  note_url?: string | null // 原始笔记链接（可选）
+  note_id?: string | null // 小红书笔记ID（可选）
+  tags?: string[] // 笔记标签列表（可选）
+  
+  // 时间信息
+  published_at?: string | null // 笔记发布时间（可选）
+  
+  // 状态
   status?: ExplosiveContentStatus // 状态（可选）
-  published_at?: string // 笔记发布时间（可选）
 }
 
 // 爆款内容更新接口
 export interface ExplosiveContentUpdate {
-  title?: string // 内容标题
-  content?: string // 内容正文
-  tags?: string[] // 标签列表
-  industry?: IndustryType // 行业分类
-  content_type?: ContentFormType // 内容形式
-  tone?: ToneType // 笔记口吻
-  source_urls?: string[] // 来源链接列表
-  cover_image?: string | null // 封面图片URL
-  likes?: number // 点赞数
-  views?: number // 浏览数
-  author?: string | null // 作者
+  title?: string // 笔记标题
+  content?: string // 笔记正文内容
+  cover_image?: string | null // 笔记封面图片URL
+  original_cover_url?: string | null // 原始封面图片URL
+  
+  // 作者信息
+  author_name?: string | null // 笔记作者昵称
+  author_id?: string | null // 作者用户ID
+  author_avatar?: string | null // 作者头像URL
+  
+  // 互动数据
+  likes_count?: number // 点赞数
+  collects_count?: number // 收藏数
+  comments_count?: number // 评论数
+  
+  // 分类信息
+  track_id?: number // 笔记赛道ID
+  tone_id?: number // 笔记口吻ID
+  type_id?: number // 笔记类型ID
+  
+  // 元数据
+  note_url?: string | null // 原始笔记链接
+  note_id?: string | null // 小红书笔记ID
+  tags?: string[] // 笔记标签列表
+  
+  // 时间信息
+  published_at?: string | null // 笔记发布时间
+  
+  // 状态
   status?: ExplosiveContentStatus // 状态
 }
 
@@ -929,9 +1002,9 @@ export interface ExplosiveContentResponse {
 
 // 爆款内容列表查询参数
 export interface ExplosiveContentListParams {
-  industry?: IndustryType[] // 行业筛选（支持多选）
-  content_type?: ContentFormType[] // 内容形式筛选（支持多选）
-  tone?: ToneType[] // 口吻筛选（支持多选）
+  track_id?: number[] // 赛道筛选（支持多选）
+  type_id?: number[] // 类型筛选（支持多选）
+  tone_id?: number[] // 口吻筛选（支持多选）
   status?: ExplosiveContentStatus // 状态筛选
   limit?: number // 每页数量，默认20
   offset?: number // 偏移量，默认0
@@ -943,97 +1016,85 @@ export interface ExplosiveContentStats {
   total_count: number // 总数量
   enabled_count: number // 启用数量
   disabled_count: number // 禁用数量
-  industry_stats: Array<{
-    industry: IndustryType
+  track_stats: Array<{
+    track_id: number
+    track_name: string
     count: number
     enabled_count: number
     disabled_count: number
   }>
-  content_type_stats: Array<{
-    content_type: ContentFormType
+  type_stats: Array<{
+    type_id: number
+    type_name: string
     count: number
     enabled_count: number
     disabled_count: number
   }>
   tone_stats: Array<{
-    tone: ToneType
+    tone_id: number
+    tone_name: string
     count: number
     enabled_count: number
     disabled_count: number
   }>
 }
 
-// 行业选项映射
-export const INDUSTRY_OPTIONS: Record<IndustryType, string> = {
-  decoration: '装修',
-  travel: '旅游',
-  study_abroad: '游学',
-  other: '其他'
+// Coze接口返回的笔记数据格式
+export interface CozeNoteResponse {
+  kouwen: number // 口吻ID
+  note_detail: {
+    auther_avatar: string
+    auther_home_page_url: string 
+    auther_nick_name: string
+    auther_user_id: string
+    collected: boolean
+    collected_count: string
+    comment_count: string
+    note_card_type: string
+    note_create_time: string
+    note_desc: string
+    note_display_title: string
+    note_duration: string | null
+    note_id: string
+    note_image_list: string[]
+    note_last_update_time: string
+    note_liked: boolean
+    note_liked_count: string
+    note_model_type: string
+    note_tags: string[]
+    note_url: string
+    share_count: string
+    video_a1_url: string | null
+    video_h264_url: string | null
+    video_h265_url: string | null
+    video_h266_url: string | null
+    video_id: string | null
+  }
+  note_detail1: number // 赛道ID
+  note_type: number // 笔记类型ID
 }
 
-// 内容形式选项映射
-export const CONTENT_TYPE_OPTIONS: Record<ContentFormType, string> = {
-  review: '测评',
-  guide: '干货',
-  marketing: '推荐/营销',
-  other: '其他'
+// 小红书链接导入请求
+export interface XhsLinkImportRequest {
+  urls: string[] // 小红书链接数组
 }
 
-// 口吻选项映射
-export const TONE_OPTIONS: Record<ToneType, string> = {
-  personal: '素人口吻',
-  business: '商家口吻',
-  other: '其他'
-}
-
-// 管理员操作：添加爆款内容
-export interface AdminAddExplosiveContentRequest {
-  title: string
-  content: string
-  tags: string[]
-  industry: IndustryType
-  content_type: ContentFormType
-  tone: ToneType
-  source_urls: string[]
-  cover_image?: string | null
-  likes?: number
-  views?: number
-  author?: string | null
-  status?: ExplosiveContentStatus
-}
-
-// 管理员操作：更新爆款内容
-export interface AdminUpdateExplosiveContentRequest {
-  id: string
-  title?: string
-  content?: string
-  tags?: string[]
-  industry?: IndustryType
-  content_type?: ContentFormType
-  tone?: ToneType
-  source_urls?: string[]
-  cover_image?: string | null
-  likes?: number
-  views?: number
-  author?: string | null
-  status?: ExplosiveContentStatus
-}
-
-// 管理员操作：爆款内容批量导入
-export interface AdminBatchImportExplosiveContentRequest {
-  contents: Array<{
-    title: string
-    content: string
-    tags: string[]
-    industry: IndustryType
-    content_type: ContentFormType
-    tone: ToneType
-    source_urls: string[]
-    cover_image?: string | null
-    likes?: number
-    views?: number
-    author?: string | null
-  }>
+// 小红书链接导入响应
+export interface XhsLinkImportResponse {
+  success: boolean
+  data?: {
+    total: number // 总链接数
+    successful: number // 成功数量
+    failed: number // 失败数量
+    results: Array<{
+      url: string
+      success: boolean
+      note_id?: string
+      error?: string
+    }>
+  }
+  message?: string
+  error?: string
 }
 
 // 爆款内容批量导入响应

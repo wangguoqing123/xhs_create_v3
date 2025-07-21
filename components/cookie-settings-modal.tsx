@@ -76,7 +76,8 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
     setCookieValue('')
   }
 
-  const isLoading = loading || !cookieValue.trim()
+  // 按钮是否应该被禁用：正在保存中 或 Cookie值为空
+  const isButtonDisabled = loading || !cookieValue.trim()
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -122,7 +123,7 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
               onChange={(e) => setCookieValue(e.target.value)}
               rows={8}
               className="mt-2 resize-none text-sm font-mono"
-              disabled={isLoading}
+              disabled={loading}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               * 请确保Cookie值的完整性，不完整的Cookie可能导致功能异常
@@ -132,10 +133,10 @@ export function CookieSettingsModal({ open, onClose }: CookieSettingsModalProps)
           <div className="flex gap-3">
             <Button
               onClick={handleSave}
-              disabled={isLoading || !cookieValue.trim()}
+              disabled={isButtonDisabled}
               className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              {isLoading ? (
+              {loading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   保存中...

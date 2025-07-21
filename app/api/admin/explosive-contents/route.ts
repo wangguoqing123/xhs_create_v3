@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getExplosiveContentList, createExplosiveContent, getExplosiveContentStats } from '@/lib/mysql'
+import { 
+  getNewExplosiveContentList,
+  createNewExplosiveContent,
+  getNoteTrackList,
+  getNoteTypeList,
+  getNoteToneList
+} from '@/lib/mysql-explosive-contents'
 import { cookies } from 'next/headers'
 import type { ExplosiveContentInsert, ExplosiveContentListParams } from '@/lib/types'
 
@@ -25,9 +31,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     
     // 解析查询参数
+    const trackId = searchParams.get('track_id')
+    const typeId = searchParams.get('type_id')
+    const toneId = searchParams.get('tone_id')
+    
     const params: ExplosiveContentListParams = {
-      industry: searchParams.get('industry') as any || undefined,
-      content_type: searchParams.get('content_type') as any || undefined,
+      track_id: trackId ? [parseInt(trackId)] : undefined,
+      type_id: typeId ? [parseInt(typeId)] : undefined,
+      tone_id: toneId ? [parseInt(toneId)] : undefined,
       status: searchParams.get('status') as any || undefined,
       limit: parseInt(searchParams.get('limit') || '20'),
       offset: parseInt(searchParams.get('offset') || '0'),
@@ -35,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取爆款内容列表
-    const result = await getExplosiveContentList(params)
+    const result = await getNewExplosiveContentList(params)
     
     if (result.error) {
       return NextResponse.json(
@@ -75,9 +86,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // 验证必需字段
-    if (!body.title || !body.content || !body.industry || !body.content_type) {
+    if (!body.title || !body.content || body.track_id === undefined || body.type_id === undefined) {
       return NextResponse.json(
-        { success: false, message: '标题、内容、行业和内容形式为必填项' },
+        { success: false, message: '标题、内容、赛道和类型为必填项' },
         { status: 400 }
       )
     }
@@ -87,19 +98,25 @@ export async function POST(request: NextRequest) {
       title: body.title,
       content: body.content,
       tags: body.tags || [],
-      industry: body.industry,
-      content_type: body.content_type,
-      tone: body.tone || 'other',
-      source_urls: body.source_urls || [],
+      track_id: parseInt(body.track_id),
+      type_id: parseInt(body.type_id),
+      tone_id: parseInt(body.tone_id) || 0,
       cover_image: body.cover_image || null,
-      likes: parseInt(body.likes) || 0,
-      views: parseInt(body.views) || 0,
-      author: body.author || null,
+      original_cover_url: body.original_cover_url || null,
+      author_name: body.author_name || null,
+      author_id: body.author_id || null,
+      author_avatar: body.author_avatar || null,
+      likes_count: parseInt(body.likes_count) || 0,
+      collects_count: parseInt(body.collects_count) || 0,
+      comments_count: parseInt(body.comments_count) || 0,
+      note_url: body.note_url || null,
+      note_id: body.note_id || null,
+      published_at: body.published_at || null,
       status: body.status || 'enabled'
     }
 
     // 创建爆款内容
-    const result = await createExplosiveContent(insertData)
+    const result = await createNewExplosiveContent(insertData)
     
     if (result.error) {
       return NextResponse.json(

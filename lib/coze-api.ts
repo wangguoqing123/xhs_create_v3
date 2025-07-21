@@ -26,6 +26,8 @@ const COZE_SEARCH_WORKFLOW_ID = process.env.COZE_SEARCH_WORKFLOW_ID || '75116396
 const COZE_DETAIL_WORKFLOW_ID = process.env.COZE_DETAIL_WORKFLOW_ID || '7511959723135762472'
 // 作者笔记获取接口的工作流ID
 const COZE_AUTHOR_NOTES_WORKFLOW_ID = '7519557885735469106'
+// 新的笔记详情获取接口的工作流ID（用于爆款内容管理）
+const COZE_NOTE_IMPORT_WORKFLOW_ID = '7529549700945477647'
 
 /**
  * 调用Coze API获取小红书笔记数据
@@ -724,5 +726,107 @@ export async function fetchAuthorNotes(
   } catch (error) {
     console.error('获取作者笔记失败:', error)
     throw new Error(error instanceof Error ? error.message : '未知错误')
+  }
+}
+
+/**
+ * 调用新的Coze API获取小红书笔记详情（用于爆款内容管理）
+ * @param noteUrl 笔记URL
+ * @param cookieStr 用户cookie字符串  
+ * @returns Promise<CozeNoteResponse> 笔记详情数据
+ */
+export async function fetchXhsNoteForImport(
+  noteUrl: string,
+  cookieStr: string
+): Promise<any> {
+  try {
+    // 检查环境变量配置
+    if (!COZE_API_TOKEN) {
+      throw new Error('Coze API Token 未配置，请在项目根目录创建 .env.local 文件并设置 COZE_API_TOKEN')
+    }
+
+    // 构建请求参数
+    const requestParams = {
+      cookieStr,
+      noteUrl
+    }
+
+    console.log('🚀 [笔记导入API] 发送请求:', {
+      url: COZE_API_URL,
+      workflow_id: COZE_NOTE_IMPORT_WORKFLOW_ID,
+      hasToken: !!COZE_API_TOKEN,
+      noteUrl
+    })
+
+    // 发送API请求
+    const response = await fetch(COZE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${COZE_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        parameters: requestParams,
+        workflow_id: COZE_NOTE_IMPORT_WORKFLOW_ID
+      })
+    })
+
+    // 检查HTTP响应状态
+    if (!response.ok) {
+      let errorMessage = `HTTP错误: ${response.status} ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        if (errorData.message) {
+          errorMessage += ` - ${errorData.message}`
+        }
+        console.error('❌ [笔记导入API] 错误详情:', errorData)
+      } catch (e) {
+        console.error('❌ [笔记导入API] 无法解析错误响应:', e)
+      }
+      
+      if (response.status === 401) {
+        errorMessage = 'Coze API认证失败，请检查Token配置'
+      }
+      
+      throw new Error(errorMessage)
+    }
+
+    // 解析响应数据
+    const apiResponse: CozeApiResponse = await response.json()
+    console.log('📥 [笔记导入API] 外层响应:', {
+      code: apiResponse.code,
+      msg: apiResponse.msg,
+      hasData: !!apiResponse.data,
+      dataLength: apiResponse.data?.length
+    })
+
+    // 检查API响应状态
+    if (apiResponse.code !== 0) {
+      throw new Error(`笔记导入API错误: ${apiResponse.msg}`)
+    }
+
+    // 尝试解析data字段
+    let dataResponse: any
+    try {
+      dataResponse = JSON.parse(apiResponse.data)
+      console.log('📊 [笔记导入API] 解析后数据结构:', {
+        type: typeof dataResponse,
+        keys: Object.keys(dataResponse || {}),
+        hasKouwen: 'kouwen' in (dataResponse || {}),
+        hasNoteDetail: 'note_detail' in (dataResponse || {}),
+        hasNoteType: 'note_type' in (dataResponse || {})
+      })
+      
+    } catch (parseError) {
+      console.error('❌ [笔记导入API] 无法解析数据:', parseError)
+      console.error('❌ [笔记导入API] 原始数据:', apiResponse.data)
+      throw new Error('API返回数据格式错误，无法解析')
+    }
+
+    return dataResponse
+
+  } catch (error) {
+    console.error('❌ [笔记导入API] 获取笔记详情失败:', error)
+    throw new Error(error instanceof Error ? error.message : '获取笔记详情失败')
   }
 } 

@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Sparkles, Filter, X } from "lucide-react"
 import type { Note, ExplosiveContent, NoteTrack, NoteType, NoteTone } from "@/lib/types"
 
-export default function NoteRewritePageNew() {
+export default function NoteRewritePage() {
   const router = useRouter()
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
   const [selectedNoteForDetail, setSelectedNoteForDetail] = useState<Note | null>(null)
@@ -29,16 +29,11 @@ export default function NoteRewritePageNew() {
   // 爆款内容数据
   const [explosiveContents, setExplosiveContents] = useState<ExplosiveContent[]>([])
   const [filters, setFilters] = useState({
-    track_id: [] as number[],
-    type_id: [] as number[],
-    tone_id: [] as number[],
+    industry: [] as IndustryType[],
+    content_type: [] as ContentFormType[],
+    tone: [] as ToneType[],
     search: ''
   })
-  
-  // 类型数据
-  const [noteTrackList, setNoteTrackList] = useState<NoteTrack[]>([])
-  const [noteTypeList, setNoteTypeList] = useState<NoteType[]>([])
-  const [noteToneList, setNoteToneList] = useState<NoteTone[]>([])
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -68,23 +63,23 @@ export default function NoteRewritePageNew() {
       id: content.id,
       title: content.title,
       cover: content.cover_image || '/placeholder.jpg',
-      author: content.author_name || '未知作者',
-      likes: content.likes_count,
-      views: content.likes_count * 5, // 模拟浏览数
+      author: content.author || '未知作者',
+      likes: content.likes,
+      views: content.views,
       content: content.content,
       tags: content.tags,
       publishTime: content.published_at || content.created_at,
       originalData: {
-        note_id: content.note_id || content.id,
+        note_id: content.id,
         note_display_title: content.title,
         note_cover_url_default: content.cover_image || '/placeholder.jpg',
-        auther_nick_name: content.author_name || '未知作者',
-        note_liked_count: content.likes_count.toString(),
-        note_url: content.note_url || '',
+        auther_nick_name: content.author || '未知作者',
+        note_liked_count: content.likes.toString(),
+        note_url: content.source_urls[0] || '',
         // 其他必需字段的默认值
-        auther_avatar: content.author_avatar || '/placeholder-user.jpg',
+        auther_avatar: '/placeholder-user.jpg',
         auther_home_page_url: '',
-        auther_user_id: content.author_id || '',
+        auther_user_id: '',
         note_card_type: 'normal' as const,
         note_cover_height: '400',
         note_cover_url_pre: content.cover_image || '/placeholder.jpg',
@@ -95,34 +90,6 @@ export default function NoteRewritePageNew() {
       }
     }))
   }, [explosiveContents])
-
-  // 加载类型数据
-  const loadTypeData = useCallback(async () => {
-    try {
-      const [trackRes, typeRes, toneRes] = await Promise.all([
-        fetch('/api/explosive-contents/tracks'),
-        fetch('/api/explosive-contents/types'), 
-        fetch('/api/explosive-contents/tones')
-      ])
-
-      if (trackRes.ok) {
-        const trackData = await trackRes.json()
-        if (trackData.success) setNoteTrackList(trackData.data)
-      }
-
-      if (typeRes.ok) {
-        const typeData = await typeRes.json()
-        if (typeData.success) setNoteTypeList(typeData.data)
-      }
-
-      if (toneRes.ok) {
-        const toneData = await toneRes.json()
-        if (toneData.success) setNoteToneList(toneData.data)
-      }
-    } catch (error) {
-      console.error('加载类型数据失败:', error)
-    }
-  }, [])
 
   // 获取爆款内容列表
   const loadExplosiveContents = useCallback(async (isLoadMore = false) => {
@@ -138,15 +105,15 @@ export default function NoteRewritePageNew() {
     try {
       const params = new URLSearchParams()
       
-      // 筛选参数
-      if (filters.track_id.length > 0) {
-        filters.track_id.forEach(id => params.append('track_id', id.toString()))
+      // 多选筛选参数
+      if (filters.industry.length > 0) {
+        filters.industry.forEach(industry => params.append('industry', industry))
       }
-      if (filters.type_id.length > 0) {
-        filters.type_id.forEach(id => params.append('type_id', id.toString()))
+      if (filters.content_type.length > 0) {
+        filters.content_type.forEach(contentType => params.append('content_type', contentType))
       }
-      if (filters.tone_id.length > 0) {
-        filters.tone_id.forEach(id => params.append('tone_id', id.toString()))
+      if (filters.tone.length > 0) {
+        filters.tone.forEach(tone => params.append('tone', tone))
       }
       if (filters.search) {
         params.append('search', filters.search)
@@ -194,11 +161,6 @@ export default function NoteRewritePageNew() {
     }
   }, [user, filters, pagination.limit, pagination.offset])
 
-  // 初始化数据
-  useEffect(() => {
-    loadTypeData()
-  }, [loadTypeData])
-
   // 初始加载数据
   useEffect(() => {
     if (user && profile?.user_cookie) {
@@ -225,9 +187,9 @@ export default function NoteRewritePageNew() {
   }, [pagination.hasMore, isLoadingMore, loadExplosiveContents])
 
   // 处理标签选择
-  const handleTagSelect = useCallback((type: 'track_id' | 'type_id' | 'tone_id', value: number) => {
+  const handleTagSelect = useCallback((type: 'industry' | 'content_type' | 'tone', value: string) => {
     setFilters(prev => {
-      const currentValues = prev[type]
+      const currentValues = prev[type] as string[]
       const newValues = currentValues.includes(value)
         ? currentValues.filter(v => v !== value)
         : [...currentValues, value]
@@ -242,9 +204,9 @@ export default function NoteRewritePageNew() {
   // 清除所有筛选
   const handleClearFilters = useCallback(() => {
     setFilters({
-      track_id: [],
-      type_id: [],
-      tone_id: [],
+      industry: [],
+      content_type: [],
+      tone: [],
       search: ''
     })
     // 重置分页状态
@@ -314,7 +276,7 @@ export default function NoteRewritePageNew() {
   }, [])
 
   // 计算已选择的筛选项数量
-  const selectedFiltersCount = filters.track_id.length + filters.type_id.length + filters.tone_id.length
+  const selectedFiltersCount = filters.industry.length + filters.content_type.length + filters.tone.length
 
   return (
     <div className="pt-6 lg:pt-6">
@@ -333,8 +295,8 @@ export default function NoteRewritePageNew() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              筛选条件
+            <Filter className="w-5 h-5" />
+            筛选条件
               {selectedFiltersCount > 0 && (
                 <Badge variant="secondary" className="ml-2">
                   {selectedFiltersCount} 个筛选项
@@ -355,52 +317,52 @@ export default function NoteRewritePageNew() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* 笔记赛道筛选 */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">笔记赛道</Label>
+          {/* 行业筛选 */}
+            <div>
+            <Label className="text-sm font-medium mb-2 block">行业分类</Label>
             <div className="flex flex-wrap gap-2">
-              {noteTrackList.map((track) => (
+                  {Object.entries(INDUSTRY_OPTIONS).map(([key, label]) => (
                 <Badge
-                  key={track.id}
-                  variant={filters.track_id.includes(track.id) ? "default" : "outline"}
+                  key={key}
+                  variant={filters.industry.includes(key as IndustryType) ? "default" : "outline"}
                   className="cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleTagSelect('track_id', track.id)}
+                  onClick={() => handleTagSelect('industry', key)}
                 >
-                  {track.name}
+                  {label}
                 </Badge>
               ))}
             </div>
           </div>
 
-          {/* 笔记类型筛选 */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">笔记类型</Label>
+          {/* 内容类型筛选 */}
+            <div>
+            <Label className="text-sm font-medium mb-2 block">内容类型</Label>
             <div className="flex flex-wrap gap-2">
-              {noteTypeList.map((type) => (
+                  {Object.entries(CONTENT_TYPE_OPTIONS).map(([key, label]) => (
                 <Badge
-                  key={type.id}
-                  variant={filters.type_id.includes(type.id) ? "default" : "outline"}
+                  key={key}
+                  variant={filters.content_type.includes(key as ContentFormType) ? "default" : "outline"}
                   className="cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleTagSelect('type_id', type.id)}
+                  onClick={() => handleTagSelect('content_type', key)}
                 >
-                  {type.name}
+                  {label}
                 </Badge>
               ))}
             </div>
           </div>
 
-          {/* 笔记口吻筛选 */}
-          <div>
+          {/* 口吻筛选 */}
+            <div>
             <Label className="text-sm font-medium mb-2 block">笔记口吻</Label>
             <div className="flex flex-wrap gap-2">
-              {noteToneList.map((tone) => (
+              {Object.entries(TONE_OPTIONS).map(([key, label]) => (
                 <Badge
-                  key={tone.id}
-                  variant={filters.tone_id.includes(tone.id) ? "default" : "outline"}
+                  key={key}
+                  variant={filters.tone.includes(key as ToneType) ? "default" : "outline"}
                   className="cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleTagSelect('tone_id', tone.id)}
+                  onClick={() => handleTagSelect('tone', key)}
                 >
-                  {tone.name}
+                  {label}
                 </Badge>
               ))}
             </div>
@@ -428,7 +390,7 @@ export default function NoteRewritePageNew() {
       </Card>
 
       {/* 批量生成按钮 */}
-      {selectedNotes.length > 0 && (
+      {selectedNotes.length > 0 && user && profile?.user_cookie && (
         <div className="fixed top-20 right-6 z-40">
           <Button
             onClick={handleBatchGenerate}
@@ -510,7 +472,7 @@ export default function NoteRewritePageNew() {
       )}
 
       {/* 笔记详情错误提示 */}
-      {detailError && selectedNoteForDetail && (
+      {detailError && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-900 rounded-lg p-6 text-center max-w-md">
             <div className="text-red-500 mb-4">

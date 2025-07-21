@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateExplosiveContent, deleteExplosiveContent, getExplosiveContentById } from '@/lib/mysql'
+import { 
+  updateNewExplosiveContent, 
+  deleteNewExplosiveContent, 
+  getNewExplosiveContentById 
+} from '@/lib/mysql-explosive-contents'
 import { cookies } from 'next/headers'
 
 // 检查管理员认证
@@ -28,7 +32,7 @@ export async function GET(
     const contentId = params.id
     
     // 获取爆款内容
-    const { data: content, error } = await getExplosiveContentById(contentId)
+    const { data: content, error } = await getNewExplosiveContentById(contentId)
     
     if (error) {
       return NextResponse.json(
@@ -78,7 +82,7 @@ export async function PUT(
     const body = await request.json()
     
     // 更新爆款内容
-    const { data: content, error } = await updateExplosiveContent(contentId, body)
+    const { data: content, error } = await updateNewExplosiveContent(contentId, body)
     
     if (error) {
       return NextResponse.json(
@@ -120,11 +124,11 @@ export async function DELETE(
     const contentId = params.id
     
     // 删除爆款内容
-    const { error } = await deleteExplosiveContent(contentId)
+    const { success, error } = await deleteNewExplosiveContent(contentId)
     
-    if (error) {
+    if (!success || error) {
       return NextResponse.json(
-        { error: error },
+        { error: error || '删除失败' },
         { status: 500 }
       )
     }
@@ -167,7 +171,7 @@ export async function PATCH(
     const status = action === 'approve' ? 'enabled' : 'disabled'
     
     // 更新爆款内容状态
-    const { data: content, error } = await updateExplosiveContent(contentId, { status })
+    const { data: content, error } = await updateNewExplosiveContent(contentId, { status })
     
     if (error) {
       return NextResponse.json(
