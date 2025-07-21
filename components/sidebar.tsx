@@ -193,7 +193,8 @@ const SidebarNavItem = memo(function SidebarNavItem({
         isActive && "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30",
         isActive && "text-purple-600 dark:text-purple-400",
         !isActive && "text-gray-700 dark:text-gray-300",
-        "justify-start"
+        "justify-start",
+        "border border-transparent dark:border-transparent hover:border-gray-200/50 dark:hover:border-slate-700/50"
       )}
     >
       {/* 图标 */}
@@ -294,13 +295,14 @@ export const Sidebar = memo(function Sidebar() {
       <aside className={cn(
         "fixed left-0 top-0 z-50 h-screen w-64",
         "bg-white dark:bg-slate-900",
-        "border-r border-gray-200/30 dark:border-slate-700/30",
+        "border-r border-gray-200/30 dark:border-slate-700/50",
         "transition-all duration-300 ease-in-out",
         "flex flex-col", // 使用flex布局
         // 桌面端：始终固定在左侧
         "lg:translate-x-0",
         // 移动端：使用滑动效果
-        !isCollapsed ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        !isCollapsed ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        "shadow-lg dark:shadow-xl dark:shadow-black/20"
       )}>
         {/* 顶部Logo区域 - 固定高度 */}
         <div className="flex items-center p-4 border-b border-gray-200/50 dark:border-slate-700/50 flex-shrink-0">
@@ -332,7 +334,7 @@ export const Sidebar = memo(function Sidebar() {
           ))}
         </nav>
 
-        {/* 底部区域 - 固定在底部 */}
+        {/* 底部用户区域 - 固定区域 */}
         <div className="flex-shrink-0 p-4 border-t border-gray-200/50 dark:border-slate-700/50">
           {/* 主题切换 */}
           <div className="flex justify-center mb-4">

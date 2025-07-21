@@ -111,6 +111,22 @@ export default function AdminPage() {
     }
   }, [isAuthenticated])
   
+  // 监听来自封面更新页面的消息
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'COVER_UPDATE_COMPLETED') {
+        console.log('📢 [管理员页面] 收到封面更新完成消息，刷新数据')
+        loadExplosiveContents()
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [])
+  
   const checkAuthStatus = async () => {
     try {
       const response = await fetch('/api/admin/logs?limit=1')
@@ -974,6 +990,13 @@ export default function AdminPage() {
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   链接导入
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open('/admin/cover-update', '_blank')}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  封面更新
                 </Button>
                 <Button onClick={() => {
                   setEditingContent(null)

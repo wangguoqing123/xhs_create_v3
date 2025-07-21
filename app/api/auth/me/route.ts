@@ -9,9 +9,12 @@ export async function GET(request: NextRequest) {
     
     // 调试信息
     console.log('🔍 [API] /api/auth/me 请求调试:')
+    console.log('- 请求URL:', request.url)
+    console.log('- 请求Headers:', Object.fromEntries(request.headers.entries()))
     console.log('- 所有Cookies:', Object.fromEntries(request.cookies.getAll().map(c => [c.name, c.value])))
     console.log('- auth_token存在:', !!token)
     console.log('- token长度:', token?.length || 0)
+    console.log('- Cookie字符串:', request.headers.get('cookie'))
     
     if (!token) {
       console.log('❌ [API] 未找到auth_token Cookie')

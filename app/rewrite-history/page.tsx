@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Link, FileText, Copy, ExternalLink, Clock, Loader2, AlertCircle, Check, Search, Filter, Menu, X } from "lucide-react"
+import { Link, FileText, Copy, ExternalLink, Clock, Loader2, AlertCircle, Check, Search, Filter, Menu, X, ChevronLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import type { RewriteRecord } from "@/lib/types"
@@ -152,62 +152,69 @@ export default function RewriteHistoryPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 pt-8">
       <div className="px-4 py-8 max-w-7xl mx-auto">
         {/* 页面标题和搜索 */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                改写记录
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">查看您的所有爆文改写历史记录</p>
+        <div className="mb-6 lg:mb-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  改写记录
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1 lg:mt-2 text-sm lg:text-base">查看您的所有爆文改写历史记录</p>
+              </div>
+              
+              {/* 移动端菜单按钮 */}
+              <div className="lg:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="h-9 w-9 p-0"
+                >
+                  {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-            
-            {/* 移动端菜单按钮 */}
-            <div className="sm:hidden">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
 
-          {/* 搜索和过滤 - 桌面端始终显示，移动端可收起 */}
-          <div className={cn(
-            "mt-6 flex flex-col sm:flex-row gap-4",
-            "sm:block", // 桌面端始终显示
-            isMobileMenuOpen ? "block" : "hidden sm:block" // 移动端根据菜单状态显示
-          )}>
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="搜索改写记录..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            {/* 搜索和过滤 - 移动端优化布局 */}
+            <div className={cn(
+              "flex flex-col gap-3 lg:flex-row lg:gap-4",
+              "lg:block", // 桌面端始终显示
+              isMobileMenuOpen ? "block" : "hidden lg:block" // 移动端根据菜单状态显示
+            )}>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="搜索改写记录..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-10 lg:h-auto"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-10 px-4 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 text-sm lg:text-base"
+              >
+                <option value="all">所有状态</option>
+                <option value="completed">已完成</option>
+                <option value="generating">生成中</option>
+                <option value="failed">失败</option>
+              </select>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600"
-            >
-              <option value="all">所有状态</option>
-              <option value="completed">已完成</option>
-              <option value="generating">生成中</option>
-              <option value="failed">失败</option>
-            </select>
           </div>
         </div>
 
-        {/* 响应式布局 */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 左侧：改写记录列表 */}
-          <div className="lg:col-span-1">
+        {/* 响应式布局 - 移动端单栏，桌面端双栏 */}
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6">
+          {/* 左侧：改写记录列表 - 移动端抽屉式，桌面端固定侧边栏 */}
+          <div className={cn(
+            "lg:col-span-1",
+            // 移动端：根据是否有选中记录和菜单状态决定显示
+            selectedRecord && !isMobileMenuOpen ? "hidden lg:block" : "block"
+          )}>
             <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-0 shadow-xl">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold flex items-center justify-between">
+              <CardHeader className="pb-3 lg:pb-4">
+                <CardTitle className="text-base lg:text-lg font-semibold flex items-center justify-between">
                   改写记录
                   {filteredHistory.length > 0 && (
                     <Badge variant="outline" className="text-xs">
@@ -217,7 +224,7 @@ export default function RewriteHistoryPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="max-h-[60vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto">
+                <div className="max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto">
                   <div className="space-y-3 p-6 pt-0">
                     {/* 加载状态 */}
                     {isLoading && (
@@ -278,46 +285,48 @@ export default function RewriteHistoryPage() {
                           }
                         }}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
+                        <CardContent className="p-3 lg:p-4">
+                          <div className="flex items-start justify-between mb-2 lg:mb-3">
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                               {record.source_type === "link" ? (
                                 <Link className="h-4 w-4 text-blue-500 flex-shrink-0" />
                               ) : (
                                 <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
                               )}
-                              <h3 className="font-medium text-sm truncate">
+                              <h3 className="font-medium text-sm lg:text-sm truncate">
                                 {/* 从原文中提取标题或显示原文开头 */}
                                 {record.original_text.includes('【标题】') 
                                   ? record.original_text.split('【标题】')[1]?.split('\n')[0]?.trim() || '改写记录'
-                                  : record.original_text.substring(0, 20) + '...'
+                                  : record.original_text.substring(0, 15) + '...'
                                 }
                               </h3>
                             </div>
-                            {getStatusBadge(record.status)}
+                            <div className="flex-shrink-0">
+                              {getStatusBadge(record.status)}
+                            </div>
                           </div>
 
                           <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
                             <div className="flex items-center justify-between">
-                              <span className="flex items-center space-x-1">
-                                <Clock className="h-3 w-3" />
-                                <span>{formatTime(record.created_at)}</span>
+                              <span className="flex items-center space-x-1 min-w-0">
+                                <Clock className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{formatTime(record.created_at)}</span>
                               </span>
                               {record.generated_content.length > 0 && (
-                                <span>{record.generated_content.length} 个版本</span>
+                                <span className="flex-shrink-0 text-xs">{record.generated_content.length} 版本</span>
                               )}
                             </div>
 
                             <div className="flex flex-wrap gap-1">
                               {/* 主题配置 */}
-                              <Badge variant="outline" className="text-xs px-2 py-0">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0 max-w-16 truncate">
                                 {(record.generation_config.theme && record.generation_config.theme !== 'default') 
                                   ? record.generation_config.theme 
                                   : '默认'}
                               </Badge>
                               
                               {/* 人设配置 */}
-                              <Badge variant="outline" className="text-xs px-2 py-0">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0 max-w-16 truncate">
                                 {(record.generation_config.persona && record.generation_config.persona !== 'default') 
                                   ? record.generation_config.persona 
                                   : '默认'}
@@ -333,18 +342,49 @@ export default function RewriteHistoryPage() {
             </Card>
           </div>
 
-          {/* 右侧：改写详情 */}
-          <div className="lg:col-span-3">
+          {/* 右侧：改写详情 - 移动端全屏显示，桌面端侧边显示 */}
+          <div className={cn(
+            "lg:col-span-3",
+            // 移动端：只有选中记录且菜单关闭时显示
+            selectedRecord && !isMobileMenuOpen ? "block" : "hidden lg:block"
+          )}>
             <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-0 shadow-xl">
               {selectedRecord ? (
                 <>
-                  <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+                  <CardHeader className="pb-3 lg:pb-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+                      {/* 移动端返回按钮 */}
+                      <div className="flex items-center gap-3 lg:hidden">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsMobileMenuOpen(true)}
+                          className="h-8 w-8 p-0 flex-shrink-0"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <CardTitle className="text-base font-semibold flex items-center space-x-2 min-w-0">
+                          {selectedRecord.source_type === "link" ? (
+                            <Link className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          ) : (
+                            <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                          )}
+                          <span className="truncate text-sm">
+                            {/* 显示提取的标题或原文开头 */}
+                            {selectedRecord.original_text.includes('【标题】') 
+                              ? selectedRecord.original_text.split('【标题】')[1]?.split('\n')[0]?.trim() || '改写记录'
+                              : '改写记录'
+                            }
+                          </span>
+                        </CardTitle>
+                      </div>
+                      
+                      {/* 桌面端标题 */}
+                      <CardTitle className="hidden lg:flex text-lg font-semibold items-center space-x-2 min-w-0">
                         {selectedRecord.source_type === "link" ? (
-                          <Link className="h-5 w-5 text-blue-500" />
+                          <Link className="h-5 w-5 text-blue-500 flex-shrink-0" />
                         ) : (
-                          <FileText className="h-5 w-5 text-purple-500" />
+                          <FileText className="h-5 w-5 text-purple-500 flex-shrink-0" />
                         )}
                         <span className="truncate">
                           {/* 显示提取的标题或原文开头 */}
@@ -354,11 +394,14 @@ export default function RewriteHistoryPage() {
                           }
                         </span>
                       </CardTitle>
-                      {getStatusBadge(selectedRecord.status)}
+                      
+                      <div className="flex-shrink-0">
+                        {getStatusBadge(selectedRecord.status)}
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="max-h-[60vh] lg:max-h-[calc(100vh-260px)] overflow-y-auto">
+                  <CardContent className="px-3 lg:px-6">
+                    <div className="max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-260px)] overflow-y-auto">
                       <div className="space-y-6">
                         {/* 记录信息 - 紧凑并列显示 */}
                         <div className="space-y-3">

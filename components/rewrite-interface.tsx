@@ -190,6 +190,13 @@ export function RewriteInterface() {
       // 解析成功后重置输入模式，让用户可以编辑原文
       setInputMode(null)
 
+      // 解析完成后智能切换显示区域：如果当前显示的是生成结果，则切换到配置选项
+      if (showResults) {
+        console.log('解析成功后检测到当前显示生成结果，切换到配置选项')
+        setShowResults(false) // 切换到配置选项界面
+        setGeneratedContents([]) // 清空之前的生成结果
+      }
+
       // 记录解析成功的日志
       console.log('链接解析成功:', {
         title: noteDetail.title,
@@ -445,16 +452,16 @@ export function RewriteInterface() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* 页面标题 - 苹果风格 */}
-        <div className="relative text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl mb-4 shadow-xl">
-            <Wand2 className="h-8 w-8 text-white" />
+        <div className="relative text-center mb-8 sm:mb-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl mb-4 shadow-xl">
+            <Wand2 className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent mb-3">
             爆文改写
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed px-4">
             基于爆款笔记智能生成高质量仿写内容，让您的创作更上一层楼
           </p>
           
@@ -472,16 +479,16 @@ export function RewriteInterface() {
           )}
         </div>
 
-        {/* 主要内容区域 - 重新设计布局比例 */}
+        {/* 主要内容区域 - 响应式布局 */}
         <div 
-          className="flex gap-8" 
+          className="flex flex-col lg:flex-row gap-6 lg:gap-8" 
           style={{ 
             minHeight: hasResults ? getMaxContentHeight() : 600,
             height: hasResults ? getMaxContentHeight() : 600
           }}
         >
-          {/* 左侧：链接输入和原文展示 - 占40% */}
-          <div className="w-2/5 space-y-6">
+          {/* 左侧：链接输入和原文展示 - 移动端占全宽，桌面端占40% */}
+          <div className="w-full lg:w-2/5 space-y-4 lg:space-y-6">
             {/* 链接输入卡片 */}
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl overflow-hidden">
               <CardHeader className="pb-3">
@@ -505,7 +512,7 @@ export function RewriteInterface() {
                     onClick={handleLinkParse}
                     disabled={!linkInput.trim() || inputMode === "text" || isParsingLink}
                     size="sm"
-                    className="h-10 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
+                    className="h-10 px-3 sm:px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium text-sm"
                   >
                     {isParsingLink ? (
                       <>
@@ -562,14 +569,14 @@ export function RewriteInterface() {
                     }
                   }}
                   disabled={inputMode === "link"}
-                  className="w-full h-[450px] p-3 border border-gray-200 dark:border-gray-700 rounded-xl resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm leading-relaxed"
+                  className="w-full h-[300px] lg:h-[450px] p-3 border border-gray-200 dark:border-gray-700 rounded-xl resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm leading-relaxed"
                 />
               </CardContent>
             </Card>
           </div>
 
-          {/* 右侧：生成配置或生成结果 - 占60% */}
-          <div className="w-3/5 h-full">
+          {/* 右侧：生成配置或生成结果 - 移动端占全宽，桌面端占60% */}
+          <div className="w-full lg:w-3/5 h-full">
             {!hasResults ? (
               // 生成配置区域
               <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl overflow-hidden h-full">
@@ -583,7 +590,7 @@ export function RewriteInterface() {
                 </CardHeader>
                 <CardContent className="space-y-4 h-[calc(100%-3.5rem)] overflow-y-auto">
                   {/* 主题和账号定位 */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         改写主题
@@ -604,7 +611,7 @@ export function RewriteInterface() {
                   </div>
 
                   {/* 笔记目的和关键词 */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         笔记目的
@@ -692,7 +699,7 @@ export function RewriteInterface() {
                     <Button
                       onClick={handleGenerate}
                       disabled={!originalText.trim() || isGenerating}
-                      className="w-full h-12 text-base font-semibold bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      className="w-full h-12 lg:h-12 text-base font-semibold bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       {isGenerating ? (
                         <>

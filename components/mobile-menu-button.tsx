@@ -14,7 +14,7 @@ export function MobileMenuButton() {
       size="sm"
       onClick={toggleCollapse}
       className={cn(
-        "lg:hidden fixed top-4 left-4 z-[60] h-10 w-10 p-0",
+        "lg:hidden fixed top-3 sm:top-4 left-4 z-[60] h-10 w-10 p-0",
         "bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl",
         "border border-gray-200/50 dark:border-slate-700/50",
         "hover:bg-gray-100 dark:hover:bg-slate-800",

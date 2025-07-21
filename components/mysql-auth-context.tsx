@@ -172,21 +172,18 @@ export function MySQLAuthProvider({ children }: { children: ReactNode }) {
       const { user: currentUser, error } = await getCurrentUser()
       
       if (!currentUser || error) {
-        // 用户已登出或验证失败，清除本地数据
-        if (user || profile) {
-          setUser(null)
-          setProfile(null)
-          clearStorage()
-        }
+        console.log('🔍 [后台验证] 验证失败，但保持当前用户状态，避免意外登出')
+        // 不要清除用户状态，可能只是临时的网络问题或服务重启
         return
       }
 
       // 验证成功，更新本地存储的验证时间
       if (user && profile) {
         storage.setItem(STORAGE_KEYS.LAST_VERIFIED, Date.now())
+        console.log('✅ [后台验证] 验证成功，更新验证时间')
       }
     } catch (error) {
-      console.error('后台验证失败:', error)
+      console.error('❌ [后台验证] 验证异常，保持当前状态:', error)
       // 验证失败，可能网络问题，保持当前状态
     }
   }, [user, profile])

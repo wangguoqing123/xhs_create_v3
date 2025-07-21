@@ -56,30 +56,30 @@ export function SearchHero() {
         {/* 粉红色色块包含搜索框和关键词 */}
         <div className="relative">
           {/* 粉红色背景色块 */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 opacity-20 rounded-3xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 opacity-20 dark:opacity-30 rounded-3xl"></div>
           
-          <div className="relative px-8 py-12">
+          <div className="relative px-4 sm:px-8 py-8 sm:py-12">
             {/* 搜索框 */}
-            <div className="max-w-2xl mx-auto mb-8">
+            <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
-                <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-gray-200/50 dark:border-slate-600/50 shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 dark:from-purple-500/30 dark:to-pink-500/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+                <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-gray-200/50 dark:border-slate-600/50 shadow-xl dark:shadow-2xl dark:shadow-black/20">
                   <div className="flex items-center p-2">
                     <div className="flex-1 relative">
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-300" />
                       <Input
                         type="text"
                         placeholder="输入关键词，开启创作之旅..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        className="h-12 text-base pl-12 pr-4 bg-transparent border-none text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-0 focus:outline-none"
+                        className="h-10 sm:h-12 text-sm sm:text-base pl-10 sm:pl-12 pr-4 bg-transparent border-none text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-0 focus:outline-none"
                       />
                     </div>
                     <Button
                       onClick={handleSearch}
                       disabled={!query.trim()}
-                      className="h-10 px-6 ml-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium shadow-lg"
+                      className="h-10 px-6 ml-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       立即搜索
                     </Button>
@@ -99,7 +99,7 @@ export function SearchHero() {
                       setQuery(suggestion)
                       router.push(`/search?q=${encodeURIComponent(suggestion)}`)
                     }}
-                    className="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-full text-sm text-gray-700 dark:text-gray-300 transition-colors duration-200"
+                    className="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-full text-sm text-gray-700 dark:text-gray-300 transition-colors duration-200 border border-gray-200 dark:border-slate-600"
                   >
                     {suggestion}
                   </button>

@@ -13,7 +13,14 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "灵感矩阵 - AI驱动的内容创作平台",
   description: "让一个灵感裂变成无数可能，专为小红书创作者打造的智能内容生成工具",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  userScalable: false
 }
 
 export default function RootLayout({

@@ -21,7 +21,7 @@ interface CreditsProviderProps {
 }
 
 export function CreditsProvider({ children }: CreditsProviderProps) {
-  const { user } = useMySQLAuth()
+  const { user, loading: authLoading } = useMySQLAuth()
   const [balance, setBalance] = useState<CreditBalance | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +87,11 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
 
   // 获取积分余额
   const fetchBalance = useCallback(async (force = false): Promise<CreditBalance | null> => {
-    if (!user) return null
+    // 如果用户未登录或认证正在加载中，直接返回
+    if (!user || authLoading) {
+      console.log('🔍 [积分Context] 跳过获取积分 - 用户未登录或认证加载中')
+      return null
+    }
 
     // 使用ref来获取最新的状态值
     const currentBalance = balanceRef.current
@@ -117,6 +121,14 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
+        
+        // 如果是认证错误，静默处理，不抛出错误
+        if (response.status === 401) {
+          console.log('🔍 [积分Context] 认证失败，清除用户状态')
+          setError('用户未登录')
+          return null
+        }
+        
         throw new Error(errorData.error || '获取积分余额失败')
       }
 
@@ -137,7 +149,7 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
     } finally {
       setLoading(false)
     }
-  }, [user, saveToCache])
+  }, [user, authLoading, saveToCache])
 
   // 强制刷新积分
   const refreshBalance = useCallback(async () => {
@@ -164,8 +176,11 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
     })
   }, [saveToCache])
 
-  // 用户变化时重置状态并尝试加载缓存
+  // 用户变化时重置状态并尝试加载缓存 - 只有在认证完成时才执行
   useEffect(() => {
+    // 如果还在加载认证状态，不执行任何操作
+    if (authLoading) return
+    
     if (user) {
       const cached = loadFromCache()
       
@@ -182,7 +197,7 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
         localStorage.removeItem(STORAGE_KEY)
       }
     }
-  }, [user]) // 只依赖user，避免循环依赖
+  }, [user, authLoading, fetchBalance, loadFromCache]) // 添加authLoading依赖
 
   const contextValue: CreditsContextType = useMemo(() => ({
     balance,

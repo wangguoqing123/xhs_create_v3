@@ -235,70 +235,47 @@ function ResultsPageContent() {
   }, [selectedTaskId, convertedTasks]) // 依赖selectedTaskId，确保任务切换时重新选择笔记
 
   return (
-    <div 
-      style={{ 
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, rgb(248 250 252) 0%, rgb(219 234 254) 50%, rgb(199 210 254) 100%)',
-        overflow: 'hidden'
-      }}
-    >
-      {/* 主内容容器 - 80%宽度，100%高度 */}
-      <div 
-        style={{ 
-          width: '75vw',
-          height: '100vh',
-          display: 'flex',
-          overflow: 'hidden',
-          marginLeft: '10vw'
-        }}
-      >
-        {/* Left Sidebar - 固定宽度 */}
-        <TaskSidebar 
-          tasks={convertedTasks} 
-          selectedTaskId={selectedTaskId} 
-          onTaskSelect={setSelectedTaskId}
-          selectedNoteId={selectedNoteId}
-          onNoteSelect={setSelectedNoteId}
-          taskName={selectedTask?.taskName || '批量改写任务'}
-          taskList={taskList}
-        />
-
-        {/* Main Content - 自适应宽度 */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          {selectedNoteId && convertedTasks.length > 0 ? (
-            <ResultViewer 
-              task={convertedTasks.find(task => task.id === selectedNoteId)!} 
-              taskName={selectedTask?.taskName}
-              allTasks={convertedTasks}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 pt-6 overflow-x-hidden">
+      <div className="container mx-auto px-4 py-4 max-w-7xl w-full">
+        {/* 移动端和桌面端响应式布局 */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 w-full min-w-0">
+          {/* Left Sidebar - 移动端顶部，桌面端左侧 */}
+          <div className="w-full lg:w-80 flex-shrink-0 min-w-0">
+            <TaskSidebar 
+              tasks={convertedTasks} 
+              selectedTaskId={selectedTaskId} 
+              onTaskSelect={setSelectedTaskId}
+              selectedNoteId={selectedNoteId}
+              onNoteSelect={setSelectedNoteId}
+              taskName={selectedTask?.taskName || '批量改写任务'}
+              taskList={taskList}
             />
-          ) : (
-            <div style={{ 
-              height: '100%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              backgroundColor: 'white'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-8 w-8 text-white" />
+          </div>
+
+          {/* Main Content - 自适应宽度 */}
+          <div className="flex-1 min-w-0">
+            {selectedNoteId && convertedTasks.length > 0 ? (
+              <ResultViewer 
+                task={convertedTasks.find(task => task.id === selectedNoteId)!} 
+                taskName={selectedTask?.taskName}
+                allTasks={convertedTasks}
+              />
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 flex items-center justify-center min-h-96">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileText className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    {isLoading ? '加载中...' : error ? '加载失败' : '请选择一个笔记'}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {isLoading ? '正在获取任务数据...' : error || '从左侧列表中选择一个笔记来查看改写结果'}
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  {isLoading ? '加载中...' : error ? '加载失败' : '请选择一个笔记'}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {isLoading ? '正在获取任务数据...' : error || '从左侧列表中选择一个笔记来查看改写结果'}
-                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

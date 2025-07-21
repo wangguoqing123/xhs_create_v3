@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/components/ui/button"
 import { Heart, User, Loader2, Search } from "lucide-react"
 import Image from "next/image"
 import { getProxiedImageUrl, createFastFallbackImageHandler } from "@/lib/image-utils"
@@ -26,9 +27,24 @@ interface NoteGridProps {
   isLoading?: boolean // 新增加载状态
   error?: string | null // 新增错误状态
   context?: 'search' | 'author-copy' | 'note-rewrite' // 新增：使用场景标识，默认为搜索场景
+  // 分页相关属性
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  onLoadMore?: () => void
 }
 
-export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoading = false, error, context = 'search' }: NoteGridProps) {
+export function NoteGrid({ 
+  notes, 
+  selectedNotes, 
+  onNoteSelect, 
+  onNoteView, 
+  isLoading = false, 
+  error, 
+  context = 'search',
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore
+}: NoteGridProps) {
   // 加载状态显示
   if (isLoading) {
     return (
@@ -95,10 +111,10 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
                 </svg>
               </div>
 
-              <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 xl:gap-12">
                 {/* 步骤1：输入作者链接 */}
                 <div className="relative group">
-                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                     {/* 步骤标识 */}
                     <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-lg">1</span>
@@ -125,7 +141,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
 
                 {/* 步骤2：系统抓取作者笔记 */}
                 <div className="relative group">
-                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                     {/* 步骤标识 */}
                     <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-lg">2</span>
@@ -162,7 +178,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
 
                 {/* 步骤3：仿写生成原创 */}
                 <div className="relative group">
-                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                     {/* 步骤标识 */}
                     <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-lg">3</span>
@@ -302,10 +318,10 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
               </svg>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 xl:gap-12">
               {/* 步骤1：搜索关键词 */}
               <div className="relative group">
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                   {/* 步骤标识 */}
                   <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-lg">1</span>
@@ -334,7 +350,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
 
               {/* 步骤2：系统抓取爆款内容 */}
               <div className="relative group">
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                   {/* 步骤标识 */}
                   <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-lg">2</span>
@@ -371,7 +387,7 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
 
               {/* 步骤3：批量生成笔记 */}
               <div className="relative group">
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                   {/* 步骤标识 */}
                   <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-lg">3</span>
@@ -424,12 +440,12 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
         {notes.map((note) => (
           <Card
             key={note.id}
-            className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-0 bg-white dark:bg-slate-800 rounded-2xl shadow-md"
+            className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-0 bg-white dark:bg-slate-800 dark:border dark:border-slate-700/50 rounded-2xl shadow-md dark:shadow-lg dark:shadow-black/20"
           >
             <div className="relative">
               {/* Selection Checkbox - 扩大点击区域 */}
@@ -440,17 +456,17 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
                   onNoteSelect(note.id, !selectedNotes.includes(note.id))
                 }}
               >
-                <div className="w-8 h-8 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg hover:bg-white dark:hover:bg-slate-700 hover:scale-110 transition-all duration-200">
+                <div className="w-8 h-8 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg hover:bg-white dark:hover:bg-slate-700 hover:scale-110 transition-all duration-200 dark:border dark:border-slate-600/50">
                   <Checkbox
                     checked={selectedNotes.includes(note.id)}
                     onCheckedChange={() => {}} // 空函数，因为点击由父级处理
-                    className="w-4 h-4 border-gray-300 dark:border-gray-600 pointer-events-none"
+                    className="w-4 h-4 border-gray-300 dark:border-gray-500 dark:data-[state=checked]:bg-purple-500 dark:data-[state=checked]:border-purple-500 pointer-events-none"
                   />
                 </div>
               </div>
 
               {/* Cover Image with 3:4 ratio */}
-              <div className="aspect-[3/4] overflow-hidden cursor-pointer" onClick={() => onNoteView(note)}>
+              <div className="aspect-[3/4] bg-gray-100 dark:bg-slate-700 rounded-t-2xl overflow-hidden cursor-pointer" onClick={() => onNoteView(note)}>
                 <Image
                   src={getProxiedImageUrl(note.cover || "/placeholder.svg")} // 使用代理URL
                   alt={note.title}
@@ -463,22 +479,22 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
               </div>
             </div>
 
-            <CardContent className="p-4" onClick={() => onNoteView(note)}>
+            <CardContent className="p-4 bg-white dark:bg-slate-800" onClick={() => onNoteView(note)}>
               {/* Title */}
-              <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 mb-3 text-base leading-snug group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors cursor-pointer">
+              <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 mb-2 sm:mb-3 text-sm sm:text-base leading-snug group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors cursor-pointer">
                 {note.title}
               </h3>
 
               {/* Author and Likes */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                    <User className="h-3 w-3 text-white" />
+                <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
                   </div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 font-medium truncate">{note.author}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300 font-medium truncate">{note.author}</span>
                 </div>
 
-                <div className="flex items-center gap-1 text-red-500">
+                <div className="flex items-center gap-1 text-red-500 dark:text-red-400">
                   <Heart className="h-3 w-3" />
                   <span className="font-semibold text-xs">{note.likes > 999 ? `${(note.likes/1000).toFixed(1)}k` : note.likes}</span>
                 </div>
@@ -522,6 +538,40 @@ export function NoteGrid({ notes, selectedNotes, onNoteSelect, onNoteView, isLoa
           </Card>
         ))}
       </div>
+      
+      {/* 加载更多区域 */}
+      {hasMore && (
+        <div className="mt-8 text-center">
+          <Button
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+            variant="outline"
+            className="px-8 py-3 bg-white dark:bg-slate-800 border-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            {isLoadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                加载中...
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4 mr-2" />
+                加载更多
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+      
+      {/* 没有更多数据提示 */}
+      {!hasMore && notes.length > 0 && (
+        <div className="mt-8 text-center">
+          <div className="inline-flex items-center gap-2 px-6 py-3 bg-gray-50 dark:bg-slate-800 rounded-full border border-gray-200 dark:border-slate-600">
+            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+            <span className="text-gray-600 dark:text-gray-400 text-sm">已加载全部数据</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

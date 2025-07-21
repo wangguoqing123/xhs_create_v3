@@ -46,32 +46,28 @@ export function FeatureModules() {
         {/* 功能卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white dark:bg-slate-800 overflow-hidden">
-              <CardContent className="p-8 text-center">
-                {/* 图标 */}
-                <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                  <feature.icon className="h-8 w-8 text-white" />
-                </div>
-
-                {/* 标题 */}
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  {feature.title}
-                </h3>
-
-                {/* 描述 */}
-                <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-                  {feature.description}
-                </p>
-
-                {/* 按钮 */}
-                <Button
-                  className={`w-full bg-gradient-to-r ${feature.gradient} hover:shadow-xl text-white font-semibold py-3 rounded-xl group-hover:scale-105 transition-all duration-300`}
-                  onClick={() => window.location.href = feature.href}
-                >
-                  {feature.buttonText}
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </CardContent>
+            <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white dark:bg-slate-800 dark:border dark:border-slate-700/50 overflow-hidden dark:shadow-lg dark:shadow-black/20">
+              <div className="relative">
+                {/* 背景装饰 */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+                
+                <CardContent className="relative p-8 text-center">
+                  {/* 图标 */}
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                    <feature.icon className="h-8 w-8 text-white" />
+                  </div>
+                  
+                  {/* 标题 */}
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                    {feature.title}
+                  </h3>
+                  
+                  {/* 描述 */}
+                  <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
+                    {feature.description}
+                  </p>
+                </CardContent>
+              </div>
             </Card>
           ))}
         </div>
