@@ -66,6 +66,15 @@ export default function AdminPageNew() {
     status: 'all'
   })
   
+  // 分页相关状态
+  const [contentPagination, setContentPagination] = useState({
+    limit: 20,
+    offset: 0,
+    hasMore: true,
+    total: 0
+  })
+  const [isLoadingMoreContent, setIsLoadingMoreContent] = useState(false)
+  
   // 类型数据
   const [noteTrackList, setNoteTrackList] = useState<NoteTrack[]>([])
   const [noteTypeList, setNoteTypeList] = useState<NoteType[]>([])
@@ -241,7 +250,13 @@ export default function AdminPageNew() {
   }
 
   // 爆款内容相关函数
-  const loadExplosiveContents = async () => {
+  const loadExplosiveContents = async (isLoadMore = false) => {
+    if (isLoadMore) {
+      setIsLoadingMoreContent(true)
+    } else {
+      setIsLoading(true)
+    }
+    
     try {
       const params = new URLSearchParams()
       if (contentFilters.track_id && contentFilters.track_id !== 'all') {
@@ -260,17 +275,62 @@ export default function AdminPageNew() {
         params.append('status', contentFilters.status)
       }
       
+      // 添加分页参数
+      const currentOffset = isLoadMore ? contentPagination.offset : 0
+      params.append('limit', contentPagination.limit.toString())
+      params.append('offset', currentOffset.toString())
+      
       const response = await fetch(`/api/admin/explosive-contents?${params.toString()}`)
       const data = await response.json()
       
       if (data.success) {
-        setExplosiveContents(data.data)
+        if (isLoadMore) {
+          // 加载更多：追加数据，去重处理
+          setExplosiveContents(prev => {
+            const existingIds = new Set(prev.map((item: ExplosiveContent) => item.id))
+            const newItems = data.data.filter((item: ExplosiveContent) => !existingIds.has(item.id))
+            return [...prev, ...newItems]
+          })
+          setContentPagination(prev => ({
+            ...prev,
+            offset: prev.offset + prev.limit,
+            hasMore: data.data.length === prev.limit,
+            total: data.total || prev.total
+          }))
+        } else {
+          // 首次加载或筛选：替换数据
+          setExplosiveContents(data.data)
+          setContentPagination(prev => ({
+            ...prev,
+            offset: prev.limit,
+            hasMore: data.data.length === prev.limit,
+            total: data.total || 0
+          }))
+        }
       } else {
         setMessage(data.message || '获取爆款内容失败')
       }
     } catch (error) {
       setMessage('获取爆款内容失败')
+    } finally {
+      if (isLoadMore) {
+        setIsLoadingMoreContent(false)
+      } else {
+        setIsLoading(false)
+      }
     }
+  }
+
+  // 处理加载更多
+  const handleLoadMoreContent = () => {
+    if (!contentPagination.hasMore || isLoadingMoreContent) return
+    loadExplosiveContents(true)
+  }
+
+  // 处理筛选条件改变
+  const handleFilterChange = (newFilters: Partial<typeof contentFilters>) => {
+    setContentFilters({ ...contentFilters, ...newFilters })
+    setContentPagination(prev => ({ ...prev, offset: 0, hasMore: true }))
   }
 
   const handleDeleteContent = async (id: string) => {
@@ -498,7 +558,7 @@ export default function AdminPageNew() {
                       <Label>笔记赛道</Label>
                       <Select
                         value={contentFilters.track_id}
-                        onValueChange={(value) => setContentFilters({ ...contentFilters, track_id: value })}
+                        onValueChange={(value) => handleFilterChange({ track_id: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="选择赛道" />
@@ -517,7 +577,7 @@ export default function AdminPageNew() {
                       <Label>笔记类型</Label>
                       <Select
                         value={contentFilters.type_id}
-                        onValueChange={(value) => setContentFilters({ ...contentFilters, type_id: value })}
+                        onValueChange={(value) => handleFilterChange({ type_id: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="选择类型" />
@@ -536,7 +596,7 @@ export default function AdminPageNew() {
                       <Label>笔记口吻</Label>
                       <Select
                         value={contentFilters.tone_id}
-                        onValueChange={(value) => setContentFilters({ ...contentFilters, tone_id: value })}
+                        onValueChange={(value) => handleFilterChange({ tone_id: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="选择口吻" />
@@ -557,9 +617,9 @@ export default function AdminPageNew() {
                         <Input
                           placeholder="搜索标题或内容..."
                           value={contentFilters.search}
-                          onChange={(e) => setContentFilters({ ...contentFilters, search: e.target.value })}
+                          onChange={(e) => handleFilterChange({ search: e.target.value })}
                         />
-                        <Button onClick={loadExplosiveContents} disabled={isLoading}>
+                        <Button onClick={() => loadExplosiveContents()} disabled={isLoading}>
                           <Search className="w-4 h-4" />
                         </Button>
                       </div>
@@ -654,6 +714,27 @@ export default function AdminPageNew() {
                           </CardContent>
                         </Card>
                       ))}
+                    </div>
+                  )}
+                  
+                  {/* 加载更多按钮 */}
+                  {explosiveContents.length > 0 && contentPagination.hasMore && (
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        onClick={handleLoadMoreContent}
+                        disabled={isLoadingMoreContent}
+                        variant="outline"
+                        className="px-8"
+                      >
+                        {isLoadingMoreContent ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            加载中...
+                          </>
+                        ) : (
+                          '加载更多'
+                        )}
+                      </Button>
                     </div>
                   )}
                 </CardContent>

@@ -166,8 +166,12 @@ export default function NoteRewritePageNew() {
       
       if (data.success) {
         if (isLoadMore) {
-          // 加载更多：追加数据
-          setExplosiveContents(prev => [...prev, ...data.data])
+          // 加载更多：追加数据，去重处理
+          setExplosiveContents(prev => {
+            const existingIds = new Set(prev.map((item: ExplosiveContent) => item.id))
+            const newItems = data.data.filter((item: ExplosiveContent) => !existingIds.has(item.id))
+            return [...prev, ...newItems]
+          })
           setPagination(prev => ({
             ...prev,
             offset: prev.offset + prev.limit,
