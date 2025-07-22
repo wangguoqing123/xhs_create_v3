@@ -2106,6 +2106,109 @@ export const adminGrantCreditPackage = async (
   }
 }
 
+// 管理员取消用户会员
+export const adminCancelMembership = async (
+  userId: string,
+  adminUser: string,
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 开始事务（使用query而不是execute）
+    await connection.query('START TRANSACTION')
+    
+    try {
+      // 获取用户邮箱、当前会员信息和积分
+      const [userRows] = await connection.execute(
+        'SELECT u.email, p.credits, m.id as membership_id, m.membership_level, m.membership_duration FROM users u LEFT JOIN profiles p ON u.id = p.id LEFT JOIN memberships m ON u.id = m.user_id AND m.status = "active" WHERE u.id = ?',
+        [userId]
+      ) as any[]
+      
+      if (userRows.length === 0) {
+        await connection.query('ROLLBACK')
+        connection.release()
+        return { success: false, error: '用户不存在' }
+      }
+      
+      const user = userRows[0]
+      
+      if (!user.membership_id) {
+        await connection.query('ROLLBACK')
+        connection.release()
+        return { success: false, error: '用户当前不是会员' }
+      }
+      
+      // 取消会员状态
+      await connection.execute(
+        'UPDATE memberships SET status = "cancelled", updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND status = "active"',
+        [userId]
+      )
+      
+      // 将用户积分清零
+      await connection.execute(
+        'UPDATE profiles SET credits = 0 WHERE id = ?',
+        [userId]
+      )
+      
+      // 记录积分交易 - 如果用户有积分，记录扣除交易
+      const currentCredits = user.credits || 0
+      if (currentCredits > 0) {
+        await connection.execute(
+          'INSERT INTO credit_transactions (user_id, transaction_type, amount, reason) VALUES (?, ?, ?, ?)',
+          [userId, 'consume', -currentCredits, `会员取消，积分清零，操作者：${adminUser}`]
+        )
+      }
+      
+      // 记录管理员操作日志
+      await connection.execute(
+        `INSERT INTO admin_operation_logs (admin_user, operation_type, target_user_id, target_user_email, operation_details)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          adminUser, 
+          'cancel_membership', 
+          userId, 
+          user.email, 
+          JSON.stringify({
+            previous_membership_level: user.membership_level,
+            previous_membership_duration: user.membership_duration,
+            reason: reason || '管理员取消会员'
+          })
+        ]
+      )
+      
+      // 提交事务（使用query而不是execute）
+      await connection.query('COMMIT')
+      connection.release()
+      
+      console.log('✅ [管理员取消会员] 操作成功:', { userId, adminUser })
+      return { success: true, error: null }
+    } catch (error) {
+      // 回滚事务（使用query而不是execute）
+      await connection.query('ROLLBACK')
+      connection.release()
+      throw error
+    }
+  } catch (error) {
+    console.error('❌ [管理员取消会员] 操作失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '操作失败' 
+    }
+  }
+}
+
 // 获取管理员操作日志
 export const getAdminOperationLogs = async (limit: number = 50, offset: number = 0) => {
   // 检查MySQL配置

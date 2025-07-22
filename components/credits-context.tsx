@@ -37,8 +37,8 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
   lastFetchedRef.current = lastFetched
   loadingRef.current = loading
 
-  // 缓存时间：30分钟（增加缓存时间）
-  const CACHE_DURATION = 30 * 60 * 1000
+  // 缓存时间：5分钟（减少缓存时间，让积分更新更及时）
+  const CACHE_DURATION = 5 * 60 * 1000
   const STORAGE_KEY = 'credits_cache'
 
   // 添加状态变化日志 - 临时注释，减少噪音
@@ -198,6 +198,83 @@ export function CreditsProvider({ children }: CreditsProviderProps) {
       }
     }
   }, [user, authLoading, fetchBalance, loadFromCache]) // 添加authLoading依赖
+
+  // 添加跨窗口积分刷新监听器
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user) return
+
+    let broadcastChannel: BroadcastChannel | null = null
+
+    // 尝试使用 BroadcastChannel API（现代浏览器支持）
+    if ('BroadcastChannel' in window) {
+      broadcastChannel = new BroadcastChannel('credits-updates')
+      broadcastChannel.onmessage = (e) => {
+        if (e.data?.type === 'USER_CREDITS_UPDATED' && e.data?.userId === user.id) {
+          console.log('🔄 [积分Context] BroadcastChannel收到用户积分更新消息，强制刷新积分')
+          refreshBalance()
+        }
+      }
+    }
+
+    const handleStorageChange = (e: StorageEvent) => {
+      // 监听积分缓存的变化
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const { balance: newBalance, userId } = JSON.parse(e.newValue)
+          if (userId === user.id && newBalance) {
+            console.log('🔄 [积分Context] 检测到跨窗口积分变化，更新显示')
+            setBalance(newBalance)
+            setLastFetched(Date.now())
+          }
+        } catch (error) {
+          console.error('❌ [积分Context] 解析跨窗口积分数据失败:', error)
+        }
+      }
+    }
+
+    const handleMessage = (e: MessageEvent) => {
+      // 监听积分刷新消息
+      if (e.data?.type === 'REFRESH_CREDITS') {
+        console.log('🔄 [积分Context] 收到积分刷新消息，强制刷新积分')
+        refreshBalance()
+      }
+      
+      // 监听特定用户的积分更新消息（PostMessage 备用方案）
+      if (e.data?.type === 'USER_CREDITS_UPDATED' && e.data?.userId === user.id) {
+        console.log('🔄 [积分Context] PostMessage收到用户积分更新消息，强制刷新积分')
+        refreshBalance()
+      }
+    }
+
+    // 监听页面可见性变化，当页面重新可见时检查积分
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // 页面变为可见时，检查是否需要刷新积分
+        const now = Date.now()
+        const timeSinceLastFetch = now - lastFetchedRef.current
+        
+        // 如果超过2分钟没有更新，强制刷新一次
+        if (timeSinceLastFetch > 2 * 60 * 1000) {
+          console.log('🔄 [积分Context] 页面重新可见且长时间未更新，刷新积分')
+          refreshBalance()
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('message', handleMessage)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('message', handleMessage)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      
+      if (broadcastChannel) {
+        broadcastChannel.close()
+      }
+    }
+  }, [user, refreshBalance])
 
   const contextValue: CreditsContextType = useMemo(() => ({
     balance,

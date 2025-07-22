@@ -18,6 +18,7 @@ import type {
   ExplosiveContent, NoteTrack, NoteType, NoteTone,
   XhsLinkImportResponse
 } from '@/lib/types'
+import { useCreditsContext } from '@/components/credits-context'
 
 interface User {
   id: string
@@ -45,6 +46,9 @@ interface AdminLog {
 }
 
 export default function AdminPageNew() {
+  // 获取积分上下文，用于在操作后刷新导航栏积分显示
+  const { refreshBalance } = useCreditsContext()
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -449,6 +453,28 @@ export default function AdminPageNew() {
     }
   }
 
+  // 用户管理相关状态
+  const [showUserManagementModal, setShowUserManagementModal] = useState(false)
+  const [selectedUserForManagement, setSelectedUserForManagement] = useState<User | null>(null)
+  const [userManagementForm, setUserManagementForm] = useState({
+    action: '',
+    membershipLevel: 'lite',
+    membershipDuration: 'monthly',
+    creditsAmount: 0,
+    reason: ''
+  })
+
+  // 积分使用记录相关状态
+  const [showCreditsHistoryModal, setShowCreditsHistoryModal] = useState(false)
+  const [selectedUserForCreditsHistory, setSelectedUserForCreditsHistory] = useState<User | null>(null)
+  const [creditsHistory, setCreditsHistory] = useState<any[]>([])
+  const [creditsHistoryPagination, setCreditsHistoryPagination] = useState({
+    limit: 10,
+    offset: 0,
+    hasMore: true,
+    loading: false
+  })
+
   // 快速设置用户为标准会员
   const handleQuickSetMembership = async (userId: string, userEmail: string) => {
     if (!confirm(`确定要将用户 ${userEmail} 设置为标准会员(月付)吗？`)) {
@@ -473,6 +499,38 @@ export default function AdminPageNew() {
       const data = await response.json()
       if (data.success) {
         setMessage(`成功设置用户 ${userEmail} 为标准会员`)
+        
+        // 通知被操作用户的积分更新（快速设置会员涉及积分变更）
+        console.log('🔄 [Admin] 快速设置会员成功，通知用户积分更新')
+        
+                 // 广播特定用户的积分更新消息
+        if (typeof window !== 'undefined') {
+          const updateMessage = { 
+            type: 'USER_CREDITS_UPDATED', 
+            userId: userId,
+            action: 'set_membership'
+          }
+          
+          // 优先使用 BroadcastChannel
+          if ('BroadcastChannel' in window) {
+            const channel = new BroadcastChannel('credits-updates')
+            channel.postMessage(updateMessage)
+            channel.close()
+            console.log('📢 [Admin] BroadcastChannel已广播用户积分更新消息:', userId)
+          } else {
+            // 备用方案：使用 PostMessage
+            (window as any).postMessage(updateMessage, '*')
+            console.log('📢 [Admin] PostMessage已广播用户积分更新消息:', userId)
+          }
+        }
+        
+        // 如果管理员也是被操作的用户，刷新管理员自己的积分
+        try {
+          await refreshBalance()
+        } catch (error) {
+          console.error('❌ [Admin] 管理员积分刷新失败:', error)
+        }
+        
         // 重新搜索以更新显示
         if (searchTerm) {
           await handleUserSearch()
@@ -482,6 +540,194 @@ export default function AdminPageNew() {
       }
     } catch (error) {
       setMessage('设置会员失败')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 打开用户管理弹窗
+  const handleOpenUserManagement = (user: User) => {
+    setSelectedUserForManagement(user)
+    setUserManagementForm({
+      action: '',
+      membershipLevel: 'lite',
+      membershipDuration: 'monthly',
+      creditsAmount: 120, // 默认120积分包
+      reason: ''
+    })
+    setShowUserManagementModal(true)
+  }
+
+  // 打开积分使用记录弹窗
+  const handleOpenCreditsHistory = (user: User) => {
+    setSelectedUserForCreditsHistory(user)
+    setCreditsHistory([])
+    setCreditsHistoryPagination({
+      limit: 10,
+      offset: 0,
+      hasMore: true,
+      loading: false
+    })
+    setShowCreditsHistoryModal(true)
+    // 加载第一页数据
+    loadCreditsHistory(user.id, 0)
+  }
+
+  // 加载积分使用记录
+  const loadCreditsHistory = async (userId: string, offset: number = 0) => {
+    setCreditsHistoryPagination(prev => ({ ...prev, loading: true }))
+    
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/credits-history?limit=10&offset=${offset}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        const newTransactions = data.data.transactions
+        setCreditsHistory(prev => offset === 0 ? newTransactions : [...prev, ...newTransactions])
+        setCreditsHistoryPagination(prev => ({
+          ...prev,
+          offset: offset + newTransactions.length,
+          hasMore: data.data.hasMore,
+          loading: false
+        }))
+      } else {
+        setMessage(data.message || '加载积分记录失败')
+        setCreditsHistoryPagination(prev => ({ ...prev, loading: false }))
+      }
+    } catch (error) {
+      setMessage('加载积分记录失败')
+      setCreditsHistoryPagination(prev => ({ ...prev, loading: false }))
+    }
+  }
+
+  // 加载更多积分记录
+  const loadMoreCreditsHistory = () => {
+    if (selectedUserForCreditsHistory && creditsHistoryPagination.hasMore && !creditsHistoryPagination.loading) {
+      loadCreditsHistory(selectedUserForCreditsHistory.id, creditsHistoryPagination.offset)
+    }
+  }
+
+  // 执行用户管理操作
+  const handleUserManagementAction = async () => {
+    if (!selectedUserForManagement || !userManagementForm.action) {
+      setMessage('请选择操作类型')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      let response
+      let successMessage = ''
+
+      switch (userManagementForm.action) {
+        case 'cancel_membership':
+          response = await fetch('/api/admin/operations/cancel-membership', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: selectedUserForManagement.id,
+              reason: userManagementForm.reason || '管理员取消会员'
+            })
+          })
+          successMessage = '成功取消用户会员'
+          break
+
+        case 'set_membership':
+          response = await fetch('/api/admin/operations/set-membership', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: selectedUserForManagement.id,
+              membership_level: userManagementForm.membershipLevel,
+              membership_duration: userManagementForm.membershipDuration,
+              reason: userManagementForm.reason || '管理员设置会员'
+            })
+          })
+          const levelNames = { lite: '入门', pro: '标准', premium: '高级' }
+          const durationNames = { monthly: '月', yearly: '年' }
+          successMessage = `成功设置用户为${levelNames[userManagementForm.membershipLevel as keyof typeof levelNames]}会员(${durationNames[userManagementForm.membershipDuration as keyof typeof durationNames]})`
+          break
+
+        case 'grant_credits':
+          response = await fetch('/api/admin/operations/grant-credits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: selectedUserForManagement.id,
+              credits_amount: userManagementForm.creditsAmount,
+              reason: userManagementForm.reason || '管理员赠送积分'
+            })
+          })
+          successMessage = `成功为用户赠送 ${userManagementForm.creditsAmount} 积分`
+          break
+
+        case 'grant_credit_package':
+          response = await fetch('/api/admin/operations/gift-credit-package', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: selectedUserForManagement.id,
+              credits_amount: 120, // 固定120积分包
+              reason: userManagementForm.reason || '管理员赠送120积分包'
+            })
+          })
+          successMessage = '成功为用户赠送120积分包'
+          break
+
+        default:
+          setMessage('无效的操作类型')
+          setIsLoading(false)
+          return
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        setMessage(successMessage)
+        setShowUserManagementModal(false)
+        
+        // 通知被操作用户的积分更新（如果操作涉及积分变更）
+        if (['grant_credits', 'grant_credit_package', 'set_membership', 'cancel_membership'].includes(userManagementForm.action)) {
+          console.log('🔄 [Admin] 用户管理操作成功，通知用户积分更新')
+          
+          // 广播特定用户的积分更新消息
+          if (typeof window !== 'undefined') {
+            const updateMessage = { 
+              type: 'USER_CREDITS_UPDATED', 
+              userId: selectedUserForManagement.id,
+              action: userManagementForm.action
+            }
+            
+            // 优先使用 BroadcastChannel
+            if ('BroadcastChannel' in window) {
+              const channel = new BroadcastChannel('credits-updates')
+              channel.postMessage(updateMessage)
+              channel.close()
+              console.log('📢 [Admin] BroadcastChannel已广播用户积分更新消息:', selectedUserForManagement.id)
+            } else {
+              // 备用方案：使用 PostMessage
+              (window as any).postMessage(updateMessage, '*')
+              console.log('📢 [Admin] PostMessage已广播用户积分更新消息:', selectedUserForManagement.id)
+            }
+          }
+          
+          // 如果管理员也是被操作的用户，刷新管理员自己的积分
+          // 这种情况很少见，但为了完整性还是处理一下
+          try {
+            await refreshBalance()
+          } catch (error) {
+            console.error('❌ [Admin] 管理员积分刷新失败:', error)
+          }
+        }
+        
+        // 重新搜索以更新显示
+        if (searchTerm) {
+          await handleUserSearch()
+        }
+      } else {
+        setMessage(data.message || '操作失败')
+      }
+    } catch (error) {
+      setMessage('操作失败')
     } finally {
       setIsLoading(false)
     }
@@ -1101,6 +1347,11 @@ export default function AdminPageNew() {
                                       月额度: {user.monthly_credits} 积分
                                     </div>
                                   )}
+                                  {user.membership_end && (
+                                    <div className="text-sm text-blue-600 mt-1">
+                                      到期时间: {new Date(user.membership_end).toLocaleString()}
+                                    </div>
+                                  )}
                                   {user.next_credits_reset && (
                                     <div className="text-xs text-blue-500 mt-1">
                                       下次积分重置: {new Date(user.next_credits_reset).toLocaleString()}
@@ -1118,16 +1369,37 @@ export default function AdminPageNew() {
                                 {user.is_active_member ? '会员用户' : '普通用户'}
                               </Badge>
                               
-                              {!user.is_active_member && (
+                              <div className="flex flex-col gap-1">
+                                {!user.is_active_member && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleQuickSetMembership(user.id, user.email)}
+                                    className="text-xs px-3 py-1"
+                                  >
+                                    快速设为标准会员
+                                  </Button>
+                                )}
+                                
+                                <Button 
+                                  size="sm" 
+                                  variant="default"
+                                  onClick={() => handleOpenUserManagement(user)}
+                                  className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700"
+                                >
+                                  管理用户
+                                </Button>
+                                
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => handleQuickSetMembership(user.id, user.email)}
-                                  className="text-xs px-3 py-1"
+                                  onClick={() => handleOpenCreditsHistory(user)}
+                                  className="text-xs px-3 py-1 border-green-300 text-green-700 hover:bg-green-50"
                                 >
-                                  设为会员
+                                  <CreditCard className="w-3 h-3 mr-1" />
+                                  积分记录
                                 </Button>
-                              )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1172,6 +1444,242 @@ export default function AdminPageNew() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* 积分使用记录弹窗 */}
+          {showCreditsHistoryModal && selectedUserForCreditsHistory && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden m-4">
+                <CardHeader>
+                  <CardTitle>积分使用记录</CardTitle>
+                  <CardDescription>
+                    用户: {selectedUserForCreditsHistory.email}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="max-h-[70vh] overflow-y-auto">
+                  {creditsHistory.length === 0 && !creditsHistoryPagination.loading ? (
+                    <div className="text-center py-8 text-gray-500">暂无积分使用记录</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {creditsHistory.map((transaction, index) => (
+                        <div key={transaction.id || index} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge 
+                                  variant={transaction.transaction_type === 'consume' ? 'destructive' : 'default'}
+                                  className="text-xs"
+                                >
+                                  {transaction.transaction_type === 'consume' ? '消耗' : 
+                                   transaction.transaction_type === 'reward' ? '获得' : 
+                                   transaction.transaction_type === 'refund' ? '退还' : '其他'}
+                                </Badge>
+                                <span className={`font-semibold ${
+                                  transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {transaction.amount > 0 ? '+' : ''}{transaction.amount} 积分
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-600 mb-1">
+                                {transaction.reason}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(transaction.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* 加载更多按钮 */}
+                      {creditsHistoryPagination.hasMore && (
+                        <div className="text-center pt-4">
+                          <Button
+                            variant="outline"
+                            onClick={loadMoreCreditsHistory}
+                            disabled={creditsHistoryPagination.loading}
+                            className="w-full"
+                          >
+                            {creditsHistoryPagination.loading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                加载中...
+                              </>
+                            ) : (
+                              '加载更多'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {/* 加载中状态 */}
+                      {creditsHistoryPagination.loading && creditsHistory.length === 0 && (
+                        <div className="text-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                          <div className="text-gray-500">加载积分记录中...</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+                <div className="flex justify-end gap-2 p-6 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowCreditsHistoryModal(false)
+                      setSelectedUserForCreditsHistory(null)
+                      setCreditsHistory([])
+                    }}
+                  >
+                    关闭
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* 用户管理弹窗 */}
+          {showUserManagementModal && selectedUserForManagement && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto m-4">
+                <CardHeader>
+                  <CardTitle>用户管理</CardTitle>
+                  <CardDescription>
+                    管理用户: {selectedUserForManagement.email}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* 用户信息显示 */}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="text-sm space-y-1">
+                      <div><strong>邮箱:</strong> {selectedUserForManagement.email}</div>
+                      <div><strong>昵称:</strong> {selectedUserForManagement.display_name || '未设置'}</div>
+                      <div><strong>当前积分:</strong> {selectedUserForManagement.credits}</div>
+                      <div><strong>会员状态:</strong> {selectedUserForManagement.is_active_member ? '是会员' : '非会员'}</div>
+                      {selectedUserForManagement.is_active_member && (
+                        <div><strong>会员类型:</strong> {
+                          selectedUserForManagement.membership_level === 'lite' ? '入门会员' :
+                          selectedUserForManagement.membership_level === 'pro' ? '标准会员' :
+                          selectedUserForManagement.membership_level === 'premium' ? '高级会员' : '未知'
+                        } ({selectedUserForManagement.membership_duration === 'monthly' ? '月' : '年'})</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 操作类型选择 */}
+                  <div>
+                    <Label>操作类型</Label>
+                    <Select
+                      value={userManagementForm.action}
+                      onValueChange={(value) => setUserManagementForm({ ...userManagementForm, action: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择操作类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedUserForManagement.is_active_member && (
+                          <SelectItem value="cancel_membership">取消会员</SelectItem>
+                        )}
+                        <SelectItem value="set_membership">设置会员</SelectItem>
+                        <SelectItem value="grant_credits">赠送任意积分</SelectItem>
+                        <SelectItem value="grant_credit_package">赠送120积分包</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 设置会员选项 */}
+                  {userManagementForm.action === 'set_membership' && (
+                    <>
+                      <div>
+                        <Label>会员等级</Label>
+                        <Select
+                          value={userManagementForm.membershipLevel}
+                          onValueChange={(value) => setUserManagementForm({ ...userManagementForm, membershipLevel: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="lite">入门会员 (100积分/月)</SelectItem>
+                            <SelectItem value="pro">标准会员 (250积分/月)</SelectItem>
+                            <SelectItem value="premium">高级会员 (600积分/月)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>会员时长</Label>
+                        <Select
+                          value={userManagementForm.membershipDuration}
+                          onValueChange={(value) => setUserManagementForm({ ...userManagementForm, membershipDuration: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">月会员</SelectItem>
+                            <SelectItem value="yearly">年会员</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 赠送积分选项 */}
+                  {userManagementForm.action === 'grant_credits' && (
+                    <div>
+                      <Label>积分数量</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="10000"
+                        value={userManagementForm.creditsAmount}
+                        onChange={(e) => setUserManagementForm({ ...userManagementForm, creditsAmount: parseInt(e.target.value) || 0 })}
+                        placeholder="请输入积分数量"
+                      />
+                    </div>
+                  )}
+
+                  {/* 操作原因 */}
+                  {userManagementForm.action && (
+                    <div>
+                      <Label>操作原因 (可选)</Label>
+                      <Textarea
+                        value={userManagementForm.reason}
+                        onChange={(e) => setUserManagementForm({ ...userManagementForm, reason: e.target.value })}
+                        placeholder="请输入操作原因..."
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowUserManagementModal(false)
+                        setSelectedUserForManagement(null)
+                      }}
+                      disabled={isLoading}
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      onClick={handleUserManagementAction}
+                      disabled={isLoading || !userManagementForm.action}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          执行中...
+                        </>
+                      ) : (
+                        '确认执行'
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>
