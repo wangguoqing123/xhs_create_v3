@@ -129,7 +129,7 @@ export default function NoteRewritePageNew() {
   }, [])
 
   // 获取爆款内容列表
-  const loadExplosiveContents = useCallback(async (isLoadMore = false) => {
+  const loadExplosiveContents = useCallback(async (isLoadMore = false, customOffset?: number) => {
     if (!user) return
     
     if (isLoadMore) {
@@ -157,7 +157,7 @@ export default function NoteRewritePageNew() {
       }
       
       // 分页参数
-      const currentOffset = isLoadMore ? pagination.offset : 0
+      const currentOffset = customOffset !== undefined ? customOffset : (isLoadMore ? pagination.offset : 0)
       params.append('limit', pagination.limit.toString())
       params.append('offset', currentOffset.toString())
       
@@ -230,10 +230,10 @@ export default function NoteRewritePageNew() {
   // 加载更多
   const handleLoadMore = useCallback(() => {
     if (pagination.hasMore && !isLoadingMore) {
-      loadExplosiveContents(true)
+      loadExplosiveContents(true, pagination.offset)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.hasMore, isLoadingMore])
+  }, [pagination.hasMore, isLoadingMore, pagination.offset])
 
   // 处理标签选择
   const handleTagSelect = useCallback((type: 'track_id' | 'type_id' | 'tone_id', value: number) => {
