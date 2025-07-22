@@ -120,7 +120,24 @@ export async function searchXiaohongshuNotes(
 
     // 检查内部数据状态
     if (dataResponse.code !== 0) {
-      throw new Error(`搜索数据错误: ${dataResponse.msg}`)
+      // 针对不同错误代码提供特定的错误信息
+      // 优先检查错误信息中是否包含300013（Cookie过期）
+      if (dataResponse.code === 300013 || (dataResponse.msg && dataResponse.msg.includes('300013'))) {
+        // Cookie过期或无效错误
+        throw new Error('Cookie已过期或无效，请重新获取并设置小红书Cookie')
+      } else if (dataResponse.code === 300001 || dataResponse.code === 300002) {
+        // 其他Cookie相关错误
+        throw new Error('Cookie已过期或无效，请重新设置Cookie后重试')
+      } else if (dataResponse.code === 404 || dataResponse.msg?.includes('不存在')) {
+        // 内容不存在错误
+        throw new Error('搜索内容不存在或已被删除')
+      } else if (dataResponse.msg && (dataResponse.msg.includes('cookie') || dataResponse.msg.includes('Cookie'))) {
+        // 其他Cookie相关错误（通过消息内容判断）
+        throw new Error('Cookie已过期或无效，请重新获取并设置小红书Cookie')
+      } else {
+        // 其他错误
+        throw new Error(`搜索失败: ${dataResponse.msg || '未知错误'}`)
+      }
     }
 
     // 返回小红书笔记列表
@@ -211,7 +228,24 @@ export async function fetchXiaohongshuNoteDetail(
 
     // 检查内部数据状态
     if (dataResponse.code !== 0) {
-      throw new Error(`详情数据错误: ${dataResponse.msg}`)
+      // 针对不同错误代码提供特定的错误信息
+      // 优先检查错误信息中是否包含300013（Cookie过期）
+      if (dataResponse.code === 300013 || (dataResponse.msg && dataResponse.msg.includes('300013'))) {
+        // Cookie过期或无效错误
+        throw new Error('Cookie已过期或无效，请重新获取并设置小红书Cookie')
+      } else if (dataResponse.code === 300001 || dataResponse.code === 300002) {
+        // 其他Cookie相关错误
+        throw new Error('Cookie已过期或无效，请重新设置Cookie后重试')
+      } else if (dataResponse.code === 404 || dataResponse.msg?.includes('不存在')) {
+        // 笔记不存在错误
+        throw new Error('笔记不存在或已被删除，请检查链接是否正确')
+      } else if (dataResponse.msg && (dataResponse.msg.includes('cookie') || dataResponse.msg.includes('Cookie'))) {
+        // 其他Cookie相关错误（通过消息内容判断）
+        throw new Error('Cookie已过期或无效，请重新获取并设置小红书Cookie')
+      } else {
+        // 其他错误
+        throw new Error(`获取笔记详情失败: ${dataResponse.msg || '未知错误'}`)
+      }
     }
 
     // 返回小红书笔记详情
