@@ -207,13 +207,18 @@ export default function NoteRewritePageNew() {
     loadTypeData()
   }, [loadTypeData])
 
-  // 初始加载数据
+  // 统一的数据加载逻辑：监听用户状态和筛选条件变化
   useEffect(() => {
     if (user && profile?.user_cookie) {
-      loadExplosiveContents(false, 0) // 初始加载，从第一页开始
+      // 延迟执行，确保分页状态已更新
+      const timer = setTimeout(() => {
+        loadExplosiveContents(false, 0)
+      }, 100)
+      
+      return () => clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, profile?.user_cookie])
+  }, [user, profile?.user_cookie, filters])
 
   // 处理筛选
   const handleFilter = useCallback(() => {
@@ -249,15 +254,12 @@ export default function NoteRewritePageNew() {
       }
     })
     
-    // 标签选择后自动筛选
-    setTimeout(() => {
-      setPagination(prev => ({
-        ...prev,
-        offset: 0,
-        hasMore: true
-      }))
-      loadExplosiveContents(false, 0)
-    }, 0)
+    // 重置分页状态，数据加载由useEffect处理
+    setPagination(prev => ({
+      ...prev,
+      offset: 0,
+      hasMore: true
+    }))
   }, [])
 
   // 清除所有筛选
@@ -268,16 +270,12 @@ export default function NoteRewritePageNew() {
       tone_id: [],
       search: ''
     })
-    // 重置分页状态并重新加载数据
+    // 重置分页状态，数据加载由useEffect处理
     setPagination(prev => ({
       ...prev,
       offset: 0,
       hasMore: true
     }))
-    // 使用setTimeout确保状态更新后再加载
-    setTimeout(() => {
-      loadExplosiveContents(false, 0)
-    }, 0)
   }, [])
 
   // 处理笔记选择（用于批量操作）
