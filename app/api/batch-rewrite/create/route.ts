@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
       status: 'pending'
     }))
 
+    console.log('📝 [API] 创建任务笔记关联，笔记数量:', taskNotes.length)
+
     const { data: createdNotes, error: notesError } = await createTaskNotes(taskNotes)
     if (notesError) {
       console.error('创建任务笔记关联失败:', notesError)

@@ -113,6 +113,20 @@ export function useBatchRewrite() {
       })
 
       console.log('📝 [前端] 准备发送的笔记数据:', notes.length, '条')
+      
+      // 开发环境调试信息
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📝 [前端] 笔记数据详情:', notes.map((note, index) => ({
+          index,
+          note_id: note.note_id,
+          id: note.id,
+          title: note.title,
+          note_display_title: note.note_display_title,
+          cover: note.cover,
+          note_cover_url_default: note.note_cover_url_default,
+          dataKeys: Object.keys(note)
+        })))
+      }
 
       // 调用创建任务API - 使用Cookie认证
       const response = await fetch('/api/batch-rewrite/create', {
@@ -249,9 +263,11 @@ export function useBatchRewrite() {
     try {
       // 检查用户认证状态
       if (!user) {
-        console.warn('用户未登录，无法获取任务列表')
+        console.warn('🔍 [Hook] 用户未登录，无法获取任务列表')
         return null
       }
+
+      console.log('🔍 [Hook] 开始获取任务列表，用户:', user.id)
 
       // 构建查询参数
       const params = new URLSearchParams({
@@ -263,17 +279,25 @@ export function useBatchRewrite() {
         params.append('status', status)
       }
 
+      const apiUrl = `/api/batch-rewrite/list?${params}`
+      console.log('🔍 [Hook] 调用API:', apiUrl)
+
       // 调用列表查询API - 使用Cookie认证
-      const response = await fetch(`/api/batch-rewrite/list?${params}`, {
+      const response = await fetch(apiUrl, {
         credentials: 'include' // 包含Cookie
       })
 
+      console.log('🔍 [Hook] API响应状态:', response.status, response.statusText)
+
       if (!response.ok) {
-        console.error('获取任务列表失败:', response.status)
+        const errorText = await response.text()
+        console.error('🔍 [Hook] 获取任务列表失败:', response.status, errorText)
         return null
       }
 
       const result = await response.json()
+      console.log('🔍 [Hook] API返回数据:', result)
+      
       return {
         tasks: result.tasks,
         total: result.total

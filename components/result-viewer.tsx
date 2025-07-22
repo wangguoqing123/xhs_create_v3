@@ -26,6 +26,10 @@ function SmartImage({
 }) {
   const [imageError, setImageError] = useState(false)
   const [imageSrc, setImageSrc] = useState(() => {
+    // 如果是小红书图片链接，使用代理
+    if (src && (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('ci.xiaohongshu.com'))) {
+      return `/api/image-proxy?url=${encodeURIComponent(src)}`
+    }
     // 使用预处理功能，确保URL有效
     return preprocessImageUrl(src, '/placeholder.svg')
   })
@@ -76,6 +80,7 @@ interface ResultViewerProps {
   task: Task
   taskName?: string // 添加任务名称
   allTasks?: Task[] // 添加所有任务数据，用于完整导出
+  originalTaskData?: any // 添加原始任务数据，用于获取笔记链接等信息
 }
 
 // 鱼骨加载组件
@@ -221,15 +226,17 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
   }
 
   return (
-    <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-lg rounded-2xl hover:shadow-xl transition-all duration-300 dark:shadow-2xl dark:shadow-black/20">
-      <CardHeader className="pb-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-100 dark:border-slate-700 rounded-t-2xl">
+    <Card className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-0 shadow-2xl rounded-3xl hover:shadow-3xl transition-all duration-500 transform hover:scale-102 dark:shadow-black/30 group overflow-hidden">
+      <CardHeader className="pb-4 bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-purple-900/10 dark:via-slate-800 dark:to-pink-900/10 border-b border-gray-100 dark:border-slate-700 rounded-t-3xl">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-              <FileText className="h-4 w-4 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300">
+              <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center">
+                <FileText className="h-4 w-4 text-white" />
+              </div>
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">
+              <CardTitle className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                 版本 {index + 1}
               </CardTitle>
               {getStatusBadge()}
@@ -241,16 +248,16 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
               <Button
                 size="sm"
                 onClick={() => handleCopy(`${result.title}\n\n${result.content}`, result.id)}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 rounded-lg text-xs px-2 py-1 h-7"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 rounded-xl text-sm px-3 py-2 h-9 font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
               >
                 {copiedId === result.id ? (
                   <>
-                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <CheckCircle className="h-4 w-4 mr-1.5" />
                     已复制
                   </>
                 ) : (
                   <>
-                    <Copy className="h-3 w-3 mr-1" />
+                    <Copy className="h-4 w-4 mr-1.5" />
                     复制
                   </>
                 )}
@@ -262,22 +269,32 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
 
       <CardContent className="p-6">
         {result.status === "completed" && result.title && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">标题</h3>
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-3 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner">
-              <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed">
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xs font-bold">T</span>
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">标题</h3>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10 p-4 rounded-2xl border border-blue-100/50 dark:border-blue-800/30 shadow-inner">
+              <div className="text-gray-800 dark:text-gray-200 font-semibold leading-relaxed text-base whitespace-pre-wrap">
                 {result.title}
-              </p>
+              </div>
             </div>
           </div>
         )}
 
         {result.content && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">正文内容</h3>
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-gray-100 dark:border-slate-600 shadow-inner min-h-80 max-h-96 overflow-y-auto scrollbar-thin">
-              <div className="prose max-w-none">
-                <pre className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xs font-bold">C</span>
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">正文内容</h3>
+            </div>
+            <div className="bg-gradient-to-br from-gray-50/80 via-white to-gray-50/50 dark:from-slate-800/50 dark:via-slate-700/30 dark:to-slate-800/50 p-6 rounded-2xl border border-gray-200/50 dark:border-slate-600/50 shadow-inner min-h-96 max-h-[700px] overflow-y-auto scrollbar-thin">
+              <div className="w-full">
+                <div className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-sm selection:bg-purple-200 dark:selection:bg-purple-800 selection:text-purple-900 dark:selection:text-purple-100">
                   {result.status === "generating" && result.content && result.content.length > 0 ? (
                     <TypewriterText 
                       text={result.content} 
@@ -286,29 +303,29 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
                   ) : result.status === "completed" && result.content ? (
                     result.content
                   ) : result.status === "failed" ? (
-                    <span className="text-red-500 dark:text-red-400">内容生成失败，请重试</span>
+                    <span className="text-red-500 dark:text-red-400 font-medium">⚠️ 内容生成失败，请重试</span>
                   ) : (
-                    <span className="text-gray-500 dark:text-gray-400">内容生成中，请稍候...</span>
+                    <span className="text-gray-500 dark:text-gray-400 italic">✨ 内容生成中，请稍候...</span>
                   )}
-                </pre>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {result.status === "failed" && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="h-8 w-8 text-red-500 dark:text-red-400" />
+          <div className="text-center py-12">
+            <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+              <AlertCircle className="h-10 w-10 text-red-500 dark:text-red-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">生成失败</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">生成失败</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
               内容生成过程中遇到了问题，请重试。
             </p>
             <Button
               onClick={() => window.location.reload()}
               variant="outline"
-              className="px-4 py-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+              className="px-6 py-3 border-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl font-medium transition-all duration-200 hover:shadow-lg"
             >
               重新生成
             </Button>
@@ -319,7 +336,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
   )
 }
 
-export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
+export function ResultViewer({ task, taskName, allTasks, originalTaskData }: ResultViewerProps) {
   const handleExportTxt = () => {
     if (!task) return
     
@@ -436,79 +453,171 @@ export function ResultViewer({ task, taskName, allTasks }: ResultViewerProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-slate-900">
-      {/* Source Note Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-gray-200/50 dark:border-slate-700/50 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Cover with 3:4 ratio */}
-            <div className="w-16 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 shadow-lg">
+    <div className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200/50 dark:border-slate-700/50 overflow-hidden">
+      {/* Source Note Header - 响应式设计 */}
+      <div className="bg-gradient-to-r from-purple-50 via-white to-pink-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-700 border-b border-gray-200/50 dark:border-slate-700/50 p-4 sm:p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
+            {/* Cover with enhanced styling */}
+            <div className="w-16 h-20 sm:w-20 sm:h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-gray-100 shadow-2xl ring-2 ring-white dark:ring-slate-600">
               <SmartImage
                 src={task.noteCover || "/placeholder.svg"}
                 alt="源笔记"
-                width={64}
-                height={80}
+                width={80}
+                height={96}
                 className="w-full h-full object-cover"
               />
             </div>
 
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="text-xs px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
-                  源笔记
-                </Badge>
-                <Badge className="text-xs px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
+                  </div>
+                  <Badge 
+                    className="text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 rounded-full border-0 font-medium cursor-pointer hover:from-purple-200 hover:to-pink-200 dark:hover:from-purple-800/50 dark:hover:to-pink-800/50 transition-all duration-200 hover:shadow-md"
+                                         onClick={() => {
+                       // 获取原文链接 - 添加详细调试信息
+                       console.log('🔍 [查看原文] 开始调试数据结构')
+                       console.log('🔍 [查看原文] originalTaskData:', originalTaskData)
+                       console.log('🔍 [查看原文] task.id:', task.id)
+                       
+                       if (originalTaskData?.notes) {
+                         console.log('🔍 [查看原文] notes数量:', originalTaskData.notes.length)
+                         console.log('🔍 [查看原文] 所有notes的id:', originalTaskData.notes.map((note: any) => note.id))
+                         
+                         // 找到当前笔记的原始数据
+                         const currentNote = originalTaskData.notes.find((note: any) => note.id === task.id)
+                         console.log('🔍 [查看原文] 找到的currentNote:', currentNote)
+                         
+                         if (currentNote) {
+                           const noteData = currentNote.noteData || currentNote.note_data || {}
+                           console.log('🔍 [查看原文] noteData:', noteData)
+                           console.log('🔍 [查看原文] noteData的所有键:', Object.keys(noteData))
+                           
+                           // 尝试从多个位置获取链接
+                           const originalData = noteData.originalData || {}
+                           console.log('🔍 [查看原文] originalData:', originalData)
+                           console.log('🔍 [查看原文] originalData的所有键:', Object.keys(originalData))
+                           
+                           const noteUrl = noteData.note_url || noteData.noteUrl || noteData.url || 
+                                          originalData.note_url || originalData.noteUrl || originalData.url
+                           console.log('🔍 [查看原文] 尝试获取的链接字段:', {
+                             'noteData.note_url': noteData.note_url,
+                             'noteData.noteUrl': noteData.noteUrl,
+                             'noteData.url': noteData.url,
+                             'originalData.note_url': originalData.note_url,
+                             'originalData.noteUrl': originalData.noteUrl,
+                             'originalData.url': originalData.url,
+                             最终noteUrl: noteUrl
+                           })
+                           
+                           if (noteUrl) {
+                             console.log('✅ [查看原文] 找到链接，准备打开:', noteUrl)
+                             window.open(noteUrl, '_blank')
+                           } else {
+                             console.warn('❌ [查看原文] 未找到笔记原文链接')
+                             alert(`未找到笔记原文链接。调试信息：\n- noteData键: ${Object.keys(noteData).join(', ')}\n- 请查看控制台获取详细信息`)
+                           }
+                         } else {
+                           console.warn('❌ [查看原文] 未找到笔记数据')
+                           alert('未找到笔记数据')
+                         }
+                       } else {
+                         console.warn('❌ [查看原文] 未找到原始任务数据')
+                         alert('未找到原始任务数据')
+                       }
+                     }}
+                  >
+                    <span className="flex items-center gap-1">
+                      查看原文
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </span>
+                  </Badge>
+                </div>
+                <Badge className="text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-1.5 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 rounded-full border-0 font-medium">
                   图文笔记
                 </Badge>
               </div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-2">
                 {task.noteTitle}
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                已完成 <span className="font-semibold text-green-600 dark:text-green-400">{completedCount}</span> 篇
+              <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    已完成 <span className="font-bold text-green-600 dark:text-green-400">{completedCount}</span> 篇
+                  </span>
+                </div>
                 {generatingCount > 0 && (
-                  <>
-                    ，生成中 <span className="font-semibold text-yellow-600 dark:text-yellow-400">{generatingCount}</span> 篇
-                  </>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      生成中 <span className="font-bold text-yellow-600 dark:text-yellow-400">{generatingCount}</span> 篇
+                    </span>
+                  </div>
                 )}
-                ，共 <span className="font-semibold text-purple-600 dark:text-purple-400">{task.results?.length || 0}</span> 篇内容
-              </p>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-purple-500 rounded-full"></div>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    共 <span className="font-bold text-purple-600 dark:text-purple-400">{task.results?.length || 0}</span> 篇内容
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Export Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Export Buttons - 响应式布局 */}
+          <div className="flex items-center gap-3 flex-shrink-0">
             <Button
               onClick={handleExportExcel}
-              size="lg"
+              size="sm"
               disabled={completedCount === 0}
-              className="h-10 px-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 sm:h-12 px-4 sm:px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl sm:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 text-sm sm:text-base"
             >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              导出Excel ({completedCount})
+              <FileSpreadsheet className="h-5 w-5 mr-2" />
+              <span className="font-medium">导出Excel ({completedCount})</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Generated Results - 固定3列布局，优化间距确保内容完全展示 */}
-      <div className="flex-1 overflow-y-auto p-4 xl:p-6">
-        <div className="max-w-none mx-auto">
-          {/* 
-            固定3列布局：
-            - 小屏幕（<768px）：1列
-            - 中等屏幕（768px-1024px）：2列  
-            - 大屏幕（>=1024px）：3列 - 固定3列，减少间距确保内容完全展示
-          */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
-            {task.results?.map((result, index) => (
-              <ContentDisplay 
-                key={result.id} 
-                result={result} 
-                index={index}
-              />
-            )) || []}
-          </div>
+      {/* Generated Results - 优化的网格布局，更大的展示空间 */}
+      <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-slate-800/50">
+        <div className="w-full max-w-none">
+          {task.results && task.results.length > 0 ? (
+            /* 
+              竖向排列布局：
+              - 所有屏幕尺寸都使用单列布局，便于阅读对比
+              - 增加间距，提升视觉体验
+            */
+            <div className="grid grid-cols-1 gap-8">
+              {task.results.map((result, index) => (
+                <ContentDisplay 
+                  key={result.id} 
+                  result={result} 
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                  暂无生成内容
+                </h3>
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                  内容正在生成中，请稍候...
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
