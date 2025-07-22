@@ -302,6 +302,10 @@ export interface Note {
   content: string
   tags: string[]
   publishTime: string
+  // note-rewrite场景的分类ID
+  track_id?: number
+  type_id?: number
+  tone_id?: number
   // 新增字段，用于存储原始数据
   originalData?: XiaohongshuNote
 }

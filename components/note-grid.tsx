@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Heart, User, Loader2, Search } from "lucide-react"
 import Image from "next/image"
 import { getProxiedImageUrl, createFastFallbackImageHandler } from "@/lib/image-utils"
+import type { NoteTrack, NoteType, NoteTone } from "@/lib/types"
 
 interface Note {
   id: string
@@ -17,6 +18,10 @@ interface Note {
   content: string
   tags: string[]
   publishTime: string
+  // note-rewrite场景的分类ID
+  track_id?: number
+  type_id?: number
+  tone_id?: number
 }
 
 interface NoteGridProps {
@@ -31,6 +36,10 @@ interface NoteGridProps {
   hasMore?: boolean
   isLoadingMore?: boolean
   onLoadMore?: () => void
+  // note-rewrite场景的分类数据
+  noteTrackList?: NoteTrack[]
+  noteTypeList?: NoteType[]
+  noteToneList?: NoteTone[]
 }
 
 export function NoteGrid({ 
@@ -43,7 +52,10 @@ export function NoteGrid({
   context = 'search',
   hasMore = false,
   isLoadingMore = false,
-  onLoadMore
+  onLoadMore,
+  noteTrackList = [],
+  noteTypeList = [],
+  noteToneList = []
 }: NoteGridProps) {
   // 加载状态显示
   if (isLoading) {
@@ -478,28 +490,78 @@ export function NoteGrid({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 {/* 标签展示 - 左下角 */}
-                {note.tags && note.tags.length > 0 && (
+                {context === 'note-rewrite' ? (
+                  // note-rewrite场景：显示分类标签（笔记赛道、类型、口吻）
                   <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-hidden">
-                      {note.tags.slice(0, 3).map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-black/70 backdrop-blur-sm rounded-full border border-white/30 shadow-sm hover:bg-black/80 transition-colors duration-200 max-w-[80px] truncate"
-                          title={tag} // 添加tooltip显示完整标签
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                      {note.tags.length > 3 && (
-                        <span 
-                          className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-purple-600/80 backdrop-blur-sm rounded-full border border-white/30 shadow-sm"
-                          title={`还有 ${note.tags.length - 3} 个标签: ${note.tags.slice(3).join(', ')}`} // 显示剩余标签
-                        >
-                          +{note.tags.length - 3}
-                        </span>
-                      )}
+                      {/* 笔记赛道 */}
+                      {note.track_id && noteTrackList.length > 0 && (() => {
+                        const track = noteTrackList.find(t => t.id === note.track_id)
+                        return track ? (
+                          <span
+                            key={`track-${track.id}`}
+                            className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-blue-600/80 backdrop-blur-sm rounded-full border border-white/30 shadow-sm max-w-[80px] truncate"
+                            title={`赛道: ${track.name}`}
+                          >
+                            {track.name}
+                          </span>
+                        ) : null
+                      })()}
+                      
+                      {/* 笔记类型 */}
+                      {note.type_id !== undefined && noteTypeList.length > 0 && (() => {
+                        const type = noteTypeList.find(t => t.id === note.type_id)
+                        return type ? (
+                          <span
+                            key={`type-${type.id}`}
+                            className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-green-600/80 backdrop-blur-sm rounded-full border border-white/30 shadow-sm max-w-[80px] truncate"
+                            title={`类型: ${type.name}`}
+                          >
+                            {type.name}
+                          </span>
+                        ) : null
+                      })()}
+                      
+                      {/* 笔记口吻 */}
+                      {note.tone_id !== undefined && noteToneList.length > 0 && (() => {
+                        const tone = noteToneList.find(t => t.id === note.tone_id)
+                        return tone ? (
+                          <span
+                            key={`tone-${tone.id}`}
+                            className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-purple-600/80 backdrop-blur-sm rounded-full border border-white/30 shadow-sm max-w-[80px] truncate"
+                            title={`口吻: ${tone.name}`}
+                          >
+                            {tone.name}
+                          </span>
+                        ) : null
+                      })()}
                     </div>
                   </div>
+                ) : (
+                  // 其他场景：显示原有的内容标签
+                  note.tags && note.tags.length > 0 && (
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10">
+                      <div className="flex flex-wrap gap-1 max-h-12 overflow-hidden">
+                        {note.tags.slice(0, 3).map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-black/70 backdrop-blur-sm rounded-full border border-white/30 shadow-sm hover:bg-black/80 transition-colors duration-200 max-w-[80px] truncate"
+                            title={tag}
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                        {note.tags.length > 3 && (
+                          <span 
+                            className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-purple-600/80 backdrop-blur-sm rounded-full border border-white/30 shadow-sm"
+                            title={`还有 ${note.tags.length - 3} 个标签: ${note.tags.slice(3).join(', ')}`}
+                          >
+                            +{note.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             </div>

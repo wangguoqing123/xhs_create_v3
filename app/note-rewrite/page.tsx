@@ -74,6 +74,10 @@ export default function NoteRewritePageNew() {
       content: content.content,
       tags: content.tags,
       publishTime: content.published_at || content.created_at,
+      // 添加分类ID信息
+      track_id: content.track_id,
+      type_id: content.type_id,
+      tone_id: content.tone_id,
       originalData: {
         note_id: content.note_id || content.id,
         note_display_title: content.title,
@@ -477,6 +481,9 @@ export default function NoteRewritePageNew() {
             hasMore={pagination.hasMore}
             isLoadingMore={isLoadingMore}
             onLoadMore={handleLoadMore}
+            noteTrackList={noteTrackList}
+            noteTypeList={noteTypeList}
+            noteToneList={noteToneList}
           />
         </div>
       )}
