@@ -210,7 +210,7 @@ export default function NoteRewritePageNew() {
   // 初始加载数据
   useEffect(() => {
     if (user && profile?.user_cookie) {
-      loadExplosiveContents()
+      loadExplosiveContents(false, 0) // 初始加载，从第一页开始
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile?.user_cookie])
@@ -223,7 +223,7 @@ export default function NoteRewritePageNew() {
       offset: 0,
       hasMore: true
     }))
-    loadExplosiveContents(false)
+    loadExplosiveContents(false, 0) // 筛选时从第一页开始
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
@@ -248,6 +248,16 @@ export default function NoteRewritePageNew() {
         [type]: newValues
       }
     })
+    
+    // 标签选择后自动筛选
+    setTimeout(() => {
+      setPagination(prev => ({
+        ...prev,
+        offset: 0,
+        hasMore: true
+      }))
+      loadExplosiveContents(false, 0)
+    }, 0)
   }, [])
 
   // 清除所有筛选
@@ -258,12 +268,16 @@ export default function NoteRewritePageNew() {
       tone_id: [],
       search: ''
     })
-    // 重置分页状态
+    // 重置分页状态并重新加载数据
     setPagination(prev => ({
       ...prev,
       offset: 0,
       hasMore: true
     }))
+    // 使用setTimeout确保状态更新后再加载
+    setTimeout(() => {
+      loadExplosiveContents(false, 0)
+    }, 0)
   }, [])
 
   // 处理笔记选择（用于批量操作）
