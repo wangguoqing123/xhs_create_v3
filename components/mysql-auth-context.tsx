@@ -62,6 +62,28 @@ const storage = {
   }
 }
 
+// 检查用户积分重置的函数（静默执行，不影响用户体验）
+const checkUserCreditsReset = async (userId: string) => {
+  try {
+    const response = await fetch('/api/credits/check-reset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user_id: userId }),
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      console.log('✅ [积分检查] 积分重置检查完成:', data.message || '检查完成')
+    }
+  } catch (error) {
+    console.log('⚠️ [积分检查] 积分重置检查失败，静默忽略:', error)
+    // 静默处理错误，不影响用户体验
+  }
+}
+
 export function MySQLAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -99,6 +121,10 @@ export function MySQLAuthProvider({ children }: { children: ReactNode }) {
           setUser(storedUser)
           setProfile(storedProfile)
           setLoading(false)
+          
+          // 在后台检查积分重置
+          checkUserCreditsReset(storedUser.id)
+          
           return true
         }
       }
@@ -149,6 +175,12 @@ export function MySQLAuthProvider({ children }: { children: ReactNode }) {
       
       if (data.success && data.user) {
         console.log('✅ [认证上下文] 获取用户信息成功')
+        
+        // 获取用户信息后，检查积分重置
+        if (data.user.id) {
+          checkUserCreditsReset(data.user.id)
+        }
+        
         return { user: data.user, error: null }
       } else {
         console.log('❌ [认证上下文] 获取用户信息失败:', data.error)
@@ -197,6 +229,9 @@ export function MySQLAuthProvider({ children }: { children: ReactNode }) {
     
     console.log('🔄 [刷新资料] 开始刷新用户资料')
     try {
+      // 先检查积分重置
+      await checkUserCreditsReset(user.id)
+      
       const { user: currentUser } = await getCurrentUser()
       if (currentUser) {
         console.log('✅ [刷新资料] 获取到最新用户数据:', {
@@ -261,6 +296,9 @@ export function MySQLAuthProvider({ children }: { children: ReactNode }) {
         setProfile(data.user as Profile)
         saveToStorage(data.user, data.user as Profile)
         setLoading(false)
+        
+        // 登录成功后检查积分重置
+        await checkUserCreditsReset(data.user.id)
         
         return { success: true }
       } else {

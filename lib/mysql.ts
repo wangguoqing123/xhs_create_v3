@@ -1885,21 +1885,25 @@ export const searchUsers = async (searchTerm: string, limit: number = 20) => {
     // 获取安全连接
     const connection = await getSafeConnection()
     
-    // 查询用户基本信息和积分
+    // 查询用户基本信息、积分和会员状态
     const query = `
       SELECT 
-        u.id,
-        u.email,
-        COALESCE(p.display_name, '') as display_name,
-        COALESCE(p.credits, 0) as credits,
+        ums.user_id as id,
+        ums.email,
+        ums.display_name,
+        ums.credits,
         u.created_at,
-        NULL as membership_type,
-        NULL as membership_status,
-        NULL as membership_end,
-        FALSE as is_active_member
+        ums.membership_type,
+        ums.membership_status,
+        ums.membership_end,
+        ums.is_active_member,
+        ums.membership_level,
+        ums.membership_duration,
+        ums.monthly_credits,
+        ums.next_credits_reset
       FROM users u
-      LEFT JOIN profiles p ON u.id = p.id
-      WHERE u.email LIKE ? OR (p.display_name IS NOT NULL AND p.display_name LIKE ?)
+      LEFT JOIN user_membership_status ums ON u.id = ums.user_id
+      WHERE u.email LIKE ? OR (ums.display_name IS NOT NULL AND ums.display_name LIKE ?)
       ORDER BY u.created_at DESC
       LIMIT ${limit}
     `
@@ -1999,9 +2003,11 @@ export const adminGrantCredits = async (
   }
 }
 
-// 管理员设置用户为月会员
-export const adminSetMonthlyMembership = async (
-  userId: string, 
+// 管理员设置用户会员 - 通用函数
+export const adminSetMembership = async (
+  userId: string,
+  membershipLevel: 'lite' | 'pro' | 'premium',
+  membershipDuration: 'monthly' | 'yearly',
   adminUser: string, 
   reason?: string,
   ipAddress?: string,
@@ -2019,18 +2025,18 @@ export const adminSetMonthlyMembership = async (
     // 获取安全连接
     const connection = await getSafeConnection()
     
-    // 调用存储过程
+    // 调用新的通用存储过程
     const [result] = await connection.execute(
-      'CALL SetMonthlyMembership(?, ?, ?)',
-      [userId, adminUser, reason || '管理员设置月会员']
+      'CALL SetMembership(?, ?, ?, ?, ?)',
+      [userId, membershipLevel, membershipDuration, adminUser, reason || `管理员设置${membershipLevel}会员`]
     )
     
     connection.release()
     
-    console.log('✅ [管理员设置月会员] 操作成功:', { userId, adminUser })
+    console.log('✅ [管理员设置会员] 操作成功:', { userId, membershipLevel, membershipDuration, adminUser })
     return { success: true, error: null }
   } catch (error) {
-    console.error('❌ [管理员设置月会员] 操作失败:', error)
+    console.error('❌ [管理员设置会员] 操作失败:', error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : '操作失败' 
@@ -2038,7 +2044,18 @@ export const adminSetMonthlyMembership = async (
   }
 }
 
-// 管理员设置用户为年会员
+// 管理员设置用户为月会员 (兼容性函数 - 映射到lite月会员)
+export const adminSetMonthlyMembership = async (
+  userId: string, 
+  adminUser: string, 
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  return adminSetMembership(userId, 'lite', 'monthly', adminUser, reason, ipAddress, userAgent)
+}
+
+// 管理员设置用户为年会员 (兼容性函数 - 映射到pro年会员)
 export const adminSetYearlyMembership = async (
   userId: string, 
   adminUser: string, 
@@ -2046,35 +2063,7 @@ export const adminSetYearlyMembership = async (
   ipAddress?: string,
   userAgent?: string
 ) => {
-  // 检查MySQL配置
-  if (!isMySQLConfigured) {
-    return { 
-      success: false, 
-      error: '请先配置 MySQL 环境变量' 
-    }
-  }
-
-  try {
-    // 获取安全连接
-    const connection = await getSafeConnection()
-    
-    // 调用存储过程
-    const [result] = await connection.execute(
-      'CALL SetYearlyMembership(?, ?, ?)',
-      [userId, adminUser, reason || '管理员设置年会员']
-    )
-    
-    connection.release()
-    
-    console.log('✅ [管理员设置年会员] 操作成功:', { userId, adminUser })
-    return { success: true, error: null }
-  } catch (error) {
-    console.error('❌ [管理员设置年会员] 操作失败:', error)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : '操作失败' 
-    }
-  }
+  return adminSetMembership(userId, 'pro', 'yearly', adminUser, reason, ipAddress, userAgent)
 }
 
 // 管理员赠送积分包
@@ -2443,3 +2432,51 @@ export const createCoverUpdateLog = async (
     }
   }
 }
+
+// 检查并重置用户积分（按个人会员周期）
+export const checkAndResetUserCredits = async (userId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 调用积分重置检查存储过程
+    const [result] = await connection.execute(
+      'CALL CheckAndResetUserCredits(?)',
+      [userId]
+    )
+    
+    connection.release()
+    
+    console.log('✅ [检查用户积分重置] 检查成功:', { userId, result })
+    return { success: true, data: result, error: null }
+  } catch (error) {
+    console.error('❌ [检查用户积分重置] 检查失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '检查失败' 
+    }
+  }
+}
+
+// 获取用户资料时自动检查积分重置
+export const getProfileWithCreditsCheck = async (userId: string) => {
+  try {
+    // 先检查并重置积分（如果需要）
+    await checkAndResetUserCredits(userId)
+    
+    // 然后获取最新的用户资料
+    return await getProfile(userId)
+  } catch (error) {
+    console.error('❌ [获取用户资料并检查积分] 失败:', error)
+    return await getProfile(userId) // 如果检查失败，至少返回用户资料
+  }
+}
+

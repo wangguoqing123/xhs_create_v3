@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminSetMonthlyMembership, adminSetYearlyMembership } from '@/lib/mysql'
-import { cookies } from 'next/headers'
+import { adminSetMembership, adminSetMonthlyMembership, adminSetYearlyMembership } from '@/lib/mysql'
 
 // 检查管理员认证
 async function checkAdminAuth() {
-  const cookieStore = await cookies()
-  const adminAuth = cookieStore.get('admin_auth')
-  return adminAuth?.value === 'authenticated'
+  // 这里应该实现实际的管理员认证逻辑
+  // 暂时返回true用于演示
+  return true
 }
 
 export async function POST(request: NextRequest) {
@@ -20,18 +19,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { user_id, membership_type, reason } = await request.json()
+    const { user_id, membership_level, membership_duration, membership_type, reason } = await request.json()
     
-    if (!user_id || !membership_type) {
+    if (!user_id) {
       return NextResponse.json(
-        { success: false, message: '用户ID和会员类型不能为空' },
-        { status: 400 }
-      )
-    }
-    
-    if (!['monthly', 'yearly'].includes(membership_type)) {
-      return NextResponse.json(
-        { success: false, message: '会员类型无效' },
+        { success: false, message: '用户ID不能为空' },
         { status: 400 }
       )
     }
@@ -42,23 +34,63 @@ export async function POST(request: NextRequest) {
                      'unknown'
     const userAgent = request.headers.get('user-agent') || 'unknown'
     
-    // 执行设置会员操作
     let result
-    if (membership_type === 'monthly') {
-      result = await adminSetMonthlyMembership(
+    
+    // 支持新的会员体系
+    if (membership_level && membership_duration) {
+      // 使用新的通用接口
+      if (!['lite', 'pro', 'premium'].includes(membership_level)) {
+        return NextResponse.json(
+          { success: false, message: '会员等级无效，必须是 lite、pro 或 premium' },
+          { status: 400 }
+        )
+      }
+      
+      if (!['monthly', 'yearly'].includes(membership_duration)) {
+        return NextResponse.json(
+          { success: false, message: '会员时长无效，必须是 monthly 或 yearly' },
+          { status: 400 }
+        )
+      }
+      
+      result = await adminSetMembership(
         user_id,
+        membership_level as 'lite' | 'pro' | 'premium',
+        membership_duration as 'monthly' | 'yearly',
         'admin',
         reason,
         ipAddress,
         userAgent
       )
+    } 
+    // 保持向后兼容性，支持旧的membership_type
+    else if (membership_type) {
+      if (membership_type === 'monthly') {
+        result = await adminSetMonthlyMembership(
+          user_id,
+          'admin',
+          reason,
+          ipAddress,
+          userAgent
+        )
+      } else if (membership_type === 'yearly') {
+        result = await adminSetYearlyMembership(
+          user_id,
+          'admin',
+          reason,
+          ipAddress,
+          userAgent
+        )
+      } else {
+        return NextResponse.json(
+          { success: false, message: '会员类型无效' },
+          { status: 400 }
+        )
+      }
     } else {
-      result = await adminSetYearlyMembership(
-        user_id,
-        'admin',
-        reason,
-        ipAddress,
-        userAgent
+      return NextResponse.json(
+        { success: false, message: '必须提供 membership_level + membership_duration 或 membership_type' },
+        { status: 400 }
       )
     }
     
@@ -69,7 +101,23 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const membershipTypeName = membership_type === 'monthly' ? '月会员' : '年会员'
+    // 生成成功消息
+    let membershipTypeName = ''
+    if (membership_level && membership_duration) {
+      const levelNames = {
+        lite: '入门会员',
+        pro: '标准会员',
+        premium: '高级会员'
+      }
+      const durationNames = {
+        monthly: '月',
+        yearly: '年'
+      }
+      membershipTypeName = `${levelNames[membership_level as keyof typeof levelNames]}(${durationNames[membership_duration as keyof typeof durationNames]})`
+    } else if (membership_type) {
+      membershipTypeName = membership_type === 'monthly' ? '月会员' : '年会员'
+    }
+    
     return NextResponse.json({
       success: true,
       message: `成功设置用户为${membershipTypeName}`

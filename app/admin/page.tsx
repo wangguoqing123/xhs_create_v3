@@ -26,7 +26,12 @@ interface User {
   credits: number
   is_active_member: boolean
   membership_type: string | null
+  membership_status: string | null
   membership_end: string | null
+  membership_level: string | null
+  membership_duration: string | null
+  monthly_credits: number | null
+  next_credits_reset: string | null
   created_at: string
 }
 
@@ -418,7 +423,7 @@ export default function AdminPageNew() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/admin/users/search?query=${encodeURIComponent(searchTerm)}`)
+      const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`)
       const data = await response.json()
       if (data.success) {
         setSearchResults(data.data)
@@ -441,6 +446,44 @@ export default function AdminPageNew() {
       }
     } catch (error) {
       console.error('加载管理日志失败:', error)
+    }
+  }
+
+  // 快速设置用户为标准会员
+  const handleQuickSetMembership = async (userId: string, userEmail: string) => {
+    if (!confirm(`确定要将用户 ${userEmail} 设置为标准会员(月付)吗？`)) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/admin/operations/set-membership', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          membership_level: 'pro',
+          membership_duration: 'monthly',
+          reason: '管理员快速设置'
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setMessage(`成功设置用户 ${userEmail} 为标准会员`)
+        // 重新搜索以更新显示
+        if (searchTerm) {
+          await handleUserSearch()
+        }
+      } else {
+        setMessage(data.message || '设置会员失败')
+      }
+    } catch (error) {
+      setMessage('设置会员失败')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -1021,13 +1064,70 @@ export default function AdminPageNew() {
                   </div>
                   
                   {searchResults.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
+                      <div className="text-sm text-gray-600 mb-2">
+                        找到 {searchResults.length} 个用户
+                      </div>
                       {searchResults.map(user => (
-                        <div key={user.id} className="flex items-center justify-between p-3 border rounded">
-                          <div>
-                            <div className="font-medium">{user.email}</div>
-                            <div className="text-sm text-gray-500">
-                              积分: {user.credits} | 会员: {user.is_active_member ? '是' : '否'}
+                        <div key={user.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold text-lg text-gray-900 mb-1">
+                                {user.email}
+                              </div>
+                              <div className="text-sm text-gray-600 mb-2">
+                                昵称: {user.display_name || '未设置'}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-600">积分:</span>
+                                  <span className="font-semibold text-blue-600">{user.credits}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-600">注册时间:</span>
+                                  <span className="text-gray-500">{new Date(user.created_at).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                              
+                              {/* 会员信息 */}
+                              {user.is_active_member && user.membership_level && (
+                                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="text-sm font-medium text-blue-800 mb-1">
+                                    {user.membership_level === 'lite' ? '入门' : user.membership_level === 'pro' ? '标准' : '高级'}会员 
+                                    ({user.membership_duration === 'monthly' ? '月付' : '年付'})
+                                  </div>
+                                  {user.monthly_credits && (
+                                    <div className="text-sm text-blue-600">
+                                      月额度: {user.monthly_credits} 积分
+                                    </div>
+                                  )}
+                                  {user.next_credits_reset && (
+                                    <div className="text-xs text-blue-500 mt-1">
+                                      下次积分重置: {new Date(user.next_credits_reset).toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex flex-col items-end gap-2 ml-6">
+                              <Badge 
+                                variant={user.is_active_member ? "default" : "secondary"}
+                                className="px-3 py-1"
+                              >
+                                {user.is_active_member ? '会员用户' : '普通用户'}
+                              </Badge>
+                              
+                              {!user.is_active_member && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleQuickSetMembership(user.id, user.email)}
+                                  className="text-xs px-3 py-1"
+                                >
+                                  设为会员
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>

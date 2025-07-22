@@ -597,18 +597,25 @@ export interface RewriteRecordListParams {
 // 会员系统相关类型定义
 // ============================================
 
-// 会员类型
-export type MembershipType = 'monthly' | 'yearly'
+// 会员等级类型
+export type MembershipLevel = 'lite' | 'pro' | 'premium'
+export type MembershipDuration = 'monthly' | 'yearly'
 export type MembershipStatus = 'active' | 'expired' | 'cancelled'
+
+// 完整会员类型（用于兼容性）
+export type MembershipType = 'lite_monthly' | 'lite_yearly' | 'pro_monthly' | 'pro_yearly' | 'premium_monthly' | 'premium_yearly'
 
 // 会员信息
 export interface Membership {
   id: string
   user_id: string
-  membership_type: MembershipType
+  membership_level: MembershipLevel
+  membership_duration: MembershipDuration
   status: MembershipStatus
   start_date: string
   end_date: string
+  monthly_credits: number
+  last_credits_reset: string | null
   auto_renew: boolean
   created_at: string
   updated_at: string
@@ -617,11 +624,24 @@ export interface Membership {
 // 会员信息插入类型
 export interface MembershipInsert {
   user_id: string
-  membership_type: MembershipType
+  membership_level: MembershipLevel
+  membership_duration: MembershipDuration
   status?: MembershipStatus
   start_date: string
   end_date: string
+  monthly_credits: number
+  last_credits_reset?: string | null
   auto_renew?: boolean
+}
+
+// 会员配置信息
+export interface MembershipConfig {
+  level: MembershipLevel
+  duration: MembershipDuration
+  credits: number
+  price: number
+  originalPrice?: number
+  discount?: number
 }
 
 // 积分包记录
@@ -687,13 +707,19 @@ export interface UserMembershipStatus {
   email: string
   display_name: string | null
   credits: number
-  membership_type: MembershipType | null
+  membership_type: string | null // 格式：'lite_monthly', 'pro_yearly' 等
+  membership_level: MembershipLevel | null
+  membership_duration: MembershipDuration | null
   membership_status: MembershipStatus | null
   membership_start: string | null
   membership_end: string | null
+  monthly_credits: number | null
+  last_credits_reset: string | null
+  next_credits_reset: string | null
   is_active_member: boolean
-  is_yearly_member: boolean
-  is_monthly_member: boolean
+  is_lite_member: boolean
+  is_pro_member: boolean
+  is_premium_member: boolean
 }
 
 // 管理后台相关类型
