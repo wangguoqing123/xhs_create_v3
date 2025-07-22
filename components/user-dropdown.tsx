@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { CookieSettingsModal } from '@/components/cookie-settings-modal'
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal'
+import { MembershipInfoCard } from '@/components/membership-info-card'
 import { useRouter } from 'next/navigation'
 
 
@@ -137,7 +138,7 @@ export const UserDropdown = memo(function UserDropdown() {
           >
             {/* 用户信息头部 */}
             <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-600">
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 mb-3">
                 <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
                   <User className="h-4 w-4 text-white" />
                 </div>
@@ -150,6 +151,9 @@ export const UserDropdown = memo(function UserDropdown() {
                   </p>
                 </div>
               </div>
+              
+              {/* 会员状态显示 */}
+              <MembershipInfoCard />
             </div>
 
             {/* 菜单项 */}

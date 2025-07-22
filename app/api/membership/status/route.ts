@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserMembershipStatus } from '@/lib/mysql'
 import { getProfile } from '@/lib/mysql'
+import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // 从cookie中获取用户ID（这里假设有认证中间件设置了用户信息）
-    const authCookie = request.cookies.get('auth_user_id')
+    // 从Cookie中获取JWT令牌进行用户认证（与其他API保持一致）
+    const token = request.cookies.get('auth_token')?.value
     
-    if (!authCookie) {
+    if (!token) {
       return NextResponse.json(
         { success: false, message: '未登录' },
         { status: 401 }
       )
     }
     
-    const userId = authCookie.value
+    // 验证JWT令牌
+    const payload = verifyToken(token)
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, message: '用户认证失败' },
+        { status: 401 }
+      )
+    }
+    
+    const userId = payload.userId
     
     // 获取用户会员状态
     const membershipResult = await getUserMembershipStatus(userId)
@@ -36,7 +46,7 @@ export async function GET(request: NextRequest) {
         )
       }
       
-      // 返回非会员状态
+      // 返回非会员状态 - 完整的数据结构
       return NextResponse.json({
         success: true,
         data: {
@@ -45,10 +55,18 @@ export async function GET(request: NextRequest) {
           display_name: profileResult.data.display_name,
           credits: profileResult.data.credits,
           membership_type: null,
+          membership_level: null,
+          membership_duration: null,
           membership_status: null,
           membership_start: null,
           membership_end: null,
+          monthly_credits: null,
+          last_credits_reset: null,
+          next_credits_reset: null,
           is_active_member: false,
+          is_lite_member: false,
+          is_pro_member: false,
+          is_premium_member: false,
           is_yearly_member: false,
           is_monthly_member: false
         }

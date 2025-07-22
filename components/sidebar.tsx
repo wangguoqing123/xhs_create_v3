@@ -27,6 +27,7 @@ import { AuthModal } from "@/components/auth-modal"
 import { UserDropdown } from "@/components/user-dropdown"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { CreditsDisplay } from "@/components/credits-display"
+import { MembershipInfoCard } from "@/components/membership-info-card"
 import { useSidebar } from "@/components/sidebar-context"
 import { cn } from "@/lib/utils"
 
@@ -249,9 +250,12 @@ export const Sidebar = memo(function Sidebar() {
     
     if (user) {
       return (
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-gray-200/50 dark:border-slate-700/50">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-gray-200/50 dark:border-slate-700/50 space-y-3">
+          {/* 会员状态显示 */}
+          <MembershipInfoCard />
+          
           {/* 积分显示 - 简洁版本 */}
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-2 mb-3 border border-purple-200/50 dark:border-purple-700/50">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-2 border border-purple-200/50 dark:border-purple-700/50">
             <div className="flex items-center space-x-2">
               <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
                 <Sparkles className="h-3 w-3 text-white" />

@@ -150,8 +150,10 @@ export const Header = memo(function Header() {
     
     if (user) {
       return (
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
+          {/* 积分显示 */}
           <CreditsDisplay />
+          {/* 用户下拉菜单 */}
           <UserDropdown />
         </div>
       )
@@ -175,7 +177,7 @@ export const Header = memo(function Header() {
     
     if (user) {
       return (
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <CreditsDisplay />
           <UserDropdown />
         </div>
@@ -221,24 +223,26 @@ export const Header = memo(function Header() {
             <NavLink href="/prices">定价方案</NavLink>
           </nav>
 
-          {/* 右侧操作区域 */}
-          <div className="flex items-center space-x-4">
-            {/* 主题切换 */}
+          {/* 右侧操作区域 - 世界级设计布局 */}
+          <div className="flex items-center space-x-3">
+            {/* 主题切换 - 精美样式 */}
             <div className="hidden lg:block">
               <ThemeToggle />
             </div>
             
-            {/* 用户相关 */}
-            {userSection}
+            {/* 用户相关区域 - 响应式布局 */}
+            <div className="flex items-center">
+              {userSection}
+            </div>
             
-            {/* 移动端菜单按钮 */}
+            {/* 移动端菜单按钮 - 现代化设计 */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleMobileMenuToggle}
-              className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
+              className="lg:hidden p-2.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 hover:scale-105"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </Button>
           </div>
         </div>
@@ -268,9 +272,17 @@ export const Header = memo(function Header() {
               定价方案
             </MobileNavLink>
 
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200/50 dark:border-slate-700/50">
-              <ThemeToggle />
-              {mobileUserSection}
+            {/* 移动端底部区域 - 用户信息和设置 */}
+            <div className="pt-4 mt-4 border-t border-gray-200/50 dark:border-slate-700/50 space-y-3">
+              {/* 主题切换 */}
+              <div className="flex justify-center">
+                <ThemeToggle />
+              </div>
+              
+              {/* 用户区域 */}
+              <div className="flex justify-center">
+                {mobileUserSection}
+              </div>
             </div>
           </div>
         </div>
