@@ -466,7 +466,7 @@ export function NoteGrid({
               </div>
 
               {/* Cover Image with 3:4 ratio */}
-              <div className="aspect-[3/4] bg-gray-100 dark:bg-slate-700 rounded-t-2xl overflow-hidden cursor-pointer" onClick={() => onNoteView(note)}>
+              <div className="aspect-[3/4] bg-gray-100 dark:bg-slate-700 rounded-t-2xl overflow-hidden cursor-pointer relative" onClick={() => onNoteView(note)}>
                 <Image
                   src={getProxiedImageUrl(note.cover || "/placeholder.svg")} // 使用代理URL
                   alt={note.title}
@@ -476,6 +476,31 @@ export function NoteGrid({
                   onError={createFastFallbackImageHandler(note.cover, "/placeholder.svg")} // 添加快速降级错误处理
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                {/* 标签展示 - 左下角 */}
+                {note.tags && note.tags.length > 0 && (
+                  <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10">
+                    <div className="flex flex-wrap gap-1 max-h-12 overflow-hidden">
+                      {note.tags.slice(0, 3).map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-black/70 backdrop-blur-sm rounded-full border border-white/30 shadow-sm hover:bg-black/80 transition-colors duration-200 max-w-[80px] truncate"
+                          title={tag} // 添加tooltip显示完整标签
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                      {note.tags.length > 3 && (
+                        <span 
+                          className="inline-block px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white bg-purple-600/80 backdrop-blur-sm rounded-full border border-white/30 shadow-sm"
+                          title={`还有 ${note.tags.length - 3} 个标签: ${note.tags.slice(3).join(', ')}`} // 显示剩余标签
+                        >
+                          +{note.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
