@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Search, Users, CreditCard, Clock, FileText, Plus, Edit, Trash2, 
-  ExternalLink, CheckCircle, XCircle, Upload, AlertCircle, RefreshCw 
+  ExternalLink, CheckCircle, XCircle, Upload, AlertCircle, RefreshCw, Loader2 
 } from 'lucide-react'
 import type { 
   ExplosiveContent, NoteTrack, NoteType, NoteTone,
@@ -76,6 +76,14 @@ export default function AdminPageNew() {
   const [linkImportText, setLinkImportText] = useState('')
   const [linkImportResult, setLinkImportResult] = useState<XhsLinkImportResponse | null>(null)
   const [linkImportLoading, setLinkImportLoading] = useState(false)
+
+  // 分类管理相关状态
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const [categoryType, setCategoryType] = useState<'track' | 'type' | 'tone'>('track')
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: ''
+  })
 
   // 检查认证状态
   useEffect(() => {
@@ -168,6 +176,67 @@ export default function AdminPageNew() {
       }
     } catch (error) {
       console.error('加载类型数据失败:', error)
+    }
+  }
+
+  // 分类管理功能函数
+  const handleAddCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      setMessage('分类名称不能为空')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const apiPath = categoryType === 'track' ? 'note-tracks' : 
+                     categoryType === 'type' ? 'note-types' : 'note-tones'
+      
+      const response = await fetch(`/api/admin/${apiPath}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryForm)
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setMessage(data.message)
+        setCategoryForm({ name: '', description: '' })
+        setShowAddCategoryModal(false)
+        loadTypeData() // 重新加载数据
+      } else {
+        setMessage(data.message || '添加失败')
+      }
+    } catch (error) {
+      setMessage('添加失败')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteCategory = async (id: number, type: 'track' | 'type' | 'tone') => {
+    const typeNames = { track: '赛道', type: '类型', tone: '口吻' }
+    if (!confirm(`确定要删除这个${typeNames[type]}吗？`)) return
+
+    setIsLoading(true)
+    try {
+      const apiPath = type === 'track' ? 'note-tracks' : 
+                     type === 'type' ? 'note-types' : 'note-tones'
+      
+      const response = await fetch(`/api/admin/${apiPath}?id=${id}`, {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setMessage(data.message)
+        loadTypeData() // 重新加载数据
+      } else {
+        setMessage(data.message || '删除失败')
+      }
+    } catch (error) {
+      setMessage('删除失败')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -388,6 +457,10 @@ export default function AdminPageNew() {
               <TabsTrigger value="contents">
                 <FileText className="w-4 h-4 mr-2" />
                 爆款内容
+              </TabsTrigger>
+              <TabsTrigger value="categories">
+                <Plus className="w-4 h-4 mr-2" />
+                分类管理
               </TabsTrigger>
               <TabsTrigger value="users">
                 <Users className="w-4 h-4 mr-2" />
@@ -672,6 +745,170 @@ export default function AdminPageNew() {
                           ) : (
                             '开始导入'
                           )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="categories" className="space-y-6">
+              {/* 分类管理 */}
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">分类管理</h2>
+                <Button
+                  onClick={() => setShowAddCategoryModal(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  添加分类
+                </Button>
+              </div>
+
+              {/* 分类列表 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* 笔记赛道 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg text-blue-600">笔记赛道</CardTitle>
+                    <CardDescription>管理笔记的内容赛道分类</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {noteTrackList.map((track) => (
+                      <div key={track.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{track.name}</div>
+                          {track.description && (
+                            <div className="text-sm text-gray-600">{track.description}</div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(track.id, 'track')}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* 笔记类型 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg text-green-600">笔记类型</CardTitle>
+                    <CardDescription>管理笔记的内容类型分类</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {noteTypeList.map((type) => (
+                      <div key={type.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{type.name}</div>
+                          {type.description && (
+                            <div className="text-sm text-gray-600">{type.description}</div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(type.id, 'type')}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* 笔记口吻 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg text-purple-600">笔记口吻</CardTitle>
+                    <CardDescription>管理笔记的表达口吻分类</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {noteToneList.map((tone) => (
+                      <div key={tone.id} className="flex items-center justify-between p-2 bg-purple-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{tone.name}</div>
+                          {tone.description && (
+                            <div className="text-sm text-gray-600">{tone.description}</div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(tone.id, 'tone')}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* 添加分类模态框 */}
+              {showAddCategoryModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <Card className="w-full max-w-md mx-4">
+                    <CardHeader>
+                      <CardTitle>添加新分类</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label>分类类型</Label>
+                        <Select value={categoryType} onValueChange={(value: 'track' | 'type' | 'tone') => setCategoryType(value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="track">笔记赛道</SelectItem>
+                            <SelectItem value="type">笔记类型</SelectItem>
+                            <SelectItem value="tone">笔记口吻</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>分类名称</Label>
+                        <Input
+                          value={categoryForm.name}
+                          onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                          placeholder="请输入分类名称"
+                        />
+                      </div>
+                      <div>
+                        <Label>分类描述（可选）</Label>
+                        <Textarea
+                          value={categoryForm.description}
+                          onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                          placeholder="请输入分类描述"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleAddCategory}
+                          disabled={isLoading}
+                          className="flex-1"
+                        >
+                          {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          添加
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowAddCategoryModal(false)
+                            setCategoryForm({ name: '', description: '' })
+                          }}
+                          className="flex-1"
+                        >
+                          取消
                         </Button>
                       </div>
                     </CardContent>

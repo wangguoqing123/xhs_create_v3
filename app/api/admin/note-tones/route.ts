@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { getNoteToneList } from '@/lib/mysql-explosive-contents'
+import { cookies } from 'next/headers'
+import { getPool } from '@/lib/mysql'
 
 // 检查管理员认证
 async function checkAdminAuth() {
@@ -38,6 +39,146 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('获取笔记口吻列表错误:', error)
+    return NextResponse.json(
+      { success: false, message: '服务器错误' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST方法：添加笔记口吻
+export async function POST(request: NextRequest) {
+  try {
+    // 检查管理员认证
+    const isAuthenticated = await checkAdminAuth()
+    if (!isAuthenticated) {
+      return NextResponse.json(
+        { success: false, message: '未授权访问' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { name, description } = body
+    
+    if (!name) {
+      return NextResponse.json(
+        { success: false, message: '口吻名称不能为空' },
+        { status: 400 }
+      )
+    }
+
+    const connection = await getPool().getConnection()
+    
+    try {
+      // 获取下一个可用的ID
+      const [maxIdResult] = await connection.execute(
+        'SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM note_tones'
+      ) as any[]
+      const nextId = maxIdResult[0].next_id
+
+      // 插入新口吻
+      await connection.execute(
+        'INSERT INTO note_tones (id, name, description, status) VALUES (?, ?, ?, ?)',
+        [nextId, name, description || null, 'enabled']
+      )
+
+      // 获取新创建的口吻
+      const [rows] = await connection.execute(
+        'SELECT * FROM note_tones WHERE id = ?',
+        [nextId]
+      ) as any[]
+
+      return NextResponse.json({
+        success: true,
+        message: '口吻添加成功',
+        data: rows[0]
+      })
+
+    } finally {
+      connection.release()
+    }
+
+  } catch (error: any) {
+    console.error('添加笔记口吻错误:', error)
+    
+    // 处理重复名称错误
+    if (error.code === 'ER_DUP_ENTRY') {
+      return NextResponse.json(
+        { success: false, message: '口吻名称已存在' },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { success: false, message: '服务器错误' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE方法：删除笔记口吻
+export async function DELETE(request: NextRequest) {
+  try {
+    // 检查管理员认证
+    const isAuthenticated = await checkAdminAuth()
+    if (!isAuthenticated) {
+      return NextResponse.json(
+        { success: false, message: '未授权访问' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: '口吻ID不能为空' },
+        { status: 400 }
+      )
+    }
+
+    const connection = await getPool().getConnection()
+    
+    try {
+      // 检查是否有关联的爆款内容
+      const [contentRows] = await connection.execute(
+        'SELECT COUNT(*) as count FROM explosive_contents WHERE tone_id = ?',
+        [parseInt(id)]
+      ) as any[]
+      
+      if (contentRows[0].count > 0) {
+        return NextResponse.json(
+          { success: false, message: '该口吻下还有内容，无法删除' },
+          { status: 400 }
+        )
+      }
+
+      // 删除口吻
+      const [result] = await connection.execute(
+        'DELETE FROM note_tones WHERE id = ?',
+        [parseInt(id)]
+      ) as any[]
+
+      if (result.affectedRows === 0) {
+        return NextResponse.json(
+          { success: false, message: '口吻不存在' },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: '口吻删除成功'
+      })
+
+    } finally {
+      connection.release()
+    }
+
+  } catch (error) {
+    console.error('删除笔记口吻错误:', error)
     return NextResponse.json(
       { success: false, message: '服务器错误' },
       { status: 500 }
