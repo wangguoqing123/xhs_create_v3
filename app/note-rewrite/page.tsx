@@ -200,7 +200,7 @@ export default function NoteRewritePageNew() {
         setIsLoading(false)
       }
     }
-  }, [user, filters, pagination.limit, pagination.offset])
+  }, [user, filters, pagination.limit])
 
   // 初始化数据
   useEffect(() => {
@@ -212,7 +212,8 @@ export default function NoteRewritePageNew() {
     if (user && profile?.user_cookie) {
       loadExplosiveContents()
     }
-  }, [user, profile?.user_cookie, loadExplosiveContents])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile?.user_cookie])
 
   // 处理筛选
   const handleFilter = useCallback(() => {
@@ -223,14 +224,16 @@ export default function NoteRewritePageNew() {
       hasMore: true
     }))
     loadExplosiveContents(false)
-  }, [loadExplosiveContents])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   
   // 加载更多
   const handleLoadMore = useCallback(() => {
     if (pagination.hasMore && !isLoadingMore) {
       loadExplosiveContents(true)
     }
-  }, [pagination.hasMore, isLoadingMore, loadExplosiveContents])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.hasMore, isLoadingMore])
 
   // 处理标签选择
   const handleTagSelect = useCallback((type: 'track_id' | 'type_id' | 'tone_id', value: number) => {
