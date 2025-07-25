@@ -252,7 +252,7 @@ export const Sidebar = memo(function Sidebar() {
       return (
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-gray-200/50 dark:border-slate-700/50 space-y-3">
           {/* 会员状态显示 */}
-          <MembershipInfoCard />
+          {/* <MembershipInfoCard /> */}
           
           {/* 积分显示 - 简洁版本 */}
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-2 border border-purple-200/50 dark:border-purple-700/50">

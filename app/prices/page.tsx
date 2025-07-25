@@ -214,7 +214,7 @@ export default function PricingPage() {
             const pricing = isYearly ? config.yearly : config.monthly
             
             return (
-              <Card
+              <Card 
                 key={key}
                 className={cn(
                   "relative overflow-hidden transition-all duration-300 group cursor-pointer",
@@ -308,9 +308,9 @@ export default function PricingPage() {
                   >
                     <span className="relative z-10 flex items-center justify-center space-x-2">
                       <span>选择 {config.name}</span>
-                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
+                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
                     </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
                   </Button>
                 </CardContent>
               </Card>

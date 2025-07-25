@@ -10,6 +10,39 @@ import Image from "next/image"
 import * as XLSX from 'xlsx'
 import { getProxiedImageUrl, preprocessImageUrl } from "@/lib/image-utils"
 
+// 清理markdown格式的函数
+function cleanMarkdownFormat(text: string): string {
+  if (!text) return text
+  
+  return text
+    // 移除粗体标记 **text** -> text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    // 移除斜体标记 *text* -> text
+    .replace(/\*(.*?)\*/g, '$1')
+    // 移除代码标记 `text` -> text
+    .replace(/`(.*?)`/g, '$1')
+    // 移除标题标记 # text -> text
+    .replace(/^#{1,6}\s+/gm, '')
+    // 移除链接标记 [text](url) -> text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 移除图片标记 ![alt](url) -> alt
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    // 移除列表标记 - text -> text
+    .replace(/^[-*+]\s+/gm, '')
+    // 移除数字列表标记 1. text -> text
+    .replace(/^\d+\.\s+/gm, '')
+    // 移除引用标记 > text -> text
+    .replace(/^>\s+/gm, '')
+    // 移除水平分割线
+    .replace(/^[-*_]{3,}$/gm, '')
+    // 移除表格标记
+    .replace(/\|/g, ' ')
+    // 清理多余的空行
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    // 清理行首行尾空白
+    .trim()
+}
+
 // 智能图片组件 - 自动处理加载失败
 function SmartImage({ 
   src, 
@@ -237,7 +270,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
             </div>
             <div>
               <CardTitle className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                版本 {index + 1}
+                {`版本 ${index + 1}`}
               </CardTitle>
               {getStatusBadge()}
             </div>
@@ -247,7 +280,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => handleCopy(`${result.title}\n\n${result.content}`, result.id)}
+                onClick={() => handleCopy(`${cleanMarkdownFormat(result.title)}\n\n${cleanMarkdownFormat(result.content)}`, result.id)}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 rounded-xl text-sm px-3 py-2 h-9 font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
               >
                 {copiedId === result.id ? (
@@ -278,7 +311,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
             </div>
             <div className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10 p-4 rounded-2xl border border-blue-100/50 dark:border-blue-800/30 shadow-inner">
               <div className="text-gray-800 dark:text-gray-200 font-semibold leading-relaxed text-base whitespace-pre-wrap">
-                {result.title}
+                {cleanMarkdownFormat(result.title)}
               </div>
             </div>
           </div>
@@ -297,11 +330,11 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
                 <div className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans text-sm selection:bg-purple-200 dark:selection:bg-purple-800 selection:text-purple-900 dark:selection:text-purple-100">
                   {result.status === "generating" && result.content && result.content.length > 0 ? (
                     <TypewriterText 
-                      text={result.content} 
+                      text={cleanMarkdownFormat(result.content)} 
                       speed={20}
                     />
                   ) : result.status === "completed" && result.content ? (
-                    result.content
+                    cleanMarkdownFormat(result.content)
                   ) : result.status === "failed" ? (
                     <span className="text-red-500 dark:text-red-400 font-medium">⚠️ 内容生成失败，请重试</span>
                   ) : (
@@ -501,8 +534,10 @@ export function ResultViewer({ task, taskName, allTasks, originalTaskData }: Res
                            console.log('🔍 [查看原文] originalData:', originalData)
                            console.log('🔍 [查看原文] originalData的所有键:', Object.keys(originalData))
                            
+                           // 尝试从多个位置获取链接，包括备用字段
                            const noteUrl = noteData.note_url || noteData.noteUrl || noteData.url || 
-                                          originalData.note_url || originalData.noteUrl || originalData.url
+                                          originalData.note_url || originalData.noteUrl || originalData.url ||
+                                          originalData.backup_note_url
                            console.log('🔍 [查看原文] 尝试获取的链接字段:', {
                              'noteData.note_url': noteData.note_url,
                              'noteData.noteUrl': noteData.noteUrl,
@@ -510,15 +545,16 @@ export function ResultViewer({ task, taskName, allTasks, originalTaskData }: Res
                              'originalData.note_url': originalData.note_url,
                              'originalData.noteUrl': originalData.noteUrl,
                              'originalData.url': originalData.url,
+                             'originalData.backup_note_url': originalData.backup_note_url,
                              最终noteUrl: noteUrl
                            })
                            
-                           if (noteUrl) {
+                           if (noteUrl && noteUrl.trim() && noteUrl !== '') {
                              console.log('✅ [查看原文] 找到链接，准备打开:', noteUrl)
                              window.open(noteUrl, '_blank')
                            } else {
                              console.warn('❌ [查看原文] 未找到笔记原文链接')
-                             alert(`未找到笔记原文链接。调试信息：\n- noteData键: ${Object.keys(noteData).join(', ')}\n- 请查看控制台获取详细信息`)
+                             alert(`⚠️ 未找到笔记原文链接\n\n可能原因：\n1. 该笔记数据中缺少原文链接信息\n2. 笔记可能是从文本直接创建的\n3. 数据迁移过程中链接信息丢失\n\n建议：联系管理员补充原文链接信息`)
                            }
                          } else {
                            console.warn('❌ [查看原文] 未找到笔记数据')
@@ -595,7 +631,7 @@ export function ResultViewer({ task, taskName, allTasks, originalTaskData }: Res
               - 增加间距，提升视觉体验
             */
             <div className="grid grid-cols-1 gap-8">
-              {task.results.map((result, index) => (
+              {[...task.results].slice(0, 2).reverse().map((result, index) => (
                 <ContentDisplay 
                   key={result.id} 
                   result={result} 

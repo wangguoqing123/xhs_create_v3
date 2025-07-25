@@ -84,7 +84,7 @@ export default function NoteRewritePageNew() {
         note_cover_url_default: content.cover_image || '/placeholder.jpg',
         auther_nick_name: content.author_name || '未知作者',
         note_liked_count: content.likes_count.toString(),
-        note_url: content.note_url || '',
+        note_url: content.note_url || null, // 如果为空则设为null，而不是空字符串
         // 其他必需字段的默认值
         auther_avatar: content.author_avatar || '/placeholder-user.jpg',
         auther_home_page_url: '',
@@ -95,7 +95,9 @@ export default function NoteRewritePageNew() {
         note_cover_width: '300',
         note_liked: false,
         note_model_type: 'note' as const,
-        note_xsec_token: ''
+        note_xsec_token: '',
+        // 添加备用链接字段，用于批量生成时的原文链接获取
+        backup_note_url: content.note_url || null
       }
     }))
   }, [explosiveContents])

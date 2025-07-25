@@ -10,7 +10,7 @@ import {
   getTaskNotesWithContents
 } from '@/lib/mysql'
 import type { BatchConfig, TaskNote } from '@/lib/types'
-import { generateBatchRewriteContent, parseThreeVersions } from '@/lib/ark-api'
+import { generateBatchRewriteContent, parseTwoVersions } from '@/lib/ark-api'
 
 /**
  * 重新处理单个笔记的改写任务（用于调试）
@@ -53,10 +53,10 @@ async function reprocessNoteRewrite(
         try {
           console.log(`📊 [重新处理] 笔记 ${taskNoteId} 内容生成完成`)
           console.log(`📏 [重新处理] 笔记 ${taskNoteId} 最终内容长度: ${finalContent.length} 字符，共接收 ${chunkCount} 个chunks`)
-          console.log(`🔍 [重新处理] 笔记 ${taskNoteId} 开始解析三个版本`)
+          console.log(`🔍 [重新处理] 笔记 ${taskNoteId} 开始解析两个版本`)
           
-          // 解析三个版本的内容
-          const versions = parseThreeVersions(finalContent)
+          // 解析两个版本的内容
+          const versions = parseTwoVersions(finalContent)
           
           console.log(`📋 [重新处理] 笔记 ${taskNoteId} 解析得到 ${versions.length} 个版本`)
           

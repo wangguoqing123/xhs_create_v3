@@ -65,21 +65,21 @@ export async function POST(request: NextRequest) {
     } 
     // 保持向后兼容性，支持旧的membership_type
     else if (membership_type) {
-      if (membership_type === 'monthly') {
-        result = await adminSetMonthlyMembership(
-          user_id,
-          'admin',
-          reason,
-          ipAddress,
-          userAgent
-        )
+    if (membership_type === 'monthly') {
+      result = await adminSetMonthlyMembership(
+        user_id,
+        'admin',
+        reason,
+        ipAddress,
+        userAgent
+      )
       } else if (membership_type === 'yearly') {
-        result = await adminSetYearlyMembership(
-          user_id,
-          'admin',
-          reason,
-          ipAddress,
-          userAgent
+      result = await adminSetYearlyMembership(
+        user_id,
+        'admin',
+        reason,
+        ipAddress,
+        userAgent
         )
       } else {
         return NextResponse.json(

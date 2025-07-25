@@ -11,36 +11,123 @@ import {
   getProfile
 } from '@/lib/mysql'
 import type { BatchConfig, TaskNote } from '@/lib/types'
-import { generateBatchRewriteContent, parseThreeVersions } from '@/lib/ark-api'
+import { generateBatchRewriteContent, parseTwoVersions } from '@/lib/ark-api'
+import { fetchXiaohongshuNoteDetail, convertXiaohongshuNoteDetailToNoteDetail } from '@/lib/coze-api'
 
 /**
  * 处理单个笔记的改写任务
  * @param taskNoteId 任务笔记ID
  * @param noteData 笔记数据 
  * @param config 批量配置
+ * @param userCookie 用户Cookie（用于获取笔记详情）
  */
 async function processNoteRewrite(
   taskNoteId: string,
   noteData: any,
-  config: BatchConfig
+  config: BatchConfig,
+  userCookie: string
 ): Promise<void> {
   const startTime = Date.now()
   try {
     // 更新任务笔记状态为处理中
     await updateTaskNoteStatus(taskNoteId, 'processing')
 
-    console.log(`🚀 [后端] 开始处理笔记改写: ${taskNoteId}，生成3个版本 (标题: ${noteData.title?.substring(0, 20) || '无标题'}...)`)
+    console.log(`🚀 [后端] 开始处理笔记改写: ${taskNoteId}，生成2个版本 (标题: ${noteData.title?.substring(0, 20) || '无标题'}...)`)
 
-    // 准备原始内容
-    const originalContent = `标题: ${noteData.title || '无标题'}
+    // 准备原始内容 - 优先获取完整的原文内容
+    let originalContent = ''
+    let useFullContent = false
+    
+    // 尝试获取原文链接
+    const originalData = noteData.originalData || {}
+    const noteUrl = noteData.note_url || noteData.noteUrl || noteData.url || 
+                   originalData.note_url || originalData.noteUrl || originalData.url ||
+                   originalData.backup_note_url
+    
+    // 如果有原文链接，尝试获取完整内容
+    if (noteUrl && noteUrl.trim() && noteUrl !== 'null' && noteUrl !== 'undefined') {
+      try {
+        console.log(`📡 [后端] 笔记 ${taskNoteId} 开始获取完整原文内容，链接: ${noteUrl}`)
+        
+        // 调用API获取完整的笔记详情
+        const fullNoteDetail = await fetchXiaohongshuNoteDetail(noteUrl, userCookie)
+        
+        if (fullNoteDetail && fullNoteDetail.note_display_title && fullNoteDetail.note_desc) {
+          // 使用完整的原文内容，格式与单次改写保持一致
+          originalContent = `【标题】${fullNoteDetail.note_display_title}\n\n【正文】${fullNoteDetail.note_desc}`
+          
+          // 添加标签信息
+          if (fullNoteDetail.note_tags && fullNoteDetail.note_tags.length > 0) {
+            const topics = fullNoteDetail.note_tags.map((tag: string) => `#${tag}`).join(' ')
+            originalContent += `\n\n【话题】${topics}`
+          }
+          
+          useFullContent = true
+          console.log(`✅ [后端] 笔记 ${taskNoteId} 成功获取完整原文，长度: ${originalContent.length} 字符`)
+        } else {
+          console.log(`⚠️ [后端] 笔记 ${taskNoteId} API返回数据不完整，使用备用内容`)
+        }
+      } catch (error) {
+        console.error(`❌ [后端] 笔记 ${taskNoteId} 获取完整原文失败:`, error)
+        console.log(`🔄 [后端] 笔记 ${taskNoteId} 将使用数据库中的基础内容`)
+      }
+    } else {
+      console.log(`⚠️ [后端] 笔记 ${taskNoteId} 没有有效的原文链接，使用数据库内容`)
+    }
+    
+    // 如果没有获取到完整内容，使用数据库中的基础内容
+    if (!useFullContent) {
+      if (noteData.originalData && noteData.originalData.note_display_title && noteData.content) {
+        // 构建与单次改写相同格式的内容
+        originalContent = `【标题】${noteData.originalData.note_display_title || noteData.title || '无标题'}\n\n【正文】${noteData.content || '无内容'}`
+        
+        // 添加标签信息
+        if (noteData.tags && noteData.tags.length > 0) {
+          const topics = noteData.tags.map((tag: string) => `#${tag}`).join(' ')
+          originalContent += `\n\n【话题】${topics}`
+        }
+      } else {
+        // 最后的备用格式
+        originalContent = `标题: ${noteData.title || '无标题'}
 内容: ${noteData.content || '无内容'}
 标签: ${noteData.tags ? noteData.tags.join(', ') : '无标签'}`
+      }
+    }
+
+    // 增强原始内容，添加批量配置信息（与单次改写保持一致）
+    if (config.theme && config.theme.trim()) {
+      originalContent += `\n\n【改写主题】${config.theme.trim()}`
+    }
+    
+    // 添加账号定位信息
+    if (config.accountPositioning && config.accountPositioning.trim()) {
+      originalContent += `\n\n【账号定位】${config.accountPositioning.trim()}`
+    }
+    
+    // 添加SEO关键词
+    if (config.keywords && config.keywords.length > 0) {
+      originalContent += `\n\n【SEO关键词】${config.keywords.join(', ')}`
+    }
 
     console.log(`📝 [后端] 笔记 ${taskNoteId} 原始内容长度: ${originalContent.length} 字符`)
+    console.log(`🔧 [后端] 笔记 ${taskNoteId} 配置信息:`, {
+      theme: config.theme,
+      accountPositioning: config.accountPositioning,
+      keywords: config.keywords,
+      purpose: config.purpose,
+      useFullContent: useFullContent,
+      hasNoteUrl: !!noteUrl
+    })
+    
+    // 调试：输出完整的增强原文内容
+    console.log(`📄 [后端] 笔记 ${taskNoteId} 完整原文内容:`)
+    console.log('='.repeat(50))
+    console.log(originalContent)
+    console.log('='.repeat(50))
 
-    // 先创建3个生成内容记录
+    // 先创建2个生成内容记录
     const contentRecords: any[] = []
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       const { data: generatedContent, error: createError } = await createGeneratedContent(
         taskNoteId,
         config.type === 'video' ? 'video_script' : 'article',
@@ -83,10 +170,10 @@ async function processNoteRewrite(
         try {
           console.log(`📊 [后端] 笔记 ${taskNoteId} 内容生成完成`)
           console.log(`📏 [后端] 笔记 ${taskNoteId} 最终内容长度: ${finalContent.length} 字符，共接收 ${chunkCount} 个chunks`)
-          console.log(`🔍 [后端] 笔记 ${taskNoteId} 开始解析三个版本`)
+          console.log(`🔍 [后端] 笔记 ${taskNoteId} 开始解析两个版本`)
           
-          // 解析三个版本的内容
-          const versions = parseThreeVersions(finalContent)
+          // 解析两个版本的内容
+          const versions = parseTwoVersions(finalContent)
           
           console.log(`📋 [后端] 笔记 ${taskNoteId} 解析得到 ${versions.length} 个版本`)
           
@@ -276,6 +363,41 @@ export async function POST(request: NextRequest) {
               return
             }
 
+            // 检查是否有原文链接（用于"查看原文"功能）
+            // 尝试从多个位置获取链接，与result-viewer.tsx保持一致
+            const originalData = noteData.originalData || {}
+            const hasNoteUrl = noteData.note_url || noteData.noteUrl || noteData.url || 
+                              originalData.note_url || originalData.noteUrl || originalData.url ||
+                              originalData.backup_note_url
+            
+            console.log(`🔍 [后端] 笔记 ${taskNote.note_id} 链接检查:`, {
+              '最终链接': hasNoteUrl,
+              '链接来源': originalData.note_url ? 'originalData.note_url' : 
+                        originalData.backup_note_url ? 'originalData.backup_note_url' : 
+                        noteData.note_url ? 'noteData.note_url' : '未找到'
+            })
+            
+            // 更宽松的链接检查逻辑
+            const isValidLink = hasNoteUrl && 
+                               typeof hasNoteUrl === 'string' && 
+                               hasNoteUrl.trim() !== '' && 
+                               hasNoteUrl !== 'null' && 
+                               hasNoteUrl !== 'undefined' &&
+                               (hasNoteUrl.includes('xiaohongshu') || hasNoteUrl.includes('xhslink'))
+            
+            console.log(`🔍 [后端] 笔记 ${taskNote.note_id} 链接验证结果:`, {
+              链接: hasNoteUrl,
+              有效: isValidLink
+            })
+            
+            if (!isValidLink) {
+              console.error(`❌ [后端] 笔记 ${taskNote.note_id} 缺少有效的原文链接，终止处理`)
+              await updateTaskNoteStatus(taskNote.id, 'failed', '未找到有效的小红书原文链接，无法生成内容。前端应该已经过滤此类笔记。')
+              return
+            }
+            
+            console.log(`✅ [后端] 笔记 ${taskNote.note_id} 链接验证通过，准备处理`)
+
             // 添加一个小的随机延迟，避免同时调用API导致限流
             // 每个笔记延迟0-2秒，分散API调用时间
             const randomDelay = Math.random() * 2000
@@ -284,7 +406,7 @@ export async function POST(request: NextRequest) {
             console.log(`📝 [后端] 开始处理第 ${index + 1} 个笔记: ${taskNote.note_id}`)
 
             // 处理单个笔记的改写
-            await processNoteRewrite(taskNote.id, noteData, config)
+            await processNoteRewrite(taskNote.id, noteData, config, profile.user_cookie)
             
             console.log(`✅ [后端] 第 ${index + 1} 个笔记处理完成: ${taskNote.note_id}`)
           } catch (error) {

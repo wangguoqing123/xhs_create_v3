@@ -209,8 +209,9 @@ export interface XiaohongshuNote {
   note_liked: boolean // 是否已点赞
   note_liked_count: string // 点赞数量
   note_model_type: 'note' // 笔记模型类型
-  note_url: string // 笔记详情页URL
+  note_url: string | null // 笔记详情页URL
   note_xsec_token: string // 安全访问token
+  backup_note_url?: string | null // 备用链接字段，用于批量生成时的原文链接获取
 }
 
 // 小红书笔记详情数据类型
@@ -358,6 +359,8 @@ export interface BatchConfig {
   theme: string // 特定主题
   persona: string // 人设定位："default" | "expert" | "friend" | "humor" | "professional"
   purpose: string // 营销目的："default" | "brand" | "review" | "traffic" | "education"
+  accountPositioning?: string // 账号定位信息（可选）
+  keywords?: string[] // SEO关键词（可选）
 }
 
 // ARK API相关类型
