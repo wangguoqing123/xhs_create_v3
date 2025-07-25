@@ -16,9 +16,10 @@ interface NoteDetailModalProps {
   onClose: () => void
   selectedNotes?: string[]
   onNoteSelect?: (noteId: string, selected: boolean) => void
+  contentId?: string // 新增：爆款内容id
 }
 
-export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNoteSelect }: NoteDetailModalProps) {
+export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNoteSelect, contentId }: NoteDetailModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const contentScrollRef = useRef<HTMLDivElement>(null)
 
@@ -38,12 +39,12 @@ export function NoteDetailModal({ note, open, onClose, selectedNotes = [], onNot
   if (!note) return null
 
   // 检查当前笔记是否被选中
-  const isSelected = selectedNotes.includes(note.id)
+  const isSelected = selectedNotes.includes(contentId || note.id)
 
   // 处理多选框状态变化
   const handleCheckboxChange = (checked: boolean) => {
     if (onNoteSelect) {
-      onNoteSelect(note.id, checked)
+      onNoteSelect(contentId || note.id, checked)
     }
   }
 

@@ -20,6 +20,7 @@ import type { Note, ExplosiveContent, NoteTrack, NoteType, NoteTone } from "@/li
 export default function NoteRewritePageNew() {
   const router = useRouter()
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
+  const [selectedContentId, setSelectedContentId] = useState<string | null>(null)
   const [selectedNoteForDetail, setSelectedNoteForDetail] = useState<Note | null>(null)
   const [showBatchModal, setShowBatchModal] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -283,7 +284,7 @@ export default function NoteRewritePageNew() {
   // 处理笔记选择（用于批量操作）
   const handleNoteSelect = useCallback((noteId: string, selected: boolean) => {
     if (selected) {
-      setSelectedNotes(prev => [...prev, noteId])
+      setSelectedNotes(prev => Array.from(new Set([...prev, noteId])))
     } else {
       setSelectedNotes(prev => prev.filter(id => id !== noteId))
     }
@@ -292,6 +293,7 @@ export default function NoteRewritePageNew() {
   // 处理查看笔记详情
   const handleNoteView = useCallback(async (note: Note) => {
     setSelectedNoteForDetail(note)
+    setSelectedContentId(note.id)
 
     // 从转换后的数据中获取笔记URL
     const noteUrl = note.originalData?.note_url
@@ -525,6 +527,7 @@ export default function NoteRewritePageNew() {
         onClose={handleCloseNoteDetail}
         selectedNotes={selectedNotes}
         onNoteSelect={handleNoteSelect}
+        contentId={selectedContentId || ''}
       />
 
       {/* 笔记详情加载提示 */}
