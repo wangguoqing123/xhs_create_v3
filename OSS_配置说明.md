@@ -1,6 +1,8 @@
-# 封面上传OSS配置说明
+# OSS配置说明（已废弃）
 
-## 🔍 问题诊断
+> 📝 **注意**: 详细的OSS配置指南请参考 [ALIYUN_OSS_SETUP_GUIDE.md](./ALIYUN_OSS_SETUP_GUIDE.md)，主要文档已迁移到 [README.md](./README.md)。
+
+## 🔍 问题诊断（历史记录）
 
 封面没有上传到OSS的原因是：**OSS环境变量未配置**
 
