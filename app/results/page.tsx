@@ -32,6 +32,16 @@ function ResultsPageContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  
+  // 任务分页状态
+  const [taskOffset, setTaskOffset] = useState(0)
+  const [taskHasMore, setTaskHasMore] = useState(false)
+  const [taskIsLoadingMore, setTaskIsLoadingMore] = useState(false)
+  const [taskTotal, setTaskTotal] = useState(0)
+  
+  // 笔记分页状态
+  const [notePageSize] = useState(20)
+  const [notesDisplayCount, setNotesDisplayCount] = useState(20)
 
   // 批量改写Hook
   const { getBatchTaskList, getBatchTaskStatus } = useBatchRewrite()
@@ -43,15 +53,18 @@ function ResultsPageContent() {
   const urlTaskId = searchParams?.get("taskId")
 
   // 获取用户所有任务列表
-  const fetchTaskList = useCallback(async (isRetry: boolean = false) => {
+  const fetchTaskList = useCallback(async (reset: boolean = true, isRetry: boolean = false) => {
     try {
+      const currentOffset = reset ? 0 : taskOffset
+      
       if (!isRetry) {
-        setIsLoading(true)
+        setIsLoading(reset ? true : false)
+        setTaskIsLoadingMore(reset ? false : true)
         setError(null)
       }
       
-      console.log('📋 [任务列表] 开始获取任务列表...', { user, loading })
-      const result = await getBatchTaskList()
+      console.log('📋 [任务列表] 开始获取任务列表...', { user, loading, offset: currentOffset })
+      const result = await getBatchTaskList(20, currentOffset)
       
       console.log('📋 [任务列表] API返回结果:', result)
       
@@ -61,23 +74,23 @@ function ResultsPageContent() {
 
       console.log('📋 [任务列表] 获取成功，任务数量:', result.tasks?.length || 0)
       console.log('📋 [任务列表] 任务详情:', result.tasks)
-      setTaskList(result.tasks || [])
       
-      // 如果URL有taskId参数，默认选中该任务
-      if (urlTaskId && result.tasks?.length > 0) {
-        const targetTask = result.tasks.find((task: any) => task.id === urlTaskId)
-        if (targetTask) {
-          setSelectedTaskId(urlTaskId)
-        } else {
-          // 如果找不到指定任务，选中第一个
-          setSelectedTaskId(result.tasks[0].id)
-        }
-      } else if (result.tasks?.length > 0) {
-        // 没有指定taskId，选中第一个任务
-        setSelectedTaskId(result.tasks[0].id)
+      // 根据是否重置来决定如何更新数据
+      if (reset) {
+        setTaskList(result.tasks || [])
+        setTaskOffset(20) // 下次加载的偏移量
+      } else {
+        setTaskList(prev => [...prev, ...(result.tasks || [])])
+        setTaskOffset(prev => prev + 20)
       }
       
+      // 更新分页信息
+      setTaskTotal(result.total || 0)
+      setTaskHasMore(result.hasMore || false)
+      
+      
       setIsLoading(false)
+      setTaskIsLoadingMore(false)
       setRetryCount(0) // 重置重试计数
       
     } catch (error) {
@@ -89,28 +102,55 @@ function ResultsPageContent() {
         console.log('📋 [任务列表] 认证错误，1秒后重试...', retryCount + 1)
         setRetryCount(prev => prev + 1)
         setTimeout(() => {
-          fetchTaskList(true)
+          fetchTaskList(true, true)
         }, 1000)
         return
       }
       
       setError(errorMessage)
       setIsLoading(false)
+      setTaskIsLoadingMore(false)
     }
-  }, [getBatchTaskList, urlTaskId, retryCount])
+  }, [getBatchTaskList, urlTaskId, retryCount, taskOffset])
+
+  // 加载更多任务
+  const loadMoreTasks = useCallback(async () => {
+    if (taskIsLoadingMore || !taskHasMore) return
+    await fetchTaskList(false)
+  }, [fetchTaskList, taskIsLoadingMore, taskHasMore])
 
   // 监听认证状态变化，用户登录后重新获取数据
   useEffect(() => {
     // 只有在认证完成且有用户时才获取数据
     if (!loading && user) {
       console.log('👤 [认证状态] 用户已登录，获取任务列表')
-      fetchTaskList()
+      setTaskOffset(0) // 重置偏移量
+      fetchTaskList(true)
     } else if (!loading && !user) {
       console.log('👤 [认证状态] 用户未登录')
       setError('请先登录')
       setIsLoading(false)
     }
-  }, [user, loading, fetchTaskList])
+  }, [user, loading])
+
+  // 处理任务选择逻辑
+  useEffect(() => {
+    if (taskList.length === 0) return
+    
+    // 如果URL有taskId参数，尝试选中该任务
+    if (urlTaskId) {
+      const targetTask = taskList.find((task: any) => task.id === urlTaskId)
+      if (targetTask && selectedTaskId !== urlTaskId) {
+        setSelectedTaskId(urlTaskId)
+      } else if (!targetTask && !selectedTaskId && taskList.length > 0) {
+        // 如果找不到指定任务，选中第一个
+        setSelectedTaskId(taskList[0].id)
+      }
+    } else if (!selectedTaskId && taskList.length > 0) {
+      // 没有指定taskId，选中第一个任务
+      setSelectedTaskId(taskList[0].id)
+    }
+  }, [taskList, urlTaskId, selectedTaskId])
 
   // 当选中任务变化时，获取该任务的详细信息
   useEffect(() => {
@@ -176,10 +216,12 @@ function ResultsPageContent() {
     console.log('🔍 [前端] 转换任务数据:', {
       selectedTask: selectedTask,
       notesCount: selectedTask.notes?.length,
-      sampleNote: selectedTask.notes?.[0]
+      sampleNote: selectedTask.notes?.[0],
+      displayCount: notesDisplayCount
     })
     
-    return selectedTask.notes.map((note: any, index: number) => {
+    // 只显示指定数量的笔记
+    return selectedTask.notes.slice(0, notesDisplayCount).map((note: any, index: number) => {
       console.log(`📝 [前端] 处理笔记 ${index + 1}:`, {
         note: note,
         noteId: note.id,
@@ -257,10 +299,19 @@ function ResultsPageContent() {
         results
       }
     })
-  }, [selectedTask])
+  }, [selectedTask, notesDisplayCount])
 
   // 当前选中的笔记ID（用于在笔记列表中高亮显示）
   const [selectedNoteId, setSelectedNoteId] = useState<string>("")
+  
+  // 加载更多笔记
+  const loadMoreNotes = useCallback(() => {
+    setNotesDisplayCount(prev => prev + notePageSize)
+  }, [notePageSize])
+  
+  // 计算笔记分页信息
+  const noteHasMore = selectedTask?.notes && notesDisplayCount < selectedTask.notes.length
+  const noteTotalCount = selectedTask?.notes?.length || 0
 
   // 当任务变化时，默认选中第一个笔记
   useEffect(() => {
@@ -275,6 +326,11 @@ function ResultsPageContent() {
       setSelectedNoteId("")
     }
   }, [selectedTaskId, convertedTasks]) // 依赖selectedTaskId，确保任务切换时重新选择笔记
+  
+  // 当选中任务变化时，重置笔记显示数量
+  useEffect(() => {
+    setNotesDisplayCount(notePageSize)
+  }, [selectedTaskId, notePageSize])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
@@ -285,6 +341,10 @@ function ResultsPageContent() {
             taskList={taskList || []}
             selectedTaskId={selectedTaskId}
             onTaskSelect={setSelectedTaskId}
+            hasMore={taskHasMore}
+            isLoadingMore={taskIsLoadingMore}
+            onLoadMore={loadMoreTasks}
+            total={taskTotal}
             className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200/50 dark:border-slate-700/50 overflow-hidden"
           />
         </div>
@@ -297,7 +357,10 @@ function ResultsPageContent() {
                 <FileText className="h-3 w-3 text-white" />
               </div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">笔记列表</h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">共 {convertedTasks.length} 篇</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                共 {noteTotalCount} 篇
+                {convertedTasks.length < noteTotalCount && ` · 已显示 ${convertedTasks.length} 篇`}
+              </span>
             </div>
             
             {convertedTasks.length > 0 ? (
@@ -372,12 +435,19 @@ function ResultsPageContent() {
                 })}
                 </div>
                 
-                {/* 笔记数量提示 */}
-                {convertedTasks.length > 4 && (
-                  <div className="mt-3 text-center">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      共{convertedTasks.length}篇笔记 · 可上下滚动查看更多
-                    </p>
+                {/* 加载更多按钮 */}
+                {noteHasMore && (
+                  <div className="mt-3">
+                    <Button
+                      onClick={loadMoreNotes}
+                      variant="outline"
+                      className="w-full flex items-center justify-center space-x-2 h-10 text-sm bg-white/50 hover:bg-white/80 dark:bg-gray-800/50 dark:hover:bg-gray-700/80"
+                    >
+                      <span>加载更多笔记</span>
+                      <Badge variant="outline" className="text-xs">
+                        20
+                      </Badge>
+                    </Button>
                   </div>
                 )}
               </>
@@ -399,6 +469,9 @@ function ResultsPageContent() {
               selectedNoteId={selectedNoteId}
               onNoteSelect={setSelectedNoteId}
               taskName={selectedTask?.taskName || '批量改写任务'}
+              hasMore={noteHasMore}
+              onLoadMore={loadMoreNotes}
+              totalCount={noteTotalCount}
               className="h-full shadow-2xl"
             />
           </div>

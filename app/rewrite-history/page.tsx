@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Link, FileText, Copy, ExternalLink, Clock, Loader2, AlertCircle, Check, Search, Filter, Menu, X, ChevronLeft } from "lucide-react"
+import { Link, FileText, Copy, ExternalLink, Clock, Loader2, AlertCircle, Check, Menu, X, ChevronLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import type { RewriteRecord } from "@/lib/types"
@@ -20,22 +19,25 @@ export default function RewriteHistoryPage() {
   const [isLoading, setIsLoading] = useState(true) // 加载状态
   const [error, setError] = useState<string | null>(null) // 错误信息
   const [copiedId, setCopiedId] = useState<string | null>(null) // 复制状态
-  const [searchQuery, setSearchQuery] = useState("") // 搜索查询
-  const [statusFilter, setStatusFilter] = useState<string>("all") // 状态过滤
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false) // 移动端菜单状态
+  const [hasMore, setHasMore] = useState(false) // 是否还有更多记录
+  const [isLoadingMore, setIsLoadingMore] = useState(false) // 加载更多的loading状态
+  const [offset, setOffset] = useState(0) // 当前偏移量
 
   // 获取改写历史记录
-  const fetchRewriteHistory = async () => {
+  const fetchRewriteHistory = async (reset = true) => {
     if (!user) return
     
     try {
-      setIsLoading(true)
+      const currentOffset = reset ? 0 : offset
+      setIsLoading(reset ? true : false)
+      setIsLoadingMore(reset ? false : true)
       setError(null)
       
       console.log('🔍 [改写历史] 开始获取改写记录列表')
       
-      // 调用API获取改写历史
-      const response = await fetch('/api/rewrite-history', {
+      // 调用API获取改写历史，添加分页参数
+      const response = await fetch(`/api/rewrite-history?limit=20&offset=${currentOffset}`, {
         method: 'GET',
         credentials: 'include',
       })
@@ -52,10 +54,20 @@ export default function RewriteHistoryPage() {
 
       console.log('✅ [改写历史] 改写记录获取成功:', result.data.length, '条记录')
       
-      setRewriteHistory(result.data || [])
+      // 根据是否重置来决定如何更新数据
+      if (reset) {
+        setRewriteHistory(result.data || [])
+        setOffset(20) // 下次加载的偏移量
+      } else {
+        setRewriteHistory(prev => [...prev, ...(result.data || [])])
+        setOffset(prev => prev + 20)
+      }
+      
+      // 更新是否还有更多数据的状态
+      setHasMore(result.pagination?.hasMore || false)
       
       // 如果有记录且没有选中的记录，默认选中第一个
-      if (result.data && result.data.length > 0 && !selectedRecord) {
+      if (result.data && result.data.length > 0 && !selectedRecord && reset) {
         setSelectedRecord(result.data[0])
       }
       
@@ -64,12 +76,22 @@ export default function RewriteHistoryPage() {
       setError(error instanceof Error ? error.message : '获取改写历史失败')
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
+  }
+
+  // 加载更多记录
+  const loadMoreRecords = async () => {
+    if (isLoadingMore || !hasMore) return
+    await fetchRewriteHistory(false)
   }
 
   // 组件挂载时获取数据
   useEffect(() => {
-    fetchRewriteHistory()
+    if (user) {
+      setOffset(0) // 重置偏移量
+      fetchRewriteHistory(true) // 明确指定为重置加载
+    }
   }, [user])
 
   // 获取状态徽章
@@ -117,16 +139,6 @@ export default function RewriteHistoryPage() {
     }
   }
 
-  // 过滤记录
-  const filteredHistory = rewriteHistory.filter(record => {
-    const matchesSearch = record.original_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         record.generated_content.some(content => 
-                           content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           content.content.toLowerCase().includes(searchQuery.toLowerCase())
-                         )
-    const matchesStatus = statusFilter === "all" || record.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
 
   // 如果用户未登录，显示登录提示
   if (!user) {
@@ -175,32 +187,6 @@ export default function RewriteHistoryPage() {
               </div>
             </div>
 
-            {/* 搜索和过滤 - 移动端优化布局 */}
-            <div className={cn(
-              "flex flex-col gap-3 lg:flex-row lg:gap-4",
-              "lg:block", // 桌面端始终显示
-              isMobileMenuOpen ? "block" : "hidden lg:block" // 移动端根据菜单状态显示
-            )}>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="搜索改写记录..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10 lg:h-auto"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-10 px-4 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 text-sm lg:text-base"
-              >
-                <option value="all">所有状态</option>
-                <option value="completed">已完成</option>
-                <option value="generating">生成中</option>
-                <option value="failed">失败</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -216,9 +202,9 @@ export default function RewriteHistoryPage() {
               <CardHeader className="pb-3 lg:pb-4">
                 <CardTitle className="text-base lg:text-lg font-semibold flex items-center justify-between">
                   改写记录
-                  {filteredHistory.length > 0 && (
+                  {rewriteHistory.length > 0 && (
                     <Badge variant="outline" className="text-xs">
-                      {filteredHistory.length}
+                      {rewriteHistory.length}
                     </Badge>
                   )}
                 </CardTitle>
@@ -251,11 +237,11 @@ export default function RewriteHistoryPage() {
                     )}
 
                     {/* 空状态 */}
-                    {!isLoading && !error && filteredHistory.length === 0 && (
+                    {!isLoading && !error && rewriteHistory.length === 0 && (
                       <div className="text-center py-8">
                         <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {searchQuery || statusFilter !== "all" ? "没有找到匹配的记录" : "暂无改写记录"}
+                          暂无改写记录
                         </p>
                         <Button 
                           size="sm" 
@@ -268,7 +254,7 @@ export default function RewriteHistoryPage() {
                     )}
 
                     {/* 记录列表 */}
-                    {filteredHistory.map((record) => (
+                    {rewriteHistory.map((record) => (
                       <Card
                         key={record.id}
                         className={cn(
@@ -336,6 +322,32 @@ export default function RewriteHistoryPage() {
                         </CardContent>
                       </Card>
                     ))}
+
+                    {/* 加载更多按钮 */}
+                    {!isLoading && !error && hasMore && (
+                      <div className="px-6 pb-4">
+                        <Button
+                          onClick={loadMoreRecords}
+                          disabled={isLoadingMore}
+                          variant="outline"
+                          className="w-full flex items-center justify-center space-x-2 h-10 text-sm bg-white/50 hover:bg-white/80 dark:bg-gray-800/50 dark:hover:bg-gray-700/80"
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>加载中...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>加载更多</span>
+                              <Badge variant="outline" className="text-xs">
+                                20
+                              </Badge>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

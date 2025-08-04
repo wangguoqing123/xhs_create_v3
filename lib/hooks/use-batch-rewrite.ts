@@ -300,7 +300,8 @@ export function useBatchRewrite() {
       
       return {
         tasks: result.tasks,
-        total: result.total
+        total: result.total,
+        hasMore: result.hasMore
       }
 
     } catch (error) {

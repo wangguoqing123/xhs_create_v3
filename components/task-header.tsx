@@ -7,17 +7,21 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle, Clock, XCircle, Calendar, Filter, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
+import { CheckCircle, Clock, XCircle, Calendar, Filter, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface TaskHeaderProps {
   taskList: any[]
   selectedTaskId: string
   onTaskSelect: (taskId: string) => void
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  onLoadMore?: () => void
+  total?: number
   className?: string
 }
 
-export function TaskHeader({ taskList, selectedTaskId, onTaskSelect, className }: TaskHeaderProps) {
+export function TaskHeader({ taskList, selectedTaskId, onTaskSelect, hasMore, isLoadingMore, onLoadMore, total, className }: TaskHeaderProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isMobileTaskListOpen, setIsMobileTaskListOpen] = useState(false)
   const [dateFilter, setDateFilter] = useState({
@@ -128,8 +132,9 @@ export function TaskHeader({ taskList, selectedTaskId, onTaskSelect, className }
                 我的任务
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                共 {filteredTasks.length} 个任务
+                共 {total || filteredTasks.length} 个任务
                 {dateFilter.period !== "all" && ` (已筛选)`}
+                {taskList.length < (total || 0) && ` · 已加载 ${taskList.length} 个`}
               </p>
             </div>
           </div>
@@ -282,6 +287,35 @@ export function TaskHeader({ taskList, selectedTaskId, onTaskSelect, className }
               </div>
             )
           })}
+          
+          {/* 加载更多按钮 */}
+          {hasMore && (
+            <div className="flex-shrink-0 flex items-center justify-center w-40">
+              <Button
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+                variant="outline"
+                className="h-full min-h-[80px] w-full flex flex-col items-center justify-center space-y-2 bg-white/50 hover:bg-white/80 dark:bg-gray-800/50 dark:hover:bg-gray-700/80 border-dashed border-2"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                    <span className="text-xs text-gray-600 dark:text-gray-400">加载中...</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                      +
+                    </div>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">加载更多</span>
+                    <Badge variant="outline" className="text-xs">
+                      20
+                    </Badge>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -306,6 +340,32 @@ export function TaskHeader({ taskList, selectedTaskId, onTaskSelect, className }
             </option>
           ))}
         </select>
+        
+        {/* 加载更多按钮 - 移动端 */}
+        {hasMore && (
+          <div className="mt-3">
+            <Button
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              variant="outline"
+              className="w-full flex items-center justify-center space-x-2 h-10 text-sm bg-white/50 hover:bg-white/80 dark:bg-gray-800/50 dark:hover:bg-gray-700/80"
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>加载中...</span>
+                </>
+              ) : (
+                <>
+                  <span>加载更多任务</span>
+                  <Badge variant="outline" className="text-xs">
+                    20
+                  </Badge>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
     </div>

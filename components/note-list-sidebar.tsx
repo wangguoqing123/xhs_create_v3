@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Clock, XCircle, FileText } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, Clock, XCircle, FileText, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { preprocessImageUrl } from "@/lib/image-utils"
@@ -76,6 +77,9 @@ interface NoteListSidebarProps {
   selectedNoteId: string
   onNoteSelect: (noteId: string) => void
   taskName?: string
+  hasMore?: boolean
+  onLoadMore?: () => void
+  totalCount?: number
   className?: string
 }
 
@@ -84,6 +88,9 @@ export function NoteListSidebar({
   selectedNoteId, 
   onNoteSelect, 
   taskName,
+  hasMore,
+  onLoadMore,
+  totalCount,
   className 
 }: NoteListSidebarProps) {
   // 获取状态图标
@@ -139,7 +146,8 @@ export function NoteListSidebar({
               笔记列表
             </CardTitle>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {taskName || '任务详情'} - 共 {tasks.length} 篇笔记
+              {taskName || '任务详情'} - 共 {totalCount || tasks.length} 篇笔记
+              {tasks.length < (totalCount || 0) && ` · 已显示 ${tasks.length} 篇`}
             </p>
           </div>
         </div>
@@ -234,6 +242,22 @@ export function NoteListSidebar({
               <p className="text-sm text-gray-400 dark:text-gray-500">
                 请选择一个任务查看相关笔记
               </p>
+            </div>
+          )}
+          
+          {/* 加载更多按钮 */}
+          {hasMore && tasks.length > 0 && (
+            <div className="px-4 pb-4">
+              <Button
+                onClick={onLoadMore}
+                variant="outline"
+                className="w-full flex items-center justify-center space-x-2 h-10 text-sm bg-white/50 hover:bg-white/80 dark:bg-gray-800/50 dark:hover:bg-gray-700/80"
+              >
+                <span>加载更多笔记</span>
+                <Badge variant="outline" className="text-xs">
+                  20
+                </Badge>
+              </Button>
             </div>
           )}
         </div>

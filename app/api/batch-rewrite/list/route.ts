@@ -118,11 +118,16 @@ export async function GET(request: NextRequest) {
       })
     )
 
+    // 获取总数（在过滤之前）
+    const { data: allTasks } = await getBatchTasks(userId, 1000, 0) // 获取大量数据来计算总数
+    const totalCount = allTasks?.length || 0
+    
     return NextResponse.json({
       tasks: formattedTasks,
       limit,
       offset,
-      total: formattedTasks.length
+      total: totalCount,
+      hasMore: offset + formattedTasks.length < totalCount
     })
 
   } catch (error) {
