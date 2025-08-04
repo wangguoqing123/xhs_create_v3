@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateExplosiveContent } from '@/lib/mysql'
+import { updateNewExplosiveContent } from '@/lib/mysql-explosive-contents'
 import { cookies } from 'next/headers'
 
 // 检查管理员认证
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // 批量更新状态
     for (const contentId of contentIds) {
       try {
-        const { data, error } = await updateExplosiveContent(contentId, { status })
+        const { data, error } = await updateNewExplosiveContent(contentId, { status })
         
         if (error) {
           results.failed.push({ id: contentId, error })

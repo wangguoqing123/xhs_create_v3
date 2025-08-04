@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { batchImportExplosiveContent } from '@/lib/mysql'
-import { ExplosiveContentInsert, IndustryType, ContentFormType, ToneType } from '@/lib/types'
+import { batchCreateExplosiveContents } from '@/lib/mysql-explosive-contents'
+import { ExplosiveContentInsert } from '@/lib/types'
 import { cookies } from 'next/headers'
 
 // 检查管理员认证
@@ -11,7 +11,7 @@ async function checkAdminAuth() {
 }
 
 // 行业分类映射
-const industryMapping: { [key: string]: IndustryType } = {
+const industryMapping: { [key: string]: string } = {
   '旅游': 'travel',
   '游学': 'study_abroad',
   '装修': 'decoration',
@@ -19,7 +19,7 @@ const industryMapping: { [key: string]: IndustryType } = {
 }
 
 // 内容类型映射
-const contentTypeMapping: { [key: string]: ContentFormType } = {
+const contentTypeMapping: { [key: string]: string } = {
   '干货': 'guide',
   '攻略': 'guide',
   '指南': 'guide',
@@ -31,59 +31,68 @@ const contentTypeMapping: { [key: string]: ContentFormType } = {
 }
 
 // 口吻类型映射
-const toneMapping: { [key: string]: ToneType } = {
+const toneMapping: { [key: string]: string } = {
   '素人口吻': 'personal',
   '商家口吻': 'business',
   '其他': 'other'
 }
 
-// 从内容中提取行业分类
-function extractIndustryFromContent(content: string, tags: string[]): IndustryType {
+// 从内容中提取赛道ID
+function extractTrackFromContent(content: string, tags: string[]): number {
   const allText = (content + ' ' + tags.join(' ')).toLowerCase()
   
-  // 根据关键词判断行业
+  // 根据关键词判断赛道
+  if (allText.includes('装修') || allText.includes('家装') || allText.includes('设计') || allText.includes('家居')) {
+    return 1 // 装修
+  }
+  if (allText.includes('石材') || allText.includes('大理石') || allText.includes('花岗岩')) {
+    return 2 // 石材
+  }
   if (allText.includes('旅游') || allText.includes('旅行') || allText.includes('景点') || allText.includes('攻略')) {
-    return 'travel'
+    return 3 // 旅游
   }
   if (allText.includes('游学') || allText.includes('留学') || allText.includes('海外') || allText.includes('学习')) {
-    return 'study_abroad'
+    return 4 // 留学
   }
-  if (allText.includes('装修') || allText.includes('家装') || allText.includes('设计') || allText.includes('家居')) {
-    return 'decoration'
+  if (allText.includes('保险') || allText.includes('理财') || allText.includes('投保')) {
+    return 5 // 保险
+  }
+  if (allText.includes('考研') || allText.includes('研究生') || allText.includes('考试')) {
+    return 6 // 考研
   }
   
-  return 'other' // 默认分类
+  return 7 // 其他
 }
 
-// 从内容中提取内容类型
-function extractContentTypeFromContent(content: string, noteType: string): ContentFormType {
+// 从内容中提取内容类型ID
+function extractContentTypeFromContent(content: string, noteType: string): number {
   const allText = (content + ' ' + noteType).toLowerCase()
   
-  if (allText.includes('干货') || allText.includes('攻略') || allText.includes('指南') || allText.includes('教程')) {
-    return 'guide'
-  }
   if (allText.includes('测评') || allText.includes('评测') || allText.includes('对比')) {
-    return 'review'
+    return 1 // 测评内容
   }
   if (allText.includes('推荐') || allText.includes('营销') || allText.includes('种草')) {
-    return 'marketing'
+    return 2 // 推荐/营销
+  }
+  if (allText.includes('干货') || allText.includes('攻略') || allText.includes('指南') || allText.includes('教程')) {
+    return 3 // 干货内容
   }
   
-  return 'other' // 默认类型
+  return 4 // 其他
 }
 
-// 从内容中提取口吻类型
-function extractToneFromContent(content: string, tone: string): ToneType {
+// 从内容中提取口吻类型ID
+function extractToneFromContent(content: string, tone: string): number {
   const allText = (content + ' ' + tone).toLowerCase()
   
   if (allText.includes('素人') || allText.includes('个人') || allText.includes('分享')) {
-    return 'personal'
+    return 1 // 素人口吻
   }
   if (allText.includes('商家') || allText.includes('官方') || allText.includes('品牌')) {
-    return 'business'
+    return 2 // 商家口吻
   }
   
-  return 'other' // 默认类型
+  return 3 // 其他口吻
 }
 
 // 解析CSV行数据
@@ -259,24 +268,24 @@ export async function POST(request: NextRequest) {
           }
         }
 
-                 // 自动推断行业、内容类型和口吻
-         const industry = extractIndustryFromContent(content + ' ' + track, tags)
-         const contentType = extractContentTypeFromContent(content + ' ' + tone, noteType)
-         const toneType = extractToneFromContent(content + ' ' + tone, tone)
+        // 自动推断赛道、内容类型和口吻
+        const trackId = extractTrackFromContent(content + ' ' + track, tags)
+        const contentTypeId = extractContentTypeFromContent(content + ' ' + tone, noteType)
+        const toneId = extractToneFromContent(content + ' ' + tone, tone)
 
-         // 构建导入数据
-         const importData: ExplosiveContentInsert = {
-           title,
-           content,
-           tags,
-           industry,
-           content_type: contentType,
-           tone: toneType,
-           source_urls: sourceLink ? [sourceLink] : [],
-           cover_image: coverImage,
-           author: finalAuthor,
-           status: 'enabled'
-         }
+        // 构建导入数据
+        const importData: ExplosiveContentInsert = {
+          title,
+          content,
+          tags,
+          track_id: trackId,
+          type_id: contentTypeId,
+          tone_id: toneId,
+          note_url: sourceLink || null,
+          cover_image: coverImage,
+          author_name: finalAuthor,
+          status: 'enabled'
+        }
 
         validContents.push(importData)
 
@@ -308,7 +317,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 批量导入数据
-    const result = await batchImportExplosiveContent(validContents)
+    const result = await batchCreateExplosiveContents(validContents)
     
     if (result.error) {
       return NextResponse.json(

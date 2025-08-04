@@ -9,6 +9,8 @@ import { useBatchRewrite } from "@/lib/hooks/use-batch-rewrite"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 // 任务显示接口（兼容现有UI组件）
 interface Task {

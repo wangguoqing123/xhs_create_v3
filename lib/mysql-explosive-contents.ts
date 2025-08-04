@@ -510,4 +510,94 @@ export const checkNoteExists = async (noteId: string): Promise<{ exists: boolean
     console.error('❌ [检查笔记是否存在] 查询失败:', error)
     return { exists: false, error: error instanceof Error ? error.message : '查询失败' }
   }
+}
+
+// 批量创建爆款内容
+export const batchCreateExplosiveContents = async (contents: ExplosiveContentInsert[]) => {
+  if (!isMySQLConfigured) {
+    return { 
+      data: {
+        success_count: 0,
+        failed_count: contents.length,
+        success_items: [],
+        failed_items: contents.map(content => ({ content, error: '请先配置 MySQL 环境变量' }))
+      }, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    const connection = await getSafeConnection()
+    const successItems = []
+    const failedItems = []
+    
+    for (const content of contents) {
+      try {
+        const result = await createNewExplosiveContent(content)
+        if (result.data) {
+          successItems.push(result.data)
+        } else if (result.error) {
+          failedItems.push({ content, error: result.error })
+        }
+      } catch (error) {
+        failedItems.push({ 
+          content, 
+          error: error instanceof Error ? error.message : '创建失败' 
+        })
+      }
+    }
+    
+    connection.release()
+    
+    return { 
+      data: {
+        success_count: successItems.length,
+        failed_count: failedItems.length,
+        success_items: successItems,
+        failed_items: failedItems
+      }, 
+      error: null 
+    }
+  } catch (error) {
+    console.error('❌ [批量创建爆款内容] 创建失败:', error)
+    return { 
+      data: {
+        success_count: 0,
+        failed_count: contents.length,
+        success_items: [],
+        failed_items: contents.map(content => ({ 
+          content, 
+          error: error instanceof Error ? error.message : '创建失败' 
+        }))
+      }, 
+      error: error instanceof Error ? error.message : '创建失败' 
+    }
+  }
+}
+
+// 获取爆款内容统计信息
+export const getNewExplosiveContentStats = async () => {
+  if (!isMySQLConfigured) {
+    return { data: null, error: '请先配置 MySQL 环境变量' }
+  }
+
+  try {
+    const connection = await getSafeConnection()
+    
+    const [rows] = await connection.execute(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'enabled' THEN 1 ELSE 0 END) as enabled,
+        SUM(CASE WHEN status = 'disabled' THEN 1 ELSE 0 END) as disabled,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+      FROM explosive_contents
+    `) as any[]
+    
+    connection.release()
+    
+    return { data: rows[0], error: null }
+  } catch (error) {
+    console.error('❌ [获取爆款内容统计] 查询失败:', error)
+    return { data: null, error: error instanceof Error ? error.message : '查询失败' }
+  }
 } 

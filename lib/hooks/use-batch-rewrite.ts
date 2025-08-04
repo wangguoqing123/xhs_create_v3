@@ -259,7 +259,7 @@ export function useBatchRewrite() {
     limit: number = 20,
     offset: number = 0,
     status?: string
-  ): Promise<{ tasks: any[], total: number } | null> => {
+  ): Promise<{ tasks: any[], total: number, hasMore: boolean } | null> => {
     try {
       // 检查用户认证状态
       if (!user) {

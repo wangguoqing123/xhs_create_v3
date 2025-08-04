@@ -64,11 +64,13 @@ export const generateRandomSecret = (): string => {
   return crypto.randomBytes(32).toString('hex')
 }
 
-export default {
+const auth = {
   generateToken,
   verifyToken,
   extractTokenFromHeader,
   extractTokenFromCookies,
   isJWTConfigured,
   generateRandomSecret
-} 
+}
+
+export default auth 

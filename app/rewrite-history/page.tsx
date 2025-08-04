@@ -228,7 +228,7 @@ export default function RewriteHistoryPage() {
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          onClick={fetchRewriteHistory}
+                          onClick={() => fetchRewriteHistory()}
                           className="mt-2"
                         >
                           重试

@@ -3,13 +3,13 @@ import { getCreditTransactions } from '@/lib/mysql'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 简单的管理员权限检查 - 可以通过检查admin登录状态来验证
     // 这里暂时跳过详细的权限验证，因为这是admin路由，应该在更高层级进行验证
     
-    const userId = params.id
+    const { id: userId } = await params
     
     if (!userId) {
       return NextResponse.json(

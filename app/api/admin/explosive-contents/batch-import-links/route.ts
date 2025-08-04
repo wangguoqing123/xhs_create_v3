@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchXiaohongshuNoteDetail } from '@/lib/coze-api'
-import { createExplosiveContent, getProfile } from '@/lib/mysql'
+import { createNewExplosiveContent } from '@/lib/mysql-explosive-contents'
+import { getProfile } from '@/lib/mysql'
 import { ExplosiveContentInsert } from '@/lib/types'
 import { verifyToken } from '@/lib/auth'
 
@@ -83,26 +84,24 @@ function convertNoteDetailToExplosiveContent(noteDetail: any, sourceUrl: string)
     title: noteDetail.note_display_title || '需要补充标题',
     content: processedContent,
     tags: tags,
-    industry: (industry || 'other') as any, // 如果为空，设置为 'other'
-    content_type: contentType as any,
-    tone: 'other' as any, // 默认为其他口吻
-    source_urls: [sourceUrl],
+    track_id: 0, // 默认为0（其他赛道）
+    type_id: 1, // 默认为1，后续可根据需要调整
+    tone_id: 1, // 默认为1，后续可根据需要调整
+    note_url: sourceUrl,
     cover_image: coverImage,
-    likes: likeCount,
-    views: estimatedViews,
-    author: noteDetail.auther_nick_name || null,
+    likes_count: likeCount,
+    author_name: noteDetail.auther_nick_name || null,
     status: 'disabled' as const, // 默认禁用，需要管理员审核后启用
     published_at: noteDetail.note_create_time || null // 使用笔记的发布时间
   }
   
   console.log('✅ [转换数据] 转换后的爆文数据:', {
     title: result.title,
-    author: result.author,
+    author_name: result.author_name,
     content: result.content?.substring(0, 100),
     tags: result.tags,
     cover_image: result.cover_image,
-    likes: result.likes,
-    views: result.views
+    likes_count: result.likes_count
   })
   
   return result
@@ -165,15 +164,13 @@ export async function POST(request: NextRequest) {
         const explosiveContentData = convertNoteDetailToExplosiveContent(noteDetail, url)
         console.log('🔍 [批量导入] 准备保存到数据库:', {
           title: explosiveContentData.title,
-          author: explosiveContentData.author,
+          author_name: explosiveContentData.author_name,
           tags: explosiveContentData.tags,
-          tagsType: typeof explosiveContentData.tags,
-          sourceUrls: explosiveContentData.source_urls,
-          sourceUrlsType: typeof explosiveContentData.source_urls
+          tagsType: typeof explosiveContentData.tags
         })
         
         // 保存到数据库
-        const createResult = await createExplosiveContent(explosiveContentData)
+        const createResult = await createNewExplosiveContent(explosiveContentData)
         
         if (createResult.error) {
           throw new Error(createResult.error)
@@ -191,7 +188,6 @@ export async function POST(request: NextRequest) {
 
         // 检查缺失字段
         const missingFields = []
-        if (!explosiveContentData.industry || explosiveContentData.industry === 'other') missingFields.push('industry')
         if (!explosiveContentData.title || explosiveContentData.title === '需要补充标题') missingFields.push('title')
         if (!explosiveContentData.content || explosiveContentData.content === '需要补充内容') missingFields.push('content')
         

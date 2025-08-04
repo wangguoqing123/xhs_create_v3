@@ -871,7 +871,7 @@ export default function AccountPositioningPage() {
               
               <div className="mb-6">
                 <p className="text-gray-700 dark:text-gray-300">
-                  您确定要删除账号定位 <span className="font-semibold text-gray-900 dark:text-white">"{deleteConfirmPosition.name}"</span> 吗？
+                  您确定要删除账号定位 <span className="font-semibold text-gray-900 dark:text-white">&ldquo;{deleteConfirmPosition.name}&rdquo;</span> 吗？
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                   删除后将无法恢复此定位的所有信息。

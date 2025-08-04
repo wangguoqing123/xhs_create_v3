@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getExplosiveContentStats } from '@/lib/mysql'
+import { getNewExplosiveContentStats } from '@/lib/mysql-explosive-contents'
 import { cookies } from 'next/headers'
 
 // 检查管理员认证
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取统计信息
-    const result = await getExplosiveContentStats()
+    const result = await getNewExplosiveContentStats()
     
     if (result.error) {
       return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { batchImportExplosiveContent } from '@/lib/mysql'
+import { batchCreateExplosiveContents } from '@/lib/mysql-explosive-contents'
 import { cookies } from 'next/headers'
 import type { ExplosiveContentInsert } from '@/lib/types'
 
@@ -50,15 +50,14 @@ export async function POST(request: NextRequest) {
         title: content.title,
         content: content.content,
         tags: content.tags || [],
-        industry: content.industry,
-        content_type: content.content_type,
-        tone: content.tone || 'other',
-        source_urls: content.source_urls || [],
+        track_id: content.track_id || 0,
+        type_id: content.type_id || 1,
+        tone_id: content.tone_id || 1,
         cover_image: content.cover_image || null,
-        likes: parseInt(content.likes) || 0,
-        views: parseInt(content.views) || 0,
-        author: content.author || null,
-        status: content.status || 'enabled'
+        likes_count: parseInt(content.likes) || 0,
+        author_name: content.author || null,
+        status: content.status || 'enabled',
+        note_url: content.source_url || null
       })
     })
 
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 批量导入爆款内容
-    const result = await batchImportExplosiveContent(validContents)
+    const result = await batchCreateExplosiveContents(validContents)
     
     if (result.error) {
       return NextResponse.json(
