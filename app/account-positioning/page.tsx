@@ -138,13 +138,13 @@ export default function AccountPositioningPage() {
   const handleAIGenerate = async () => {
     // 验证关键词输入
     if (!aiKeywords.trim()) {
-      alert("请输入领域和特色描述")
+      alert('请输入领域和特色描述')
       return
     }
 
     // 检查用户登录状态
     if (!user) {
-      alert("请先登录")
+      alert('请先登录')
       return
     }
 
@@ -198,7 +198,7 @@ export default function AccountPositioningPage() {
           core_value: aiResult.coreValue || `通过专业的${aiKeywords}知识分享和实战经验传授，帮助用户在${aiKeywords}领域快速提升和成长。`,
           target_audience: aiResult.targetUser || `对${aiKeywords}感兴趣的初学者和进阶者`,
           key_persona: aiResult.keyPersona || `${aiKeywords}领域的专业导师——既有深厚专业功底又有良好的教学能力`,
-          core_style: aiResult.coreStyle || "专业权威、通俗易懂、实用性强，注重理论与实践相结合"
+          core_style: aiResult.coreStyle || '专业权威、通俗易懂、实用性强，注重理论与实践相结合'
         })
       })
 
