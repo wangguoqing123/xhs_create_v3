@@ -71,11 +71,30 @@ export async function POST(request: NextRequest) {
     const connection = await getPool().getConnection()
     
     try {
-      // 获取下一个可用的ID
-      const [maxIdResult] = await connection.execute(
-        'SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM note_tracks'
-      ) as any[]
-      const nextId = maxIdResult[0].next_id
+      let nextId: number
+      
+      // 如果是添加"其他"赛道，固定ID为0
+      if (name.trim() === '其他') {
+        // 检查ID为0是否已存在
+        const [existingResult] = await connection.execute(
+          'SELECT id FROM note_tracks WHERE id = 0'
+        ) as any[]
+        
+        if (existingResult.length > 0) {
+          return NextResponse.json(
+            { success: false, message: '"其他"赛道已存在，无法重复添加' },
+            { status: 400 }
+          )
+        }
+        
+        nextId = 0
+      } else {
+        // 获取下一个可用的ID（从1开始，避免与固定的0冲突）
+        const [maxIdResult] = await connection.execute(
+          'SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM note_tracks WHERE id > 0'
+        ) as any[]
+        nextId = Math.max(maxIdResult[0].next_id, 1) // 确保普通赛道ID从1开始
+      }
 
       // 插入新赛道
       await connection.execute(
@@ -142,10 +161,20 @@ export async function DELETE(request: NextRequest) {
     const connection = await getPool().getConnection()
     
     try {
+      const trackId = parseInt(id)
+      
+      // 防止删除ID为0的"其他"赛道
+      if (trackId === 0) {
+        return NextResponse.json(
+          { success: false, message: '"其他"赛道为系统预设赛道，无法删除' },
+          { status: 400 }
+        )
+      }
+      
       // 检查是否有关联的爆款内容
       const [contentRows] = await connection.execute(
         'SELECT COUNT(*) as count FROM explosive_contents WHERE track_id = ?',
-        [parseInt(id)]
+        [trackId]
       ) as any[]
       
       if (contentRows[0].count > 0) {
@@ -158,7 +187,7 @@ export async function DELETE(request: NextRequest) {
       // 删除赛道
       const [result] = await connection.execute(
         'DELETE FROM note_tracks WHERE id = ?',
-        [parseInt(id)]
+        [trackId]
       ) as any[]
 
       if (result.affectedRows === 0) {

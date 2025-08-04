@@ -40,6 +40,9 @@ interface NoteGridProps {
   noteTrackList?: NoteTrack[]
   noteTypeList?: NoteType[]
   noteToneList?: NoteTone[]
+  // 全选功能
+  onSelectAll?: () => void
+  onDeselectAll?: () => void
 }
 
 export function NoteGrid({ 
@@ -55,7 +58,9 @@ export function NoteGrid({
   onLoadMore,
   noteTrackList = [],
   noteTypeList = [],
-  noteToneList = []
+  noteToneList = [],
+  onSelectAll,
+  onDeselectAll
 }: NoteGridProps) {
   // 加载状态显示
   if (isLoading) {
@@ -451,8 +456,42 @@ export function NoteGrid({
     )
   }
 
+  // 判断是否全选
+  const isAllSelected = notes.length > 0 && selectedNotes.length === notes.length
+  const hasAnySelected = selectedNotes.length > 0
+
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* 全选按钮 - 只在有内容时显示 */}
+      {notes.length > 0 && (onSelectAll || onDeselectAll) && (
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <div
+              onClick={isAllSelected ? onDeselectAll : onSelectAll}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+            >
+              <Checkbox
+                checked={isAllSelected}
+                className="w-4 h-4 border-purple-300 dark:border-purple-500 data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
+              />
+              <span>
+                {isAllSelected ? '取消全选' : '全选'}
+              </span>
+            </div>
+            
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              已选择 {selectedNotes.length} / {notes.length} 项
+            </span>
+          </div>
+
+          {hasAnySelected && (
+            <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+              {context === 'author-copy' ? '可进行作者仿写' : '可进行批量生成'}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
         {notes.map((note) => (
           <Card

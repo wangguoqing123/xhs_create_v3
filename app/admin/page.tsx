@@ -102,6 +102,9 @@ export default function AdminPageNew() {
     name: '',
     description: ''
   })
+  
+  // 迁移相关状态
+  const [isMigrating, setIsMigrating] = useState(false)
 
   // 检查认证状态
   useEffect(() => {
@@ -255,6 +258,33 @@ export default function AdminPageNew() {
       setMessage('删除失败')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // 迁移"其他"赛道ID从7到0
+  const handleMigrateOtherTrack = async () => {
+    if (!confirm('确定要将"其他"赛道的ID从7迁移到0吗？\n\n注意：这将同时更新所有相关的爆款内容数据。')) {
+      return
+    }
+
+    setIsMigrating(true)
+    try {
+      const response = await fetch('/api/admin/note-tracks/migrate-other', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setMessage('成功将"其他"赛道ID从7迁移到0')
+        loadTypeData() // 重新加载数据
+      } else {
+        setMessage(data.message || '迁移失败')
+      }
+    } catch (error) {
+      setMessage('迁移失败')
+    } finally {
+      setIsMigrating(false)
     }
   }
 
@@ -1136,89 +1166,265 @@ export default function AdminPageNew() {
                 </Button>
               </div>
 
-              {/* 分类列表 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* 分类列表 - 表格形式展示ID-名称映射 */}
+              <div className="space-y-8">
                 {/* 笔记赛道 */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg text-blue-600">笔记赛道</CardTitle>
-                    <CardDescription>管理笔记的内容赛道分类</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {noteTrackList.map((track) => (
-                      <div key={track.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
-                        <div>
-                          <div className="font-medium">{track.name}</div>
-                          {track.description && (
-                            <div className="text-sm text-gray-600">{track.description}</div>
-                          )}
-                        </div>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-blue-600">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        笔记赛道管理
+                      </CardTitle>
+                      {noteTrackList.some(track => track.id === 7 && track.name === '其他') && (
                         <Button
-                          variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteCategory(track.id, 'track')}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          variant="outline"
+                          onClick={handleMigrateOtherTrack}
+                          disabled={isMigrating}
+                          className="text-orange-600 border-orange-300 hover:bg-orange-50"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {isMigrating ? (
+                            <>
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              迁移中...
+                            </>
+                          ) : (
+                            '将"其他"赛道ID改为0'
+                          )}
                         </Button>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                    <CardDescription>管理笔记的内容赛道分类，每个赛道都有唯一的数字ID</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-hidden border border-gray-200 rounded-lg">
+                      <table className="w-full divide-y divide-gray-200">
+                        <thead className="bg-blue-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                              ID
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                              赛道名称
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                              描述
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                              状态
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {noteTrackList.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                暂无赛道数据
+                              </td>
+                            </tr>
+                          ) : (
+                            noteTrackList.map((track) => (
+                              <tr key={track.id} className="hover:bg-blue-25 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                                    {track.id}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="font-medium text-gray-900">{track.name}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-sm text-gray-600 max-w-xs truncate">
+                                    {track.description || '-'}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Badge variant="outline" className="text-green-600 border-green-300">
+                                    启用
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-center">
+                                  {track.id === 0 ? (
+                                    <Badge variant="secondary" className="text-xs text-gray-500">
+                                      系统预设
+                                    </Badge>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteCategory(track.id, 'track')}
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* 笔记类型 */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg text-green-600">笔记类型</CardTitle>
-                    <CardDescription>管理笔记的内容类型分类</CardDescription>
+                    <CardTitle className="flex items-center gap-2 text-green-600">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      笔记类型管理
+                    </CardTitle>
+                    <CardDescription>管理笔记的内容类型分类，每个类型都有唯一的数字ID</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    {noteTypeList.map((type) => (
-                      <div key={type.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                        <div>
-                          <div className="font-medium">{type.name}</div>
-                          {type.description && (
-                            <div className="text-sm text-gray-600">{type.description}</div>
+                  <CardContent>
+                    <div className="overflow-hidden border border-gray-200 rounded-lg">
+                      <table className="w-full divide-y divide-gray-200">
+                        <thead className="bg-green-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
+                              ID
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
+                              类型名称
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
+                              描述
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
+                              状态
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-green-800 uppercase tracking-wider">
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {noteTypeList.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                暂无类型数据
+                              </td>
+                            </tr>
+                          ) : (
+                            noteTypeList.map((type) => (
+                              <tr key={type.id} className="hover:bg-green-25 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                                    {type.id}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="font-medium text-gray-900">{type.name}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-sm text-gray-600 max-w-xs truncate">
+                                    {type.description || '-'}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Badge variant="outline" className="text-green-600 border-green-300">
+                                    启用
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteCategory(type.id, 'type')}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
                           )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteCategory(type.id, 'type')}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* 笔记口吻 */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg text-purple-600">笔记口吻</CardTitle>
-                    <CardDescription>管理笔记的表达口吻分类</CardDescription>
+                    <CardTitle className="flex items-center gap-2 text-purple-600">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                      笔记口吻管理
+                    </CardTitle>
+                    <CardDescription>管理笔记的表达口吻分类，每个口吻都有唯一的数字ID</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    {noteToneList.map((tone) => (
-                      <div key={tone.id} className="flex items-center justify-between p-2 bg-purple-50 rounded-lg">
-                        <div>
-                          <div className="font-medium">{tone.name}</div>
-                          {tone.description && (
-                            <div className="text-sm text-gray-600">{tone.description}</div>
+                  <CardContent>
+                    <div className="overflow-hidden border border-gray-200 rounded-lg">
+                      <table className="w-full divide-y divide-gray-200">
+                        <thead className="bg-purple-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">
+                              ID
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">
+                              口吻名称
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">
+                              描述
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">
+                              状态
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider">
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {noteToneList.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                暂无口吻数据
+                              </td>
+                            </tr>
+                          ) : (
+                            noteToneList.map((tone) => (
+                              <tr key={tone.id} className="hover:bg-purple-25 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                                    {tone.id}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="font-medium text-gray-900">{tone.name}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-sm text-gray-600 max-w-xs truncate">
+                                    {tone.description || '-'}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <Badge variant="outline" className="text-green-600 border-green-300">
+                                    启用
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteCategory(tone.id, 'tone')}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
                           )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteCategory(tone.id, 'tone')}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

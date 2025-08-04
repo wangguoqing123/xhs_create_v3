@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
-import { Plus, Edit3, Loader2, AlertCircle, Clock, Menu, X, ChevronLeft, Sparkles } from "lucide-react"
+import { Plus, Edit3, Loader2, AlertCircle, Clock, Menu, X, ChevronLeft, Sparkles, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMySQLAuth } from "@/components/mysql-auth-context"
 import { useCreditsContext } from "@/components/credits-context"
@@ -35,6 +35,10 @@ export default function AccountPositioningPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editingPosition, setEditingPosition] = useState<AccountPositioning | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  
+  // 删除状态
+  const [deleteConfirmPosition, setDeleteConfirmPosition] = useState<AccountPositioning | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // 获取账号定位列表
   const fetchPositions = useCallback(async () => {
@@ -295,6 +299,51 @@ export default function AccountPositioningPage() {
     setIsEditing(false)
   }
 
+  // 处理删除确认
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmPosition) return
+
+    setIsDeleting(true)
+
+    try {
+      const response = await fetch(`/api/account-positioning/${deleteConfirmPosition.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || '删除账号定位失败')
+      }
+
+      // 更新本地状态
+      setPositions(prev => prev.filter(p => p.id !== deleteConfirmPosition.id))
+      
+      // 如果删除的是当前选中的定位，选择第一个或清空
+      if (selectedPosition?.id === deleteConfirmPosition.id) {
+        const remainingPositions = positions.filter(p => p.id !== deleteConfirmPosition.id)
+        setSelectedPosition(remainingPositions.length > 0 ? remainingPositions[0] : null)
+      }
+      
+      // 关闭确认框
+      setDeleteConfirmPosition(null)
+
+      console.log('✅ 账号定位删除成功')
+
+    } catch (error) {
+      console.error('❌ 删除账号定位失败:', error)
+      alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // 取消删除
+  const handleDeleteCancel = () => {
+    setDeleteConfirmPosition(null)
+  }
+
   // 如果用户未登录，显示登录提示
   if (!user) {
     return (
@@ -459,6 +508,17 @@ export default function AccountPositioningPage() {
                             <h3 className="font-medium text-sm lg:text-sm truncate flex-1">
                               {position.name}
                             </h3>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteConfirmPosition(position)
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                           <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
                             <div className="flex items-center">
@@ -790,6 +850,65 @@ export default function AccountPositioningPage() {
         </div>
       </div>
 
+      {/* 删除确认弹框 */}
+      {deleteConfirmPosition && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    确认删除
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    此操作无法撤销
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 dark:text-gray-300">
+                  您确定要删除账号定位 <span className="font-semibold text-gray-900 dark:text-white">"{deleteConfirmPosition.name}"</span> 吗？
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  删除后将无法恢复此定位的所有信息。
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteCancel}
+                  disabled={isDeleting}
+                >
+                  取消
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      删除中...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      确认删除
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
     </div>
   )

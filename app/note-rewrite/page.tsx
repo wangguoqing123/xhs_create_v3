@@ -290,6 +290,17 @@ export default function NoteRewritePageNew() {
     }
   }, [])
 
+  // 处理全选
+  const handleSelectAll = useCallback(() => {
+    const allNoteIds = convertedNotes.map(note => note.id)
+    setSelectedNotes(allNoteIds)
+  }, [convertedNotes])
+
+  // 处理取消全选
+  const handleDeselectAll = useCallback(() => {
+    setSelectedNotes([])
+  }, [])
+
   // 处理查看笔记详情
   const handleNoteView = useCallback(async (note: Note) => {
     setSelectedNoteForDetail(note)
@@ -356,103 +367,141 @@ export default function NoteRewritePageNew() {
       </div>
 
       {/* 筛选器 */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+      <div className="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm">
+        {/* 筛选器头部 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              筛选条件
-              {selectedFiltersCount > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {selectedFiltersCount} 个筛选项
-                </Badge>
-              )}
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <Filter className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="font-medium text-gray-900 dark:text-white">筛选条件</h3>
             </div>
             {selectedFiltersCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearFilters}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-4 h-4 mr-1" />
-                清除筛选
-              </Button>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200">
+                  已选 {selectedFiltersCount} 项
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="h-7 px-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  清除
+                </Button>
+              </div>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* 笔记赛道筛选 */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">笔记赛道</Label>
-            <div className="flex flex-wrap gap-2">
-              {noteTrackList.map((track) => (
-                <Badge
-                  key={track.id}
-                  variant={filters.track_id.includes(track.id) ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleTagSelect('track_id', track.id)}
-                >
-                  {track.name}
-                </Badge>
-              ))}
-            </div>
           </div>
+        </div>
 
-          {/* 笔记类型筛选 */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">笔记类型</Label>
-            <div className="flex flex-wrap gap-2">
-              {noteTypeList.map((type) => (
-                <Badge
-                  key={type.id}
-                  variant={filters.type_id.includes(type.id) ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleTagSelect('type_id', type.id)}
-                >
-                  {type.name}
-                </Badge>
-              ))}
+        {/* 筛选器内容 */}
+        <div className="p-4">
+          {/* 分类筛选 - 使用网格布局 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* 笔记赛道 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">笔记赛道</Label>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {noteTrackList.map((track) => (
+                  <Badge
+                    key={track.id}
+                    variant={filters.track_id.includes(track.id) ? "default" : "outline"}
+                    className={`cursor-pointer text-xs px-2.5 py-1 transition-all duration-200 ${
+                      filters.track_id.includes(track.id)
+                        ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-500 shadow-sm"
+                        : "hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-900/20"
+                    }`}
+                    onClick={() => handleTagSelect('track_id', track.id)}
+                  >
+                    {track.name}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* 笔记口吻筛选 */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">笔记口吻</Label>
-            <div className="flex flex-wrap gap-2">
-              {noteToneList.map((tone) => (
-                <Badge
-                  key={tone.id}
-                  variant={filters.tone_id.includes(tone.id) ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleTagSelect('tone_id', tone.id)}
-                >
-                  {tone.name}
-                </Badge>
-              ))}
+            {/* 笔记类型 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">笔记类型</Label>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {noteTypeList.map((type) => (
+                  <Badge
+                    key={type.id}
+                    variant={filters.type_id.includes(type.id) ? "default" : "outline"}
+                    className={`cursor-pointer text-xs px-2.5 py-1 transition-all duration-200 ${
+                      filters.type_id.includes(type.id)
+                        ? "bg-green-500 hover:bg-green-600 text-white border-green-500 shadow-sm"
+                        : "hover:bg-green-50 hover:text-green-700 hover:border-green-300 dark:hover:bg-green-900/20"
+                    }`}
+                    onClick={() => handleTagSelect('type_id', type.id)}
+                  >
+                    {type.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* 笔记口吻 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">笔记口吻</Label>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {noteToneList.map((tone) => (
+                  <Badge
+                    key={tone.id}
+                    variant={filters.tone_id.includes(tone.id) ? "default" : "outline"}
+                    className={`cursor-pointer text-xs px-2.5 py-1 transition-all duration-200 ${
+                      filters.tone_id.includes(tone.id)
+                        ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 shadow-sm"
+                        : "hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 dark:hover:bg-orange-900/20"
+                    }`}
+                    onClick={() => handleTagSelect('tone_id', tone.id)}
+                  >
+                    {tone.name}
+                  </Badge>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* 搜索框 */}
-          <div className="flex gap-2">
+          <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
             <div className="flex-1">
-              <Label className="text-sm font-medium mb-2 block">搜索关键词</Label>
-              <Input
-                placeholder="搜索标题或内容..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                onKeyPress={(e) => e.key === 'Enter' && handleFilter()}
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="搜索标题或内容关键词..."
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                  onKeyPress={(e) => e.key === 'Enter' && handleFilter()}
+                  className="pl-10 h-10 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                />
+              </div>
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleFilter} disabled={isLoading}>
+            <Button 
+              onClick={handleFilter} 
+              disabled={isLoading}
+              className="h-10 px-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-sm"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
                 <Search className="w-4 h-4 mr-2" />
-                筛选
-              </Button>
-            </div>
+              )}
+              搜索筛选
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 批量生成按钮 */}
       {selectedNotes.length > 0 && (
@@ -507,6 +556,8 @@ export default function NoteRewritePageNew() {
             noteTrackList={noteTrackList}
             noteTypeList={noteTypeList}
             noteToneList={noteToneList}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
           />
         </div>
       )}

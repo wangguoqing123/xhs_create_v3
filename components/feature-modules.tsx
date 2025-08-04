@@ -1,45 +1,69 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Search, Users, ArrowRight } from "lucide-react"
+import { RefreshCw, Search, Users, ArrowRight, Target, Sparkles, History } from "lucide-react"
 
 const features = [
   {
-    icon: RefreshCw,
-    title: "爆文改写",
-    description: "智能分析热门内容，一键生成多种风格的改写文案，保持原文精髓的同时避免同质化",
+    icon: Target,
+    title: "账号定位",
+    description: "帮你找到精准的账号定位，明确内容方向，吸引目标粉丝。",
     buttonText: "开始使用",
-    gradient: "from-purple-500 to-pink-500",
-    href: "/rewrite"
+    gradient: "from-blue-500 to-cyan-500",
+    href: "/account-positioning"
   },
   {
     icon: Search,
-    title: "批量生成",
-    description: "基于关键词搜索热门笔记，批量生成高质量文案，大幅提升内容创作效率",
+    title: "爆文中心",
+    description: "搜索全网热门笔记，洞悉爆款趋势，获取无限灵感。",
     buttonText: "开始使用", 
     gradient: "from-purple-500 to-pink-500",
     href: "/search"
   },
   {
+    icon: RefreshCw,
+    title: "AI智能改写",
+    description: "一键改写热门内容，生成多种风格，保持原创避免同质化。",
+    buttonText: "开始使用",
+    gradient: "from-purple-500 to-pink-500",
+    href: "/note-rewrite"
+  },
+  {
     icon: Users,
-    title: "作者复刻",
-    description: "分析优秀作者的写作风格和内容特点，智能模仿其创作模式，快速提升创作水平",
+    title: "作者风格复刻",
+    description: "深度分析优秀作者，智能模仿其创作模式，快速提升你的水平。",
     buttonText: "开始使用",
     gradient: "from-purple-600 to-pink-600", 
     href: "/author-copy"
+  },
+  {
+    icon: Sparkles,
+    title: "创作灵感",
+    description: "提供源源不断的创作灵感和话题，帮你打破创作瓶颈。",
+    buttonText: "开始使用",
+    gradient: "from-yellow-500 to-orange-500",
+    href: "/creative-inspiration"
+  },
+  {
+    icon: History,
+    title: "历史记录",
+    description: "查看你所有的改写和创作记录，方便管理和回溯。",
+    buttonText: "查看历史",
+    gradient: "from-green-500 to-teal-500",
+    href: "/rewrite-history"
   },
 ]
 
 export function FeatureModules() {
   return (
     <section className="py-16">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 标题部分 */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            核心功能
+            释放你的创作潜力
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            三大核心功能，满足你的所有内容创作需求
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            从精准定位到爆款内容，我们提供一站式智能创作工具，助你轻松成为内容王者。
           </p>
         </div>
 

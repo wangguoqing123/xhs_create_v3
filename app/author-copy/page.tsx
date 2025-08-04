@@ -132,6 +132,17 @@ function AuthorCopyPageContent() {
     }
   }, [])
 
+  // 处理全选
+  const handleSelectAll = useCallback(() => {
+    const allNoteIds = displayNotes.map(note => note.id)
+    setSelectedNotes(allNoteIds)
+  }, [displayNotes])
+
+  // 处理取消全选
+  const handleDeselectAll = useCallback(() => {
+    setSelectedNotes([])
+  }, [])
+
   // 处理查看笔记详情
   const handleNoteView = useCallback(async (note: Note) => {
     // 设置当前选中的笔记
@@ -241,6 +252,8 @@ function AuthorCopyPageContent() {
             isLoading={isLoading}
             error={error}
             context="author-copy"
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
           />
         </div>
       )}
