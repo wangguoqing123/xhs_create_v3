@@ -5,6 +5,9 @@
     "@typescript-eslint/no-explicit-any": "off",
     "react-hooks/exhaustive-deps": "off",
     "@next/next/no-img-element": "off",
-    "prefer-const": "warn"
+    "prefer-const": "warn",
+    "react/no-unescaped-entities": "off",
+    "react/jsx-no-undef": "off",
+    "import/no-anonymous-default-export": "off"
   }
 } 

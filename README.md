@@ -280,6 +280,13 @@ pnpm build
 pm2 restart xhs-create-v3
 ```
 
+# 最安全的同步方法
+git stash  # 保存本地更改（如果有）
+git fetch origin
+git reset --hard origin/main  # 强制同步到远程最新版本
+pnpm install  # 重新安装依赖
+pnpm build   # 重新构建
+
 ## 🔧 使用指南
 
 ### 管理员使用
