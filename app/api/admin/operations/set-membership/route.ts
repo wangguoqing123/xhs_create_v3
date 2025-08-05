@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSetMembership, adminSetMonthlyMembership, adminSetYearlyMembership } from '@/lib/mysql'
+import { cookies } from 'next/headers'
 
 // 检查管理员认证
 async function checkAdminAuth() {
-  // 这里应该实现实际的管理员认证逻辑
-  // 暂时返回true用于演示
-  return true
+  const cookieStore = await cookies()
+  const adminAuth = cookieStore.get('admin_auth')
+  return adminAuth?.value === 'authenticated'
 }
 
 export async function POST(request: NextRequest) {

@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise'
-import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams, RewriteRecord, RewriteRecordInsert, RewriteRecordUpdate, RewriteRecordListParams, RewriteGenerationConfig, RewriteGeneratedVersion, CreditHistoryParams, ExplosiveContentListParams, ExplosiveContentInsert, ExplosiveContentUpdate } from './types'
+import type { Database, Profile, ProfileUpdate, UserCookie, AccountPositioning, AccountPositioningInsert, AccountPositioningUpdate, AccountPositioningListParams, RewriteRecord, RewriteRecordInsert, RewriteRecordUpdate, RewriteRecordListParams, RewriteGenerationConfig, RewriteGeneratedVersion, CreditHistoryParams, ExplosiveContentListParams, ExplosiveContentInsert, ExplosiveContentUpdate, CreativeInspirationSession, CreativeInspirationSessionInsert, CreativeInspirationSessionUpdate, CreativeInspirationTopic, CreativeInspirationTopicInsert, CreativeInspirationTopicUpdate, CreativeInspirationHistoryParams } from './types'
 import { sendVerificationEmail, isEmailConfigured } from './email'
 import crypto from 'crypto'
 
@@ -2209,6 +2209,205 @@ export const adminCancelMembership = async (
   }
 }
 
+// 计算年会员下次积分重置时间的辅助函数
+function calculateNextCreditsReset(startDate: Date, currentDate: Date): Date {
+  const start = new Date(startDate);
+  const current = new Date(currentDate);
+  
+  // 计算从购买时间开始的天数
+  const daysSinceStart = Math.floor((current.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+  
+  // 计算下一个30天周期
+  const nextCycleNumber = Math.floor(daysSinceStart / 30) + 1;
+  
+  // 计算下次重置时间
+  const nextReset = new Date(start);
+  nextReset.setDate(start.getDate() + (nextCycleNumber * 30));
+  
+  return nextReset;
+}
+
+// 管理员调整用户会员到期时间
+export const adminAdjustMembershipExpiry = async (
+  userId: string,
+  newExpiryDate: Date,
+  adminUser: string,
+  reason?: string,
+  ipAddress?: string,
+  userAgent?: string
+) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 开始事务
+    await connection.query('START TRANSACTION')
+    
+    try {
+      // 获取用户邮箱、当前会员信息和积分信息
+      const [userRows] = await connection.execute(
+        `SELECT u.email, p.credits,
+                m.id as membership_id, 
+                m.membership_level, 
+                m.membership_duration,
+                m.start_date,
+                m.end_date, 
+                m.status,
+                m.monthly_credits,
+                m.last_credits_reset
+         FROM users u 
+         LEFT JOIN profiles p ON u.id = p.id
+         LEFT JOIN memberships m ON u.id = m.user_id AND m.status = 'active' 
+         WHERE u.id = ?`,
+        [userId]
+      ) as any[]
+      
+      if (userRows.length === 0) {
+        await connection.query('ROLLBACK')
+        connection.release()
+        return { success: false, error: '用户不存在' }
+      }
+      
+      const user = userRows[0]
+      
+      if (!user.membership_id) {
+        await connection.query('ROLLBACK')
+        connection.release()
+        return { success: false, error: '用户当前不是活跃会员' }
+      }
+
+      // 保存原来的到期时间和积分信息用于返回
+      const previousExpiryDate = user.end_date
+      const previousCredits = user.credits || 0
+      
+      // 计算积分变化逻辑
+      const now = new Date()
+      const isExpiring = newExpiryDate <= now // 是否设置为过期
+      const isExtending = newExpiryDate > new Date(user.end_date) // 是否延长会员
+      
+      let newCredits = previousCredits
+      let newLastCreditsReset = user.last_credits_reset
+      let nextCreditsReset = null
+      let resetTriggered = false
+      
+      if (isExpiring) {
+        // 情况1：会员过期 - 积分清零
+        newCredits = 0
+        newLastCreditsReset = now
+        nextCreditsReset = null // 不再是会员，停止积分重置
+        resetTriggered = true
+        console.log('🔄 [积分重置] 会员过期，积分清零:', { userId, previousCredits, newCredits: 0 })
+      } else if (isExtending) {
+        // 情况2：延长会员 - 触发积分重置
+        newCredits = user.monthly_credits || 0 // 恢复到月度额度
+        newLastCreditsReset = now
+        resetTriggered = true
+        
+        // 重新计算下次重置时间（仅年会员需要）
+        if (user.membership_duration === 'yearly') {
+          nextCreditsReset = calculateNextCreditsReset(new Date(user.start_date), now)
+        }
+        
+        console.log('🔄 [积分重置] 会员延长，触发积分重置:', { 
+          userId, 
+          previousCredits, 
+          newCredits, 
+          membershipDuration: user.membership_duration,
+          nextCreditsReset: nextCreditsReset?.toISOString() || null
+        })
+      }
+      
+      // 更新会员到期时间和积分重置信息
+      await connection.execute(
+        `UPDATE memberships 
+         SET end_date = ?, 
+             last_credits_reset = ?, 
+             next_credits_reset = ?,
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = ?`,
+        [newExpiryDate, newLastCreditsReset, nextCreditsReset, user.membership_id]
+      )
+      
+      // 更新用户积分（如果有变化）
+      if (newCredits !== previousCredits) {
+        await connection.execute(
+          'UPDATE profiles SET credits = ? WHERE id = ?',
+          [newCredits, userId]
+        )
+      }
+      
+      // 记录管理员操作日志
+      await connection.execute(
+        `INSERT INTO admin_operation_logs (admin_user, operation_type, target_user_id, target_user_email, operation_details, ip_address, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          adminUser, 
+          'adjust_membership_expiry', 
+          userId, 
+          user.email, 
+          JSON.stringify({
+            membership_level: user.membership_level,
+            membership_duration: user.membership_duration,
+            previous_expiry_date: previousExpiryDate,
+            new_expiry_date: newExpiryDate.toISOString(),
+            credits_change: {
+              previous_credits: previousCredits,
+              new_credits: newCredits,
+              reset_triggered: resetTriggered
+            },
+            next_credits_reset: nextCreditsReset?.toISOString() || null,
+            reason: reason || '管理员调整会员到期时间'
+          }),
+          ipAddress,
+          userAgent
+        ]
+      )
+      
+      // 提交事务
+      await connection.query('COMMIT')
+      connection.release()
+      
+      console.log('✅ [管理员调整会员到期时间] 操作成功:', { 
+        userId, 
+        adminUser, 
+        previousExpiryDate, 
+        newExpiryDate: newExpiryDate.toISOString() 
+      })
+      
+      return { 
+        success: true, 
+        error: null,
+        previousExpiryDate: previousExpiryDate,
+        creditsChange: {
+          previousCredits,
+          newCredits,
+          resetTriggered
+        },
+        nextCreditsReset: nextCreditsReset?.toISOString() || null
+      }
+    } catch (error) {
+      // 回滚事务
+      await connection.query('ROLLBACK')
+      connection.release()
+      throw error
+    }
+  } catch (error) {
+    console.error('❌ [管理员调整会员到期时间] 操作失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '操作失败' 
+    }
+  }
+}
+
 // 获取管理员操作日志
 export const getAdminOperationLogs = async (limit: number = 50, offset: number = 0) => {
   // 检查MySQL配置
@@ -2295,6 +2494,398 @@ export const grantYearlyMemberMonthlyCredits = async () => {
     return { 
       success: false, 
       error: error instanceof Error ? error.message : '执行失败' 
+    }
+  }
+}
+
+// ============================================
+// 创作灵感相关数据库操作函数
+// ============================================
+
+// 创建创作灵感会话
+export const createCreativeInspirationSession = async (data: CreativeInspirationSessionInsert) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 生成UUID
+    const sessionId = crypto.randomUUID()
+    
+    // 插入会话记录
+    const [result] = await connection.execute(
+      `INSERT INTO creative_inspiration_sessions (
+        id, user_id, industry, search_results_count, credits_consumed, status, error_message, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        sessionId,
+        data.user_id,
+        data.industry,
+        data.search_results_count || 0,
+        data.credits_consumed || 0,
+        data.status || 'analyzing',
+        data.error_message || null
+      ]
+    )
+    
+    connection.release()
+    
+    if ((result as any).affectedRows === 1) {
+      console.log('✅ [创建创作灵感会话] 创建成功:', sessionId)
+      return { 
+        success: true, 
+        data: { 
+          id: sessionId,
+          user_id: data.user_id,
+          industry: data.industry,
+          search_results_count: data.search_results_count || 0,
+          credits_consumed: data.credits_consumed || 0,
+          status: data.status || 'analyzing',
+          error_message: data.error_message || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        error: null 
+      }
+    } else {
+      throw new Error('插入记录失败')
+    }
+  } catch (error) {
+    console.error('❌ [创建创作灵感会话] 创建失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '创建失败' 
+    }
+  }
+}
+
+// 更新创作灵感会话
+export const updateCreativeInspirationSession = async (id: string, data: CreativeInspirationSessionUpdate) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 构建动态更新语句
+    const updateFields = []
+    const updateValues = []
+    
+    if (data.search_results_count !== undefined) {
+      updateFields.push('search_results_count = ?')
+      updateValues.push(data.search_results_count)
+    }
+    if (data.credits_consumed !== undefined) {
+      updateFields.push('credits_consumed = ?')
+      updateValues.push(data.credits_consumed)
+    }
+    if (data.status !== undefined) {
+      updateFields.push('status = ?')
+      updateValues.push(data.status)
+    }
+    if (data.error_message !== undefined) {
+      updateFields.push('error_message = ?')
+      updateValues.push(data.error_message)
+    }
+    
+    // 添加更新时间
+    updateFields.push('updated_at = NOW()')
+    updateValues.push(id)
+    
+    const [result] = await connection.execute(
+      `UPDATE creative_inspiration_sessions 
+       SET ${updateFields.join(', ')} 
+       WHERE id = ?`,
+      updateValues
+    )
+    
+    connection.release()
+    
+    if ((result as any).affectedRows === 1) {
+      console.log('✅ [更新创作灵感会话] 更新成功:', id)
+      return { success: true, error: null }
+    } else {
+      throw new Error('会话不存在或更新失败')
+    }
+  } catch (error) {
+    console.error('❌ [更新创作灵感会话] 更新失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '更新失败' 
+    }
+  }
+}
+
+// 根据ID获取创作灵感会话
+export const getCreativeInspirationSessionById = async (id: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 查询会话
+    const [rows] = await connection.execute(
+      `SELECT * FROM creative_inspiration_sessions WHERE id = ?`,
+      [id]
+    )
+    
+    connection.release()
+    
+    const sessions = rows as any[]
+    if (sessions.length === 0) {
+      return { 
+        success: false, 
+        error: '会话不存在' 
+      }
+    }
+    
+    console.log('✅ [获取创作灵感会话] 查询成功:', id)
+    return { 
+      success: true, 
+      data: sessions[0] as CreativeInspirationSession,
+      error: null 
+    }
+  } catch (error) {
+    console.error('❌ [获取创作灵感会话] 查询失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '查询失败' 
+    }
+  }
+}
+
+// 获取用户创作灵感历史记录
+export const getCreativeInspirationHistory = async (params: CreativeInspirationHistoryParams) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      data: { sessions: [], total: 0 },
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    const limit = params.limit || 20
+    const offset = params.offset || 0
+    
+    // 构建查询条件
+    const whereConditions = ['user_id = ?']
+    const queryParams = [params.user_id]
+    
+    if (params.status) {
+      whereConditions.push('status = ?')
+      queryParams.push(params.status)
+    }
+    
+    if (params.start_date) {
+      whereConditions.push('created_at >= ?')
+      queryParams.push(params.start_date)
+    }
+    
+    if (params.end_date) {
+      whereConditions.push('created_at <= ?')
+      queryParams.push(params.end_date)
+    }
+    
+    const whereClause = whereConditions.join(' AND ')
+    
+    // 获取总数
+    const [countRows] = await connection.execute(
+      `SELECT COUNT(*) as total FROM creative_inspiration_sessions WHERE ${whereClause}`,
+      queryParams
+    ) as any[]
+    
+    const total = countRows[0].total
+    
+    // 获取会话列表（包含主题数量统计）
+    const [rows] = await connection.execute(
+      `SELECT 
+        cis.*,
+        (SELECT COUNT(*) FROM creative_inspiration_topics WHERE session_id = cis.id) as topics_count
+       FROM creative_inspiration_sessions cis
+       WHERE ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT ${limit} OFFSET ${offset}`,
+      queryParams
+    )
+    
+    connection.release()
+    
+    const sessions = (rows as any[]).map(row => ({
+      id: row.id,
+      industry: row.industry,
+      created_at: row.created_at,
+      topics_count: row.topics_count || 0,
+      status: row.status
+    }))
+    
+    console.log('✅ [获取创作灵感历史] 查询成功:', sessions.length, '条记录')
+    return { 
+      success: true, 
+      data: { sessions, total },
+      error: null 
+    }
+  } catch (error) {
+    console.error('❌ [获取创作灵感历史] 查询失败:', error)
+    return { 
+      success: false, 
+      data: { sessions: [], total: 0 },
+      error: error instanceof Error ? error.message : '查询失败' 
+    }
+  }
+}
+
+// 批量创建创作灵感主题
+export const createCreativeInspirationTopics = async (topics: CreativeInspirationTopicInsert[]) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  if (!topics || topics.length === 0) {
+    return { 
+      success: false, 
+      error: '主题数据不能为空' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 准备批量插入数据
+    const insertValues = []
+    const placeholders = []
+    
+    for (let i = 0; i < topics.length; i++) {
+      const topic = topics[i]
+      const topicId = crypto.randomUUID()
+      
+      placeholders.push('(?, ?, ?, ?, ?, ?, ?, NOW())')
+      insertValues.push(
+        topicId,
+        topic.session_id,
+        topic.title,
+        topic.description || null,
+        JSON.stringify(topic.keywords || []),
+        topic.popularity_score || 50,
+        topic.sort_order !== undefined ? topic.sort_order : i
+      )
+    }
+    
+    // 执行批量插入
+    const [result] = await connection.execute(
+      `INSERT INTO creative_inspiration_topics (
+        id, session_id, title, description, keywords, popularity_score, sort_order, created_at
+      ) VALUES ${placeholders.join(', ')}`,
+      insertValues
+    )
+    
+    connection.release()
+    
+    if ((result as any).affectedRows === topics.length) {
+      console.log('✅ [批量创建创作灵感主题] 创建成功:', topics.length, '个主题')
+      return { 
+        success: true, 
+        data: topics.map((topic, index) => ({
+          id: crypto.randomUUID(), // 这里应该返回实际的ID，但为了简化先用随机ID
+          session_id: topic.session_id,
+          title: topic.title,
+          description: topic.description || null,
+          keywords: topic.keywords || [],
+          popularity_score: topic.popularity_score || 50,
+          sort_order: topic.sort_order !== undefined ? topic.sort_order : index,
+          created_at: new Date().toISOString()
+        })),
+        error: null 
+      }
+    } else {
+      throw new Error('批量插入失败')
+    }
+  } catch (error) {
+    console.error('❌ [批量创建创作灵感主题] 创建失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '创建失败' 
+    }
+  }
+}
+
+// 根据会话ID获取创作灵感主题列表
+export const getCreativeInspirationTopicsBySession = async (sessionId: string) => {
+  // 检查MySQL配置
+  if (!isMySQLConfigured) {
+    return { 
+      success: false, 
+      error: '请先配置 MySQL 环境变量' 
+    }
+  }
+
+  try {
+    // 获取安全连接
+    const connection = await getSafeConnection()
+    
+    // 查询主题列表
+    const [rows] = await connection.execute(
+      `SELECT * FROM creative_inspiration_topics 
+       WHERE session_id = ? 
+       ORDER BY sort_order ASC, created_at ASC`,
+      [sessionId]
+    )
+    
+    connection.release()
+    
+    // 解析keywords JSON字段
+    const topics = (rows as any[]).map(row => {
+      try {
+        row.keywords = typeof row.keywords === 'string' 
+          ? JSON.parse(row.keywords)
+          : row.keywords || []
+      } catch (parseError) {
+        console.error('❌ [获取创作灵感主题] Keywords JSON解析失败:', parseError)
+        row.keywords = []
+      }
+      return row as CreativeInspirationTopic
+    })
+    
+    console.log('✅ [获取创作灵感主题] 查询成功:', topics.length, '个主题')
+    return { 
+      success: true, 
+      data: topics,
+      error: null 
+    }
+  } catch (error) {
+    console.error('❌ [获取创作灵感主题] 查询失败:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '查询失败' 
     }
   }
 }

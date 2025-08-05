@@ -1145,3 +1145,130 @@ export interface BatchImportExplosiveContentResponse {
   }
   error?: string
 }
+
+// ============================================
+// 创作灵感相关类型定义
+// ============================================
+
+// 创作灵感会话状态
+export type CreativeInspirationStatus = 'analyzing' | 'completed' | 'failed'
+
+// 创作灵感会话表结构
+export interface CreativeInspirationSession {
+  id: string // 会话唯一标识
+  user_id: string // 用户ID
+  industry: string // 行业关键词
+  search_results_count: number // 搜索结果数量
+  credits_consumed: number // 消耗的积分数
+  status: CreativeInspirationStatus // 会话状态
+  error_message: string | null // 错误信息
+  created_at: string // 创建时间
+  updated_at: string // 更新时间
+}
+
+// 创作灵感会话插入类型
+export interface CreativeInspirationSessionInsert {
+  user_id: string // 用户ID（必填）
+  industry: string // 行业关键词（必填）
+  search_results_count?: number // 搜索结果数量（可选）
+  credits_consumed?: number // 消耗的积分数（可选）
+  status?: CreativeInspirationStatus // 会话状态（可选）
+  error_message?: string | null // 错误信息（可选）
+}
+
+// 创作灵感会话更新类型
+export interface CreativeInspirationSessionUpdate {
+  search_results_count?: number // 搜索结果数量
+  credits_consumed?: number // 消耗的积分数
+  status?: CreativeInspirationStatus // 会话状态
+  error_message?: string | null // 错误信息
+}
+
+// 选题主题表结构
+export interface CreativeInspirationTopic {
+  id: string // 主题唯一标识
+  session_id: string // 会话ID
+  title: string // 主题标题
+  description: string | null // 主题描述
+  keywords: string[] // 相关关键词数组
+  popularity_score: number // 热度评分
+  sort_order: number // 排序顺序
+  created_at: string // 创建时间
+}
+
+// 选题主题插入类型
+export interface CreativeInspirationTopicInsert {
+  session_id: string // 会话ID（必填）
+  title: string // 主题标题（必填）
+  description?: string | null // 主题描述（可选）
+  keywords?: string[] // 相关关键词数组（可选）
+  popularity_score?: number // 热度评分（可选）
+  sort_order?: number // 排序顺序（可选）
+}
+
+// 选题主题更新类型
+export interface CreativeInspirationTopicUpdate {
+  title?: string // 主题标题
+  description?: string | null // 主题描述
+  keywords?: string[] // 相关关键词数组
+  popularity_score?: number // 热度评分
+  sort_order?: number // 排序顺序
+}
+
+// 创作灵感API响应类型
+export interface CreativeInspirationResponse {
+  success: boolean
+  data?: {
+    session?: CreativeInspirationSession
+    topics?: CreativeInspirationTopic[]
+    searchResults?: XiaohongshuNote[]
+  }
+  error?: string
+}
+
+// 创作灵感分析请求类型
+export interface CreativeInspirationAnalyzeRequest {
+  industry: string // 行业关键词
+}
+
+// 创作灵感内容获取请求类型
+export interface CreativeInspirationContentRequest {
+  topic: string // 选题主题关键词
+  limit?: number // 获取数量，默认20
+}
+
+// 创作灵感历史记录查询参数
+export interface CreativeInspirationHistoryParams {
+  user_id: string // 用户ID
+  limit?: number // 每页数量，默认20
+  offset?: number // 偏移量，默认0
+  status?: CreativeInspirationStatus // 状态筛选
+  start_date?: string // 开始日期筛选
+  end_date?: string // 结束日期筛选
+}
+
+// 创作灵感历史记录响应类型
+export interface CreativeInspirationHistoryResponse {
+  success: boolean
+  data?: {
+    sessions: Array<{
+      id: string
+      industry: string
+      created_at: string
+      topics_count: number
+      status: CreativeInspirationStatus
+    }>
+    total: number
+  }
+  error?: string
+}
+
+// 创作灵感会话详情响应类型
+export interface CreativeInspirationSessionDetailResponse {
+  success: boolean
+  data?: {
+    session: CreativeInspirationSession
+    topics: CreativeInspirationTopic[]
+  }
+  error?: string
+}

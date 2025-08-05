@@ -505,6 +505,15 @@ export default function AdminPageNew() {
     loading: false
   })
 
+  // 调整会员到期时间相关状态
+  const [showAdjustExpiryModal, setShowAdjustExpiryModal] = useState(false)
+  const [selectedUserForAdjustExpiry, setSelectedUserForAdjustExpiry] = useState<User | null>(null)
+  const [adjustExpiryForm, setAdjustExpiryForm] = useState({
+    newExpiryDate: '',
+    reason: ''
+  })
+  const [isAdjustingExpiry, setIsAdjustingExpiry] = useState(false)
+
   // 快速设置用户为标准会员
   const handleQuickSetMembership = async (userId: string, userEmail: string) => {
     if (!confirm(`确定要将用户 ${userEmail} 设置为标准会员(月付)吗？`)) {
@@ -601,6 +610,20 @@ export default function AdminPageNew() {
     setShowCreditsHistoryModal(true)
     // 加载第一页数据
     loadCreditsHistory(user.id, 0)
+  }
+
+  // 打开调整会员到期时间弹窗
+  const handleOpenAdjustExpiry = (user: User) => {
+    setSelectedUserForAdjustExpiry(user)
+    // 设置默认的新到期时间为当前到期时间（如果有的话）
+    const currentExpiry = user.membership_end ? new Date(user.membership_end) : new Date()
+    // 格式化为 datetime-local 输入所需的格式
+    const formattedDate = currentExpiry.toISOString().slice(0, 16)
+    setAdjustExpiryForm({
+      newExpiryDate: formattedDate,
+      reason: ''
+    })
+    setShowAdjustExpiryModal(true)
   }
 
   // 加载积分使用记录
@@ -760,6 +783,75 @@ export default function AdminPageNew() {
       setMessage('操作失败')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // 执行调整会员到期时间操作
+  const handleAdjustMembershipExpiry = async () => {
+    if (!selectedUserForAdjustExpiry || !adjustExpiryForm.newExpiryDate) {
+      setMessage('请选择新的到期时间')
+      return
+    }
+
+    // 验证日期格式有效性
+    const newDate = new Date(adjustExpiryForm.newExpiryDate)
+    if (isNaN(newDate.getTime())) {
+      setMessage('请选择有效的日期时间')
+      return
+    }
+
+    // 验证日期不能太久远（不早于2020年，不晚于2030年）
+    const minDate = new Date('2020-01-01')
+    const maxDate = new Date('2030-12-31')
+    if (newDate < minDate || newDate > maxDate) {
+      setMessage('日期范围应在2020年到2030年之间')
+      return
+    }
+
+    setIsAdjustingExpiry(true)
+    try {
+      const response = await fetch('/api/admin/operations/adjust-membership-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: selectedUserForAdjustExpiry.id,
+          new_expiry_date: adjustExpiryForm.newExpiryDate,
+          reason: adjustExpiryForm.reason || '管理员调整会员到期时间'
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // 构建包含积分变化信息的成功消息
+        let message = `成功调整用户 ${selectedUserForAdjustExpiry.email} 的会员到期时间`
+        
+        if (data.data?.credits_change) {
+          const creditsChange = data.data.credits_change
+          if (creditsChange.reset_triggered) {
+            if (creditsChange.new_credits === 0) {
+              message += `，积分已清零`
+            } else {
+              message += `，积分已重置为 ${creditsChange.new_credits}`
+            }
+          }
+        }
+        
+        setMessage(message)
+        setShowAdjustExpiryModal(false)
+        setSelectedUserForAdjustExpiry(null)
+        setAdjustExpiryForm({ newExpiryDate: '', reason: '' })
+        
+        // 重新搜索以更新显示
+        if (searchTerm) {
+          await handleUserSearch()
+        }
+      } else {
+        setMessage(data.message || '调整到期时间失败')
+      }
+    } catch (error) {
+      setMessage('调整到期时间失败')
+    } finally {
+      setIsAdjustingExpiry(false)
     }
   }
 
@@ -1568,12 +1660,52 @@ export default function AdminPageNew() {
                             </div>
                             
                             <div className="flex flex-col items-end gap-2 ml-6">
-                              <Badge 
-                                variant={user.is_active_member ? "default" : "secondary"}
-                                className="px-3 py-1"
-                              >
-                                {user.is_active_member ? '会员用户' : '普通用户'}
-                              </Badge>
+                              {/* 会员状态显示优化 */}
+                              <div className="flex flex-col gap-1 items-end">
+                                <Badge 
+                                  variant={user.is_active_member ? "default" : "secondary"}
+                                  className={`px-3 py-1 ${
+                                    user.is_active_member 
+                                      ? (user.membership_end && new Date(user.membership_end) < new Date() 
+                                         ? 'bg-red-500 hover:bg-red-600' // 已过期
+                                         : 'bg-green-500 hover:bg-green-600') // 活跃会员
+                                      : ''
+                                  }`}
+                                >
+                                  {user.is_active_member 
+                                    ? (user.membership_end && new Date(user.membership_end) < new Date() 
+                                       ? '会员已过期' : '活跃会员')
+                                    : '无会员'
+                                  }
+                                </Badge>
+                                
+                                {/* 会员等级和期限显示 */}
+                                {user.is_active_member && user.membership_level && (
+                                  <Badge variant="outline" className="text-xs px-2 py-0.5 border-blue-300 text-blue-700">
+                                    {user.membership_level === 'lite' ? '入门版' : 
+                                     user.membership_level === 'pro' ? '标准版' : '高级版'}
+                                    {user.membership_duration && ` · ${user.membership_duration === 'monthly' ? '月付' : '年付'}`}
+                                  </Badge>
+                                )}
+                                
+                                {/* 到期状态提示 */}
+                                {user.membership_end && (
+                                  <div className={`text-xs px-2 py-1 rounded ${
+                                    new Date(user.membership_end) < new Date() 
+                                      ? 'bg-red-50 text-red-600 border border-red-200' 
+                                      : new Date(user.membership_end) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                        ? 'bg-yellow-50 text-yellow-600 border border-yellow-200'
+                                        : 'bg-green-50 text-green-600 border border-green-200'
+                                  }`}>
+                                    {new Date(user.membership_end) < new Date() 
+                                      ? '已过期' 
+                                      : new Date(user.membership_end) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                        ? '即将过期'
+                                        : '正常'
+                                    }
+                                  </div>
+                                )}
+                              </div>
                               
                               <div className="flex flex-col gap-1">
                                 {!user.is_active_member && (
@@ -1605,6 +1737,18 @@ export default function AdminPageNew() {
                                   <CreditCard className="w-3 h-3 mr-1" />
                                   积分记录
                                 </Button>
+                                
+                                {user.is_active_member && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleOpenAdjustExpiry(user)}
+                                    className="text-xs px-3 py-1 border-orange-300 text-orange-700 hover:bg-orange-50"
+                                  >
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    调整到期时间
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1737,6 +1881,104 @@ export default function AdminPageNew() {
                     }}
                   >
                     关闭
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* 调整会员到期时间弹窗 */}
+          {showAdjustExpiryModal && selectedUserForAdjustExpiry && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto m-4">
+                <CardHeader>
+                  <CardTitle>调整会员到期时间</CardTitle>
+                  <CardDescription>
+                    用户: {selectedUserForAdjustExpiry.email}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* 当前会员信息 */}
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-sm font-medium text-blue-800 mb-1">
+                      当前会员状态
+                    </div>
+                    <div className="text-sm text-blue-600">
+                      等级: {selectedUserForAdjustExpiry.membership_level === 'lite' ? '入门' : 
+                             selectedUserForAdjustExpiry.membership_level === 'pro' ? '标准' : '高级'}会员
+                    </div>
+                    <div className="text-sm text-blue-600">
+                      时长: {selectedUserForAdjustExpiry.membership_duration === 'monthly' ? '月付' : '年付'}
+                    </div>
+                    {selectedUserForAdjustExpiry.membership_end && (
+                      <div className="text-sm text-blue-600">
+                        当前到期时间: {new Date(selectedUserForAdjustExpiry.membership_end).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 新到期时间输入 */}
+                  <div>
+                    <Label htmlFor="newExpiryDate">新的到期时间</Label>
+                    <Input
+                      id="newExpiryDate"
+                      type="datetime-local"
+                      value={adjustExpiryForm.newExpiryDate}
+                      onChange={(e) => setAdjustExpiryForm({
+                        ...adjustExpiryForm,
+                        newExpiryDate: e.target.value
+                      })}
+                      className="mt-1"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      可设置过去或未来日期（用于测试过期会员功能）
+                    </div>
+                  </div>
+
+                  {/* 原因输入 */}
+                  <div>
+                    <Label htmlFor="reason">调整原因（可选）</Label>
+                    <Textarea
+                      id="reason"
+                      value={adjustExpiryForm.reason}
+                      onChange={(e) => setAdjustExpiryForm({
+                        ...adjustExpiryForm,
+                        reason: e.target.value
+                      })}
+                      placeholder="请输入调整会员到期时间的原因..."
+                      className="mt-1"
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+                <div className="flex justify-end gap-2 p-6 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAdjustExpiryModal(false)
+                      setSelectedUserForAdjustExpiry(null)
+                      setAdjustExpiryForm({ newExpiryDate: '', reason: '' })
+                    }}
+                    disabled={isAdjustingExpiry}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleAdjustMembershipExpiry}
+                    disabled={isAdjustingExpiry || !adjustExpiryForm.newExpiryDate}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    {isAdjustingExpiry ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        调整中...
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4 mr-2" />
+                        确认调整
+                      </>
+                    )}
                   </Button>
                 </div>
               </Card>
