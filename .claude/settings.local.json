@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(echo $0)",
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npm search:*)",
+      "mcp__browsermcp__puppeteer_click",
+      "mcp__browsermcp__puppeteer_evaluate",
+      "mcp__browsermcp__puppeteer_fill",
+      "mcp__browsermcp__puppeteer_screenshot"
+    ],
+    "deny": []
+  }
+}

@@ -2,6 +2,9 @@
 
 import { useState, useCallback } from 'react'
 import { VALIDATION_RULES, ERROR_MESSAGES } from '@/lib/creative-inspiration-constants'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Search, Sparkles, Loader2 } from 'lucide-react'
 
 interface IndustryInputSectionProps {
   onAnalyze: (industry: string) => void
@@ -91,46 +94,17 @@ export default function IndustryInputSection({
     }
   }, [handleSubmit, isAnalyzing])
 
-  // 获取输入框状态样式
-  const getInputClassName = useCallback(() => {
-    const baseClass = "w-full px-4 py-3 text-lg border-2 rounded-lg transition-all duration-300 focus:outline-none dark:bg-gray-800 dark:text-white"
-    
-    if (isAnalyzing) {
-      return `${baseClass} border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-600 cursor-not-allowed`
-    }
-    
-    if (inputError || error) {
-      return `${baseClass} border-red-300 bg-red-50 focus:border-red-500 dark:bg-red-900/20 dark:border-red-600`
-    }
-    
-    if (industry.trim() && !inputError) {
-      return `${baseClass} border-green-300 bg-green-50 focus:border-green-500 dark:bg-green-900/20 dark:border-green-600`
-    }
-    
-    return `${baseClass} border-purple-200 focus:border-purple-500 dark:border-gray-600 dark:focus:border-purple-500`
-  }, [isAnalyzing, inputError, error, industry])
-
-  // 获取按钮状态样式
-  const getButtonClassName = useCallback(() => {
-    const baseClass = "w-full py-3 text-lg font-semibold rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-    
-    const isDisabled = isAnalyzing || !industry.trim() || !!inputError
-
-    if (isDisabled) {
-      return `${baseClass} bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400`
-    }
-    
-    return `${baseClass} bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 active:scale-95`
-  }, [isAnalyzing, industry, inputError])
-
   const displayError = inputError || error
+  const isDisabled = isAnalyzing || !industry.trim() || !!inputError
 
   return (
     <div className="text-center">
       {/* 标题区域 */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          🎨 创作灵感
+        <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+          <span className="bg-gradient-to-r from-purple-700 via-pink-700 to-red-600 bg-clip-text text-transparent">
+            创作灵感
+          </span>
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
           输入行业关键词，发现热门话题，获得创作灵感
@@ -141,54 +115,62 @@ export default function IndustryInputSection({
       </div>
 
       {/* 输入区域 */}
-      <div className="max-w-md mx-auto">
+      <div className="max-w-4xl mx-auto">
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {/* 输入框 */}
-            <div className="relative">
-              <input
-                type="text"
-                value={industry}
-                onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
-                placeholder="输入行业关键词（如：美妆、健身、美食）"
-                className={getInputClassName()}
-                disabled={isAnalyzing}
-                maxLength={VALIDATION_RULES.INDUSTRY_MAX_LENGTH}
-                autoComplete="off"
-                spellCheck="false"
-              />
-              
-              {/* 字符计数 */}
-              <div className="absolute top-full right-0 mt-1 text-xs text-gray-400">
-                {industry.length}/{VALIDATION_RULES.INDUSTRY_MAX_LENGTH}
+          {/* 粉红色背景色块 */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 opacity-20 dark:opacity-30 rounded-3xl"></div>
+            
+            <div className="relative px-4 sm:px-8 py-8 sm:py-12">
+              {/* 搜索框和按钮 */}
+              <div className="max-w-3xl mx-auto">
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 dark:from-purple-500/30 dark:to-pink-500/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+                  <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-gray-200/50 dark:border-slate-600/50 shadow-xl dark:shadow-2xl dark:shadow-black/20">
+                    <div className="flex items-center p-2">
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-300" />
+                        <Input
+                          type="text"
+                          placeholder="输入行业关键词（如：美妆、健身、美食）"
+                          value={industry}
+                          onChange={handleInputChange}
+                          onKeyPress={handleKeyPress}
+                          disabled={isAnalyzing}
+                          maxLength={VALIDATION_RULES.INDUSTRY_MAX_LENGTH}
+                          autoComplete="off"
+                          spellCheck="false"
+                          className="h-12 sm:h-14 text-base sm:text-lg pl-12 sm:pl-14 pr-4 bg-transparent border-none text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-0 focus:outline-none"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={isDisabled}
+                        className="h-12 sm:h-14 px-8 ml-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isAnalyzing ? (
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>分析中...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <Sparkles className="h-5 w-5" />
+                            <span>开始分析</span>
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* 提交按钮 */}
-            <button
-              type="submit"
-              className={getButtonClassName()}
-              disabled={isAnalyzing || !industry.trim() || !!inputError}
-            >
-              {isAnalyzing ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>AI分析中...</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center space-x-2">
-                  <span>🚀</span>
-                  <span>开始分析</span>
-                </div>
-              )}
-            </button>
           </div>
         </form>
 
         {/* 错误提示 */}
         {displayError && (
-          <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg dark:bg-red-900/20 dark:border-red-600 dark:text-red-400">
+          <div className="mt-6 max-w-2xl mx-auto p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg dark:bg-red-900/20 dark:border-red-600 dark:text-red-400">
             <div className="flex items-center space-x-2">
               <span className="text-lg">⚠️</span>
               <span className="text-sm">{displayError}</span>
@@ -196,24 +178,9 @@ export default function IndustryInputSection({
           </div>
         )}
 
-        {/* 提示信息 */}
-        {!displayError && !isAnalyzing && (
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-700">
-            <div className="text-sm text-blue-700 dark:text-blue-300">
-              <div className="font-semibold mb-2">💡 使用提示：</div>
-              <ul className="space-y-1 text-left">
-                <li>• 输入具体的行业领域，如"护肤"、"瑜伽"、"烘焙"</li>
-                <li>• 支持中英文，长度在2-50个字符之间</li>
-                <li>• AI将分析100个热门内容，生成10个创作主题</li>
-                <li>• 分析过程需要10-15秒，请耐心等待</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
         {/* 分析进度提示 */}
         {isAnalyzing && (
-          <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg dark:bg-purple-900/20 dark:border-purple-700">
+          <div className="mt-6 max-w-2xl mx-auto p-4 bg-purple-50 border border-purple-200 rounded-lg dark:bg-purple-900/20 dark:border-purple-700">
             <div className="text-sm text-purple-700 dark:text-purple-300">
               <div className="font-semibold mb-2">🔄 正在分析中：</div>
               <div className="space-y-2">
@@ -234,30 +201,6 @@ export default function IndustryInputSection({
           </div>
         )}
       </div>
-
-      {/* 示例关键词 */}
-      {!isAnalyzing && !displayError && (
-        <div className="mt-8">
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            🔥 热门关键词示例：
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {[
-              '美妆护肤', '健身运动', '美食料理', '旅行攻略', 
-              '时尚穿搭', '家居装修', '宠物养护', '学习成长'
-            ].map((keyword) => (
-              <button
-                key={keyword}
-                onClick={() => !isAnalyzing && setIndustry(keyword)}
-                className="px-3 py-1 text-xs bg-gray-100 hover:bg-purple-100 text-gray-600 hover:text-purple-600 rounded-full transition-colors duration-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-purple-800 dark:hover:text-purple-300 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isAnalyzing}
-              >
-                {keyword}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

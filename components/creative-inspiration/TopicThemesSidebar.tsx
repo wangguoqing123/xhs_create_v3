@@ -22,7 +22,7 @@ export default function TopicThemesSidebar({
     return Array.from({ length: 10 }).map((_, index) => (
       <div 
         key={`skeleton-${index}`}
-        className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse"
+        className="p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-700/50 shadow-lg dark:shadow-xl dark:shadow-black/20 animate-pulse"
       >
         {/* 头部信息骨架 */}
         <div className="flex items-center justify-between mb-3">
@@ -57,10 +57,10 @@ export default function TopicThemesSidebar({
       return (
         <div
           key={topic.id}
-          className={`p-4 rounded-lg border transition-all duration-300 cursor-pointer hover:shadow-md ${
+          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg hover:scale-105 ${
             isSelected
-              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-lg ring-2 ring-purple-200 dark:ring-purple-600'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:bg-purple-25 dark:hover:bg-purple-900/10'
+              ? 'border-purple-500 bg-purple-50/80 dark:bg-purple-900/30 shadow-xl ring-2 ring-purple-200 dark:ring-purple-600 backdrop-blur-sm'
+              : 'border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 hover:border-purple-300 hover:bg-purple-25/80 dark:hover:bg-purple-900/20 backdrop-blur-sm'
           }`}
           onClick={() => onSelectTopic(topic.id)}
         >
@@ -173,7 +173,7 @@ export default function TopicThemesSidebar({
 
       {/* 无主题状态 */}
       {!isAnalyzing && topics.length === 0 && (
-        <div className="h-64 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center">
+        <div className="h-64 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-xl dark:shadow-2xl dark:shadow-black/20 flex flex-col items-center justify-center">
           <div className="text-6xl mb-4">🎨</div>
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
             暂无选题主题
@@ -194,7 +194,7 @@ export default function TopicThemesSidebar({
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 🎯 选题主题
               </h2>
-              <span className="px-2 py-1 bg-purple-100 text-purple-600 text-sm font-medium rounded-full dark:bg-purple-900/30 dark:text-purple-400">
+              <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full shadow-lg">
                 {topics.length}
               </span>
             </div>
@@ -209,7 +209,7 @@ export default function TopicThemesSidebar({
           </div>
           
           {/* 底部提示 */}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-700">
+          <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200/50 rounded-xl dark:from-blue-900/20 dark:to-purple-900/20 dark:border-blue-700/50 backdrop-blur-sm">
             <div className="text-xs text-blue-700 dark:text-blue-300">
               <div className="flex items-center space-x-2 mb-1">
                 <span>💡</span>
