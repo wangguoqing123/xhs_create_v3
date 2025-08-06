@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useMySQLAuth } from '@/components/mysql-auth-context'
 import { useCreditsContext } from '@/components/credits-context'
 import { CreditsDisplay } from '@/components/credits-display'
@@ -33,6 +33,13 @@ export default function CreativeInspirationPage() {
   // 笔记详情弹框状态
   const [selectedNote, setSelectedNote] = useState<NoteDetail | null>(null)
   const [showNoteDetail, setShowNoteDetail] = useState(false)
+  
+  // 历史记录状态
+  const [historySessions, setHistorySessions] = useState<CreativeInspirationSession[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [historyTotal, setHistoryTotal] = useState(0)
+  const [historyOffset, setHistoryOffset] = useState(0)
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false)
 
   // 处理行业分析
   const handleAnalyze = useCallback(async (industry: string) => {
@@ -78,6 +85,9 @@ export default function CreativeInspirationPage() {
       
       // 刷新积分余额
       await refreshBalance()
+
+      // 刷新历史记录（新分析完成后）
+      await loadHistorySessions(false)
 
       console.log('✅ [创作灵感页面] 状态更新完成，主题数量:', result.data.topics?.length || 0)
 
@@ -200,6 +210,108 @@ export default function CreativeInspirationPage() {
     setSelectedNote(null)
   }, [])
 
+  // 加载历史记录
+  const loadHistorySessions = useCallback(async (isLoadMore = false) => {
+    if (!profile?.id || isLoadingHistory || isLoadingMoreHistory) return
+
+    if (isLoadMore) {
+      setIsLoadingMoreHistory(true)
+    } else {
+      setIsLoadingHistory(true)
+      setHistoryOffset(0)
+    }
+
+    const currentOffset = isLoadMore ? historyOffset : 0
+
+    try {
+      const response = await fetch('/api/creative-inspiration/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: profile.id,
+          limit: 20,
+          offset: currentOffset,
+          status: 'completed'
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        const newSessions = result.data.sessions || []
+        const total = result.data.total || 0
+        
+        if (isLoadMore) {
+          // 加载更多时追加数据
+          setHistorySessions(prev => [...prev, ...newSessions])
+          setHistoryOffset(prev => prev + 20)
+        } else {
+          // 首次加载时替换数据
+          setHistorySessions(newSessions)
+          setHistoryOffset(20)
+          
+          // 如果没有当前会话且有历史记录，自动加载最新的一条
+          if (!currentSession && newSessions.length > 0) {
+            const latestSession = newSessions[0] // 历史记录按创建时间倒序，第一条是最新的
+            handleSelectHistorySession(latestSession)
+          }
+        }
+        
+        setHistoryTotal(total)
+      }
+    } catch (error) {
+      console.error('加载历史记录失败:', error)
+    } finally {
+      if (isLoadMore) {
+        setIsLoadingMoreHistory(false)
+      } else {
+        setIsLoadingHistory(false)
+      }
+    }
+  }, [profile?.id]) // 简化依赖项
+
+  // 处理历史会话选择
+  const handleSelectHistorySession = useCallback(async (session: CreativeInspirationSession) => {
+    try {
+      // 获取历史会话的主题
+      const response = await fetch('/api/creative-inspiration/topics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: session.id
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // 更新当前会话和主题
+        setCurrentSession(session)
+        setTopics(result.data || [])
+        setSelectedTopic(null)
+        setContentExamples([])
+      }
+    } catch (error) {
+      console.error('加载历史会话主题失败:', error)
+    }
+  }, [])
+
+  // 加载更多历史记录
+  const loadMoreHistory = useCallback(async () => {
+    await loadHistorySessions(true)
+  }, [loadHistorySessions])
+
+  // 页面加载时获取历史记录
+  useEffect(() => {
+    if (profile?.id && !isLoadingHistory) {
+      loadHistorySessions()
+    }
+  }, [profile?.id]) // 移除 loadHistorySessions 依赖，避免无限循环
+
   // 检查用户是否已登录
   if (!profile) {
     return (
@@ -244,6 +356,12 @@ export default function CreativeInspirationPage() {
             selectedTopic={selectedTopic}
             onSelectTopic={handleSelectTopic}
             isAnalyzing={isAnalyzing}
+            historySessions={historySessions}
+            onSelectHistorySession={handleSelectHistorySession}
+            currentSessionId={currentSession?.id}
+            historyTotal={historyTotal}
+            onLoadMoreHistory={loadMoreHistory}
+            isLoadingMoreHistory={isLoadingMoreHistory}
           />
           
           {/* 右侧内容示例面板 */}
@@ -272,16 +390,21 @@ export default function CreativeInspirationPage() {
             )}
 
             {/* 未选择主题状态 */}
-            {!selectedTopic && !isAnalyzing && (
+            {!selectedTopic && !isAnalyzing && topics.length === 0 && (
               <div className="h-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-xl dark:shadow-2xl dark:shadow-black/20 flex flex-col items-center justify-center">
                 <div className="text-center">
                   <div className="text-6xl mb-6">💭</div>
                   <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     开始你的创作之旅
                   </h3>
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
                     输入行业关键词，获取AI智能分析的创作主题
                   </p>
+                  {historySessions.length > 0 && (
+                    <p className="text-sm text-blue-500 dark:text-blue-400">
+                      或者从左侧历史记录中选择之前的分析结果
+                    </p>
+                  )}
                 </div>
               </div>
             )}

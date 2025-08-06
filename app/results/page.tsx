@@ -135,24 +135,24 @@ function ResultsPageContent() {
     }
   }, [user, loading])
 
-  // 处理任务选择逻辑
+  // 处理任务选择逻辑 - 只在任务列表或URL参数变化时执行，不依赖selectedTaskId
   useEffect(() => {
     if (taskList.length === 0) return
     
     // 如果URL有taskId参数，尝试选中该任务
     if (urlTaskId) {
       const targetTask = taskList.find((task: any) => task.id === urlTaskId)
-      if (targetTask && selectedTaskId !== urlTaskId) {
+      if (targetTask) {
         setSelectedTaskId(urlTaskId)
-      } else if (!targetTask && !selectedTaskId && taskList.length > 0) {
+      } else if (taskList.length > 0) {
         // 如果找不到指定任务，选中第一个
         setSelectedTaskId(taskList[0].id)
       }
     } else if (!selectedTaskId && taskList.length > 0) {
-      // 没有指定taskId，选中第一个任务
+      // 没有指定taskId且没有当前选中任务，选中第一个任务
       setSelectedTaskId(taskList[0].id)
     }
-  }, [taskList, urlTaskId, selectedTaskId])
+  }, [taskList, urlTaskId]) // 移除selectedTaskId依赖，避免覆盖用户选择
 
   // 当选中任务变化时，获取该任务的详细信息
   useEffect(() => {
@@ -342,7 +342,13 @@ function ResultsPageContent() {
           <TaskHeader
             taskList={taskList || []}
             selectedTaskId={selectedTaskId}
-            onTaskSelect={setSelectedTaskId}
+            onTaskSelect={(taskId: string) => {
+              console.log('🔄 [Results] 任务切换:', {
+                from: selectedTaskId,
+                to: taskId
+              })
+              setSelectedTaskId(taskId)
+            }}
             hasMore={taskHasMore}
             isLoadingMore={taskIsLoadingMore}
             onLoadMore={loadMoreTasks}
@@ -382,7 +388,14 @@ function ResultsPageContent() {
                           ? "ring-2 ring-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 shadow-xl border-purple-300 dark:border-purple-600"
                           : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-md border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
                       )}
-                      onClick={() => setSelectedNoteId(task.id)}
+                      onClick={() => {
+                        console.log('🔄 [Results] 笔记切换 (移动端):', {
+                          from: selectedNoteId,
+                          to: task.id,
+                          noteCover: task.noteCover
+                        })
+                        setSelectedNoteId(task.id)
+                      }}
                     >
                       <div className="p-3">
                         <div className="flex gap-3">
@@ -469,7 +482,15 @@ function ResultsPageContent() {
             <NoteListSidebar
               tasks={convertedTasks}
               selectedNoteId={selectedNoteId}
-              onNoteSelect={setSelectedNoteId}
+              onNoteSelect={(noteId: string) => {
+                const selectedTask = convertedTasks.find(task => task.id === noteId)
+                console.log('🔄 [Results] 笔记切换 (桌面端):', {
+                  from: selectedNoteId,
+                  to: noteId,
+                  noteCover: selectedTask?.noteCover
+                })
+                setSelectedNoteId(noteId)
+              }}
               taskName={selectedTask?.taskName || '批量改写任务'}
               hasMore={noteHasMore}
               onLoadMore={loadMoreNotes}

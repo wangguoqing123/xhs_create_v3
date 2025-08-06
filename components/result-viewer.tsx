@@ -67,6 +67,19 @@ function SmartImage({
     return preprocessImageUrl(src, '/placeholder.svg')
   })
 
+  // 监听src变化，更新图片源
+  useEffect(() => {
+    console.log('🔄 [SmartImage] src changed:', src)
+    setImageError(false) // 重置错误状态
+    
+    // 更新图片源
+    if (src && (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('ci.xiaohongshu.com'))) {
+      setImageSrc(`/api/image-proxy?url=${encodeURIComponent(src)}`)
+    } else {
+      setImageSrc(preprocessImageUrl(src, '/placeholder.svg'))
+    }
+  }, [src])
+
   // 处理图片加载错误
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     console.error('❌ [SmartImage] 图片加载失败:', src)
@@ -190,6 +203,18 @@ function TypewriterText({ text, speed = 30, onComplete }: { text: string; speed?
   )
 }
 
+// 获取版本名称
+function getVersionName(index: number): string {
+  switch (index) {
+    case 0:
+      return "版本 1: 原口吻仿写"
+    case 1:
+      return "版本 2: 素人推荐改编"
+    default:
+      return `版本 ${index + 1}`
+  }
+}
+
 // 内容展示组件
 function ContentDisplay({ result, index }: { result: GeneratedContent; index: number }) {
   const [copiedId, setCopiedId] = useState<string>("")
@@ -243,7 +268,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
               </div>
               <div>
                 <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">
-                  版本 {index + 1}
+                  {getVersionName(index)}
                 </CardTitle>
                 {getStatusBadge()}
               </div>
@@ -270,7 +295,7 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
             </div>
             <div>
               <CardTitle className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                {`版本 ${index + 1}`}
+                {getVersionName(index)}
               </CardTitle>
               {getStatusBadge()}
             </div>
@@ -370,6 +395,16 @@ function ContentDisplay({ result, index }: { result: GeneratedContent; index: nu
 }
 
 export function ResultViewer({ task, taskName, allTasks, originalTaskData }: ResultViewerProps) {
+  // 添加调试信息，查看task变化
+  useEffect(() => {
+    if (task) {
+      console.log('🔄 [ResultViewer] task changed:', {
+        taskId: task.id,
+        noteTitle: task.noteTitle,
+        noteCover: task.noteCover
+      })
+    }
+  }, [task?.id, task?.noteCover])
   const handleExportTxt = () => {
     if (!task) return
     
@@ -380,7 +415,7 @@ export function ResultViewer({ task, taskName, allTasks, originalTaskData }: Res
     }
 
     const content = completedResults.map((result, index) => 
-      `=== 版本 ${index + 1} ===\n标题：${result.title}\n\n内容：\n${result.content}`
+      `=== ${getVersionName(index)} ===\n标题：${result.title}\n\n内容：\n${result.content}`
     ).join('\n\n' + '='.repeat(50) + '\n\n')
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
@@ -416,7 +451,7 @@ export function ResultViewer({ task, taskName, allTasks, originalTaskData }: Res
         '1', // 笔记编号（单个笔记）
         task.noteTitle, // 仿写笔记标题
         task.noteCover || '', // 仿写笔记封面链接
-        `版本${index + 1}`, // 内容编号
+        getVersionName(index), // 内容编号
         result.title, // 仿写标题
         result.content, // 仿写内容
         '已完成', // 生成状态
@@ -631,7 +666,7 @@ export function ResultViewer({ task, taskName, allTasks, originalTaskData }: Res
               - 增加间距，提升视觉体验
             */
             <div className="grid grid-cols-1 gap-8">
-              {[...task.results].slice(0, 2).reverse().map((result, index) => (
+              {[...task.results].slice(0, 2).map((result, index) => (
                 <ContentDisplay 
                   key={result.id} 
                   result={result} 

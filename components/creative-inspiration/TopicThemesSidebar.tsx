@@ -1,21 +1,37 @@
 'use client'
 
-import { useMemo } from 'react'
-import type { CreativeInspirationTopic } from '@/lib/types'
+import { useMemo, useState } from 'react'
+import { ChevronDown, Clock, Sparkles } from 'lucide-react'
+import type { CreativeInspirationTopic, CreativeInspirationSession } from '@/lib/types'
 
 interface TopicThemesSidebarProps {
   topics: CreativeInspirationTopic[]
   selectedTopic: string | null
   onSelectTopic: (topicId: string) => void
   isAnalyzing: boolean
+  historySessions?: CreativeInspirationSession[]
+  onSelectHistorySession?: (session: CreativeInspirationSession) => void
+  currentSessionId?: string | null
+  historyTotal?: number
+  onLoadMoreHistory?: () => void
+  isLoadingMoreHistory?: boolean
 }
 
 export default function TopicThemesSidebar({ 
   topics, 
   selectedTopic, 
   onSelectTopic, 
-  isAnalyzing 
+  isAnalyzing,
+  historySessions = [],
+  onSelectHistorySession,
+  currentSessionId,
+  historyTotal = 0,
+  onLoadMoreHistory,
+  isLoadingMoreHistory = false
 }: TopicThemesSidebarProps) {
+
+  // 历史记录下拉状态
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
   
   // 生成骨架屏加载状态
   const renderSkeletonCards = useMemo(() => {
@@ -182,12 +198,90 @@ export default function TopicThemesSidebar({
           {/* 标题栏 */}
           <div className="mb-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🎯 选题主题
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                <Sparkles className="h-5 w-5 text-purple-500" />
+                <span>选题主题</span>
               </h2>
-              <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full shadow-lg">
-                {topics.length}
-              </span>
+              <div className="flex items-center space-x-2">
+                {/* 主题数量标签 */}
+                <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full shadow-lg">
+                  {topics.length}
+                </span>
+                
+                {/* 历史记录切换按钮 */}
+                {historySessions.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                      className="flex items-center space-x-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <Clock className="h-4 w-4" />
+                      <span>历史</span>
+                      <ChevronDown className={`h-3 w-3 transition-transform ${showHistoryDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {/* 历史记录下拉列表 */}
+                    {showHistoryDropdown && (
+                      <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 max-h-80 overflow-y-auto">
+                        <div className="p-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 px-3 py-2 font-medium">
+                            历史分析记录
+                          </div>
+                          {historySessions.map((session) => (
+                            <button
+                              key={session.id}
+                              onClick={() => {
+                                onSelectHistorySession?.(session)
+                                setShowHistoryDropdown(false)
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                                currentSessionId === session.id 
+                                  ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              <div className="font-medium text-sm truncate">
+                                {session.industry}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(session.created_at).toLocaleDateString('zh-CN', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            </button>
+                          ))}
+                          
+                          {/* 加载更多按钮 */}
+                          {historySessions.length < historyTotal && (
+                            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
+                              <button
+                                onClick={() => onLoadMoreHistory?.()}
+                                disabled={isLoadingMoreHistory}
+                                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isLoadingMoreHistory ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <span>加载中...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>加载更多</span>
+                                    <span className="text-xs">({historySessions.length}/{historyTotal})</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               点击主题查看相关创作内容
