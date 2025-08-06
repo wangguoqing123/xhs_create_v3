@@ -67,7 +67,7 @@ export default function TopicThemesSidebar({
 
   // 生成主题卡片
   const renderTopicCard = useMemo(() => {
-    return (topic: CreativeInspirationTopic) => {
+    const TopicCard = (topic: CreativeInspirationTopic) => {
       const isSelected = selectedTopic === topic.id
       
       return (
@@ -153,6 +153,9 @@ export default function TopicThemesSidebar({
         </div>
       )
     }
+    
+    TopicCard.displayName = 'TopicCard'
+    return TopicCard
   }, [selectedTopic, onSelectTopic])
 
   return (

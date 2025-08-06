@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log('✅ [获取会话主题] 成功:', result.data.length, '个主题')
+    console.log('✅ [获取会话主题] 成功:', result.data?.length || 0, '个主题')
 
     return NextResponse.json({
       success: true,
