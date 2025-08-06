@@ -51,29 +51,29 @@ export default function TopicThemesSidebar({
 
   // 生成主题卡片
   const renderTopicCard = useMemo(() => {
-    return (topic: CreativeInspirationTopic, index: number) => {
+    return (topic: CreativeInspirationTopic) => {
       const isSelected = selectedTopic === topic.id
       
       return (
         <div
           key={topic.id}
-          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg hover:scale-105 ${
+          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg ${
             isSelected
               ? 'border-purple-500 bg-purple-50/80 dark:bg-purple-900/30 shadow-xl ring-2 ring-purple-200 dark:ring-purple-600 backdrop-blur-sm'
-              : 'border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 hover:border-purple-300 hover:bg-purple-25/80 dark:hover:bg-purple-900/20 backdrop-blur-sm'
+              : 'border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 hover:border-purple-300 hover:bg-purple-50/60 dark:hover:bg-purple-900/20 backdrop-blur-sm'
           }`}
           onClick={() => onSelectTopic(topic.id)}
         >
-          {/* 头部：编号和热度 */}
-          <div className="flex items-center justify-between mb-3">
-            <span className={`text-sm font-medium ${
+          {/* 标题和热度 */}
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className={`font-semibold text-base line-clamp-2 flex-1 ${
               isSelected 
-                ? 'text-purple-600 dark:text-purple-400' 
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'text-purple-900 dark:text-purple-100' 
+                : 'text-gray-900 dark:text-white'
             }`}>
-              #{index + 1}
-            </span>
-            <div className="flex items-center space-x-1">
+              {topic.title}
+            </h3>
+            <div className="flex items-center space-x-1 flex-shrink-0">
               <span className={`text-xs ${
                 isSelected 
                   ? 'text-purple-600 dark:text-purple-400' 
@@ -90,15 +90,6 @@ export default function TopicThemesSidebar({
               </span>
             </div>
           </div>
-          
-          {/* 标题 */}
-          <h3 className={`font-semibold text-base mb-3 line-clamp-2 ${
-            isSelected 
-              ? 'text-purple-900 dark:text-purple-100' 
-              : 'text-gray-900 dark:text-white'
-          }`}>
-            {topic.title}
-          </h3>
           
           {/* 描述 */}
           <p className={`text-sm mb-4 line-clamp-3 leading-relaxed ${
@@ -205,7 +196,7 @@ export default function TopicThemesSidebar({
           
           {/* 主题卡片列表 */}
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-            {topics.map((topic, index) => renderTopicCard(topic, index))}
+            {topics.map((topic) => renderTopicCard(topic))}
           </div>
           
           {/* 底部提示 */}

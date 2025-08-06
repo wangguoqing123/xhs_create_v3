@@ -5,6 +5,7 @@ import { VALIDATION_RULES, ERROR_MESSAGES } from '@/lib/creative-inspiration-con
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Sparkles, Loader2 } from 'lucide-react'
+import AnalysisProgressBar from './AnalysisProgressBar'
 
 interface IndustryInputSectionProps {
   onAnalyze: (industry: string) => void
@@ -29,10 +30,10 @@ export default function IndustryInputSection({
     const trimmedValue = value.trim()
     
     // 长度验证
-    if (trimmedValue.length < VALIDATION_RULES.INDUSTRY_MIN_LENGTH || 
-        trimmedValue.length > VALIDATION_RULES.INDUSTRY_MAX_LENGTH) {
-      return { isValid: false, error: ERROR_MESSAGES.INVALID_INPUT }
-    }
+    // if (trimmedValue.length < VALIDATION_RULES.INDUSTRY_MIN_LENGTH || 
+    //     trimmedValue.length > VALIDATION_RULES.INDUSTRY_MAX_LENGTH) {
+    //   return { isValid: false, error: ERROR_MESSAGES.INVALID_INPUT }
+    // }
 
     // 字符格式验证
     if (!VALIDATION_RULES.INDUSTRY_PATTERN.test(trimmedValue)) {
@@ -55,19 +56,11 @@ export default function IndustryInputSection({
     const value = e.target.value
     setIndustry(value)
 
-    // 清除之前的错误
+    // 清除之前的错误（用户输入时清除错误提示）
     if (inputError) {
       setInputError(null)
     }
-
-    // 实时验证（只在用户输入内容时进行）
-    if (value.trim()) {
-      const validation = validateInput(value)
-      if (!validation.isValid) {
-        setInputError(validation.error || null)
-      }
-    }
-  }, [inputError, validateInput])
+  }, [inputError])
 
   // 处理提交
   const handleSubmit = useCallback((e: React.FormEvent) => {
@@ -95,7 +88,7 @@ export default function IndustryInputSection({
   }, [handleSubmit, isAnalyzing])
 
   const displayError = inputError || error
-  const isDisabled = isAnalyzing || !industry.trim() || !!inputError
+  const isDisabled = isAnalyzing || !industry.trim()
 
   return (
     <div className="text-center">
@@ -178,28 +171,8 @@ export default function IndustryInputSection({
           </div>
         )}
 
-        {/* 分析进度提示 */}
-        {isAnalyzing && (
-          <div className="mt-6 max-w-2xl mx-auto p-4 bg-purple-50 border border-purple-200 rounded-lg dark:bg-purple-900/20 dark:border-purple-700">
-            <div className="text-sm text-purple-700 dark:text-purple-300">
-              <div className="font-semibold mb-2">🔄 正在分析中：</div>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-pulse w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span>搜索热门内容...</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="animate-pulse w-2 h-2 bg-purple-500 rounded-full" style={{animationDelay: '0.2s'}}></div>
-                  <span>AI智能分析...</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="animate-pulse w-2 h-2 bg-purple-500 rounded-full" style={{animationDelay: '0.4s'}}></div>
-                  <span>生成选题主题...</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* 分析进度条 */}
+        <AnalysisProgressBar isAnalyzing={isAnalyzing} />
       </div>
     </div>
   )

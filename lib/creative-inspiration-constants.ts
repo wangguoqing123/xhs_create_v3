@@ -81,7 +81,7 @@ export const SEARCH_CONFIG = {
 
 // 错误消息常量
 export const ERROR_MESSAGES = {
-  INVALID_INPUT: '请输入2-50个字符的行业关键词，仅支持中英文数字和空格',
+  INVALID_INPUT: '请输入有效的行业关键词',
   FORBIDDEN_WORD: '输入内容包含禁用词，请重新输入',
   INSUFFICIENT_CREDITS: '积分不足，需要1积分进行行业分析',
   AUTHENTICATION_FAILED: '用户认证失败，请重新登录',

@@ -6,12 +6,14 @@ import { useCreditsContext } from '@/components/credits-context'
 import { CreditsDisplay } from '@/components/credits-display'
 import IndustryInputSection from '@/components/creative-inspiration/IndustryInputSection'
 import TopicThemesSidebar from '@/components/creative-inspiration/TopicThemesSidebar'
+import { NoteDetailModal } from '@/components/note-detail-modal'
 import type { 
   CreativeInspirationSession, 
   CreativeInspirationTopic,
   CreativeInspirationAnalyzeRequest,
   CreativeInspirationResponse,
-  Note
+  Note,
+  NoteDetail
 } from '@/lib/types'
 
 export default function CreativeInspirationPage() {
@@ -27,6 +29,10 @@ export default function CreativeInspirationPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isLoadingContent, setIsLoadingContent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // 笔记详情弹框状态
+  const [selectedNote, setSelectedNote] = useState<NoteDetail | null>(null)
+  const [showNoteDetail, setShowNoteDetail] = useState(false)
 
   // 处理行业分析
   const handleAnalyze = useCallback(async (industry: string) => {
@@ -151,6 +157,49 @@ export default function CreativeInspirationPage() {
     }
   }, [isLoadingContent, selectedTopic, topics])
 
+  // 处理点击笔记查看详情
+  const handleNoteClick = useCallback(async (note: Note) => {
+    try {
+      // 从原始数据中获取笔记URL
+      const noteUrl = note.originalData?.note_url
+      
+      if (!noteUrl) {
+        console.error('笔记URL不存在:', note)
+        return
+      }
+
+      // 获取笔记详情
+      const response = await fetch('/api/note-detail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          noteUrl: noteUrl
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || '获取笔记详情失败')
+      }
+
+      if (result.success && result.data) {
+        setSelectedNote(result.data)
+        setShowNoteDetail(true)
+      }
+    } catch (error) {
+      console.error('获取笔记详情失败:', error)
+    }
+  }, [])
+
+  // 关闭笔记详情弹框
+  const handleCloseNoteDetail = useCallback(() => {
+    setShowNoteDetail(false)
+    setSelectedNote(null)
+  }, [])
+
   // 检查用户是否已登录
   if (!profile) {
     return (
@@ -178,15 +227,7 @@ export default function CreativeInspirationPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* 积分显示 */}
-        <div className="flex justify-end mb-4">
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-700/50 shadow-lg dark:shadow-xl dark:shadow-black/20 px-4 py-2">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">当前积分：</span>
-              <CreditsDisplay />
-            </div>
-          </div>
-        </div>
+
 
         {/* 顶部输入区域 */}
         <IndustryInputSection 
@@ -207,35 +248,40 @@ export default function CreativeInspirationPage() {
           
           {/* 右侧内容示例面板 */}
           <div className="flex-1 min-h-[600px]">
-            {/* 未选择主题状态 */}
-            {!selectedTopic && !isAnalyzing && (
-              <div className="h-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-xl dark:shadow-2xl dark:shadow-black/20 flex flex-col items-center justify-center">
-                <div className="text-center">
-                  <div className="text-6xl mb-6">💡</div>
-                  <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                    选择主题开始创作
+            {/* 分析中状态 - 右侧骨架屏 */}
+            {isAnalyzing && (
+              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-xl dark:shadow-2xl dark:shadow-black/20 p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    AI正在分析中...
                   </h3>
-                  <div className="text-gray-500 dark:text-gray-400 space-y-2">
-                    <p>• 输入行业关键词，获取AI分析的创作主题</p>
-                    <p>• 点击左侧主题，查看相关的热门内容示例</p>
-                    <p>• 参考热门内容，获得创作灵感</p>
-                  </div>
+                </div>
+                
+                {/* 内容卡片骨架屏 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {Array.from({ length: 12 }).map((_, index) => (
+                    <div key={index} className="bg-gray-50/50 dark:bg-gray-700/50 rounded-xl p-4 animate-pulse">
+                      <div className="aspect-[3/4] bg-gray-200 dark:bg-gray-600 rounded-lg mb-3"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* 分析中状态 */}
-            {isAnalyzing && (
+            {/* 未选择主题状态 */}
+            {!selectedTopic && !isAnalyzing && (
               <div className="h-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-xl dark:shadow-2xl dark:shadow-black/20 flex flex-col items-center justify-center">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-6"></div>
+                  <div className="text-6xl mb-6">💭</div>
                   <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                    AI智能分析中...
+                    开始你的创作之旅
                   </h3>
-                  <div className="text-gray-500 dark:text-gray-400 space-y-2">
-                    <p>正在搜索热门内容，分析创作趋势</p>
-                    <p>预计需要10-15秒，请耐心等待</p>
-                  </div>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    输入行业关键词，获取AI智能分析的创作主题
+                  </p>
                 </div>
               </div>
             )}
@@ -254,7 +300,7 @@ export default function CreativeInspirationPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {Array.from({ length: 8 }).map((_, index) => (
                     <div key={index} className="bg-gray-50/50 dark:bg-gray-700/50 rounded-xl p-4 animate-pulse">
-                      <div className="aspect-square bg-gray-200 dark:bg-gray-600 rounded-lg mb-3"></div>
+                      <div className="aspect-[3/4] bg-gray-200 dark:bg-gray-600 rounded-lg mb-3"></div>
                       <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
                       <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
                     </div>
@@ -284,11 +330,12 @@ export default function CreativeInspirationPage() {
                     {contentExamples.map((note, index) => (
                       <div 
                         key={note.id || index}
+                        onClick={() => handleNoteClick(note)}
                         className="bg-gray-50/50 dark:bg-gray-700/50 rounded-xl p-4 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer"
                       >
                         {/* 封面图 */}
                         {note.cover && (
-                          <div className="aspect-square bg-gray-200 dark:bg-gray-600 rounded-lg mb-3 overflow-hidden">
+                          <div className="aspect-[3/4] bg-gray-200 dark:bg-gray-600 rounded-lg mb-3 overflow-hidden">
                             <img 
                               src={note.cover} 
                               alt={note.title}
@@ -326,6 +373,13 @@ export default function CreativeInspirationPage() {
           </div>
         </div>
       </div>
+      
+      {/* 笔记详情弹框 */}
+      <NoteDetailModal
+        note={selectedNote}
+        open={showNoteDetail}
+        onClose={handleCloseNoteDetail}
+      />
     </div>
   )
 } 

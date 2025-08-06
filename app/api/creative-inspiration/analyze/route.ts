@@ -6,7 +6,7 @@ import {
   updateCreativeInspirationSession,
   createCreativeInspirationTopics 
 } from '@/lib/mysql'
-import { searchXiaohongshuNotes, convertXiaohongshuNotesToNotes } from '@/lib/coze-api'
+import { searchXiaohongshuNotes } from '@/lib/coze-api'
 import { createStreamChatCompletion, parseStreamResponse } from '@/lib/ark-api'
 import { 
   CREATIVE_INSPIRATION_PROMPT, 
@@ -61,11 +61,11 @@ function validateIndustryInput(industry: string): { isValid: boolean, error?: st
 
   const trimmedIndustry = industry.trim()
   
-  // 长度验证
-  if (trimmedIndustry.length < VALIDATION_RULES.INDUSTRY_MIN_LENGTH || 
-      trimmedIndustry.length > VALIDATION_RULES.INDUSTRY_MAX_LENGTH) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_INPUT }
-  }
+  // 长度验证 - 已移除具体限制，只检查非空
+  // if (trimmedIndustry.length < VALIDATION_RULES.INDUSTRY_MIN_LENGTH || 
+  //     trimmedIndustry.length > VALIDATION_RULES.INDUSTRY_MAX_LENGTH) {
+  //   return { isValid: false, error: ERROR_MESSAGES.INVALID_INPUT }
+  // }
 
   // 字符格式验证
   if (!VALIDATION_RULES.INDUSTRY_PATTERN.test(trimmedIndustry)) {
@@ -366,7 +366,7 @@ export async function POST(request: NextRequest) {
       userId, 
       CREDITS_CONFIG.INDUSTRY_ANALYSIS, 
       `创作灵感分析 - ${cleanIndustry}`,
-      null // 创作灵感分析不是批量任务，不关联taskId
+      undefined // 创作灵感分析不是批量任务，不关联taskId
     )
     
     if (!consumeResult.success) {
@@ -407,16 +407,13 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [创作灵感分析] 分析完成，积分消耗:', CREDITS_CONFIG.INDUSTRY_ANALYSIS)
 
-    // 转换搜索结果为统一格式
-    const searchResults = convertXiaohongshuNotesToNotes(xiaohongshuNotes)
-
     // 返回成功结果
     const response: CreativeInspirationResponse = {
       success: true,
       data: {
         session: sessionResult.data,
         topics: topicsResult.data || [],
-        searchResults: searchResults
+        searchResults: xiaohongshuNotes // 直接使用原始搜索结果，保持XiaohongshuNote[]类型
       }
     }
 
