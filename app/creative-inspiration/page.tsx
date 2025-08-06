@@ -15,6 +15,7 @@ import type {
   Note,
   NoteDetail
 } from '@/lib/types'
+import { getProxiedImageUrl, createFastFallbackImageHandler } from '@/lib/image-utils'
 
 export default function CreativeInspirationPage() {
   // Context hooks
@@ -460,10 +461,11 @@ export default function CreativeInspirationPage() {
                         {note.cover && (
                           <div className="aspect-[3/4] bg-gray-200 dark:bg-gray-600 rounded-lg mb-3 overflow-hidden">
                             <img 
-                              src={note.cover} 
+                              src={getProxiedImageUrl(note.cover)} 
                               alt={note.title}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              onError={createFastFallbackImageHandler(note.cover)}
                             />
                           </div>
                         )}
