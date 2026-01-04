@@ -11,7 +11,8 @@
       "mcp__browsermcp__puppeteer_fill",
       "mcp__browsermcp__puppeteer_screenshot",
       "Bash(pnpm add:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(pm2 restart:*)"
     ],
     "deny": []
   }

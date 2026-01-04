@@ -35,7 +35,7 @@ CREATE TABLE profiles (
   avatar_url VARCHAR(500) DEFAULT NULL,
   user_cookie TEXT DEFAULT NULL COMMENT '用户Cookie字符串，用于爬虫接口调用',
   task_indices JSON DEFAULT ('[]') COMMENT '任务索引数组',
-  credits INTEGER NOT NULL DEFAULT 20 COMMENT '用户积分',
+  credits INTEGER NOT NULL DEFAULT 5 COMMENT '用户积分',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -174,11 +174,11 @@ BEGIN
   
   -- 创建用户资料
   INSERT INTO profiles (id, email, display_name, credits) 
-  VALUES (user_id, p_email, display_name_final, 20);
+  VALUES (user_id, p_email, display_name_final, 5);
   
   -- 记录注册赠送积分
   INSERT INTO credit_transactions (user_id, transaction_type, amount, reason)
-  VALUES (user_id, 'reward', 20, '新用户注册赠送');
+  VALUES (user_id, 'reward', 5, '新用户注册赠送');
   
   -- 返回用户ID
   SELECT user_id as id, p_email as email, display_name_final as display_name;
